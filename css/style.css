@@ -1,4 +1,242 @@
-/* APP */
+/* =====================================
+   IFL — GLOBAL
+===================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #070a0f;
+    color: #ffffff;
+}
+
+
+/* =====================================
+   LOGIN PAGE
+===================================== */
+
+.login-page {
+    min-height: 100vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 24px;
+
+    background:
+        radial-gradient(
+            circle at 50% 0%,
+            rgba(43, 56, 75, 0.55),
+            transparent 45%
+        ),
+        linear-gradient(
+            135deg,
+            #070a0f 0%,
+            #0b1017 50%,
+            #070a0f 100%
+        );
+
+    position: relative;
+    overflow: hidden;
+}
+
+
+/* Luces decorativas */
+
+.login-page::before,
+.login-page::after {
+    content: "";
+
+    position: absolute;
+
+    width: 420px;
+    height: 420px;
+
+    border-radius: 50%;
+
+    filter: blur(100px);
+
+    opacity: 0.15;
+
+    pointer-events: none;
+}
+
+.login-page::before {
+    background: #5865f2;
+    top: -220px;
+    left: -180px;
+}
+
+.login-page::after {
+    background: #ffffff;
+    bottom: -280px;
+    right: -180px;
+}
+
+
+/* =====================================
+   LOGIN CARD
+===================================== */
+
+.login-card {
+    position: relative;
+    z-index: 2;
+
+    width: 100%;
+    max-width: 460px;
+
+    padding: 48px 42px 40px;
+
+    text-align: center;
+
+    background:
+        linear-gradient(
+            180deg,
+            rgba(22, 28, 38, 0.98),
+            rgba(13, 18, 25, 0.98)
+        );
+
+    border: 1px solid #28313e;
+
+    border-radius: 22px;
+
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.02);
+
+    backdrop-filter: blur(12px);
+}
+
+
+/* =====================================
+   IFL LOGO
+===================================== */
+
+.ifl-logo {
+    width: 86px;
+    height: 86px;
+
+    margin: 0 auto 25px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 22px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #202b3a,
+            #111821
+        );
+
+    border: 1px solid #344052;
+
+    box-shadow:
+        0 15px 35px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+    font-size: 40px;
+}
+
+
+/* =====================================
+   TITLE
+===================================== */
+
+.login-card h1 {
+    font-size: 29px;
+    line-height: 1.2;
+
+    margin-bottom: 10px;
+
+    letter-spacing: -0.5px;
+}
+
+.login-subtitle {
+    color: #8e9aaa;
+
+    font-size: 14px;
+
+    margin-bottom: 32px;
+}
+
+
+/* =====================================
+   DISCORD BUTTON
+===================================== */
+
+.discord-button {
+    width: 100%;
+
+    border: 0;
+
+    padding: 16px 20px;
+
+    border-radius: 12px;
+
+    background: #5865f2;
+
+    color: #ffffff;
+
+    font-size: 15px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 10px 25px rgba(88, 101, 242, 0.25);
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.discord-button:hover {
+    background: #6975f5;
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 14px 30px rgba(88, 101, 242, 0.35);
+}
+
+.discord-button:active {
+    transform: translateY(0);
+}
+
+.discord-button:disabled {
+    opacity: 0.65;
+    cursor: wait;
+    transform: none;
+}
+
+
+/* =====================================
+   LOGIN INFO
+===================================== */
+
+.login-info {
+    margin-top: 20px;
+
+    color: #697585;
+
+    font-size: 12px;
+
+    line-height: 1.6;
+}
+
+
+/* =====================================
+   APP
+===================================== */
 
 .app-page {
     min-height: 100vh;
@@ -7,6 +245,7 @@
 
 .app-header {
     min-height: 70px;
+
     padding: 0 30px;
 
     display: flex;
@@ -14,6 +253,7 @@
     justify-content: space-between;
 
     background: #11161e;
+
     border-bottom: 1px solid #242c38;
 }
 
@@ -39,6 +279,7 @@
     border-radius: 8px;
 
     background: #1a2029;
+
     color: white;
 
     cursor: pointer;
@@ -50,7 +291,9 @@
 
 .dashboard {
     max-width: 1100px;
+
     margin: 0 auto;
+
     padding: 40px 25px;
 }
 
@@ -60,4 +303,42 @@
 
 .dashboard p {
     color: #9ca7b5;
+}
+
+
+/* =====================================
+   MOBILE
+===================================== */
+
+@media (max-width: 600px) {
+
+    .login-page {
+        padding: 18px;
+    }
+
+    .login-card {
+        padding: 38px 25px 32px;
+
+        border-radius: 18px;
+    }
+
+    .ifl-logo {
+        width: 76px;
+        height: 76px;
+
+        font-size: 34px;
+    }
+
+    .login-card h1 {
+        font-size: 24px;
+    }
+
+    .app-header {
+        padding: 0 18px;
+    }
+
+    .app-header span {
+        display: none;
+    }
+
 }
