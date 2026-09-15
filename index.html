@@ -12,7 +12,7 @@
 <body>
 
     <!-- LOGIN -->
-    <main class="login-page">
+    <main class="login-page" id="login-page">
 
         <div class="login-card">
 
@@ -38,6 +38,38 @@
 
     </main>
 
+    <!-- APP -->
+    <main id="app" class="app-page" style="display: none;">
+
+        <header class="app-header">
+
+            <div>
+                <strong>IFL</strong>
+                <span>Iberian Football League</span>
+            </div>
+
+            <button id="logout-button" class="logout-button">
+                Cerrar sesión
+            </button>
+
+        </header>
+
+        <section class="dashboard">
+
+            <h2>Bienvenido a la IFL</h2>
+
+            <p id="user-info">
+                Cargando usuario...
+            </p>
+
+        </section>
+
+    </main>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- IFL -->
     <script src="js/app.js"></script>
 
 </body>
