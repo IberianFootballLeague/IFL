@@ -4,7 +4,7 @@
 
 const SUPABASE_URL = "https://boazhychmpxeuplyxzsi.supabase.co";
 
-const SUPABASE_ANON_KEY = "PEGA_AQUI_TU_CLAVE_PUBLICA";
+const SUPABASE_ANON_KEY = "boazhychmpxeuplyxzsi";
 
 const supabaseClient = supabase.createClient(
     SUPABASE_URL,
