@@ -5,6 +5,7 @@
 const SUPABASE_URL = "sb_publishable_C_iRhldD-coePRVqcNDCGA_oGIA1u3d";
 
 const SUPABASE_ANON_KEY = "boazhychmpxeuplyxzsi";
+console.log("IFL APP NUEVA CARGADA");
 
 const supabaseClient = supabase.createClient(
     SUPABASE_URL,
