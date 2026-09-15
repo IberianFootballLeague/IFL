@@ -2,19 +2,19 @@
 // IFL - SUPABASE + DISCORD
 // =====================================
 
-const SUPABASE_URL = "sb_publishable_C_iRhldD-coePRVqcNDCGA_oGIA1u3d";
+const SUPABASE_URL = "https://boazhychmpxeuplyxzsi.supabase.co";
 
-const SUPABASE_ANON_KEY = "boazhychmpxeuplyxzsi";
-console.log("IFL APP NUEVA CARGADA");
+const SUPABASE_PUBLISHABLE_KEY =
+    "sb_publishable_C_iRhldD-coePRVqcNDCGA_oGIA1u3d";
 
 const supabaseClient = supabase.createClient(
     SUPABASE_URL,
-    SUPABASE_ANON_KEY
+    SUPABASE_PUBLISHABLE_KEY
 );
 
 
 // =====================================
-// INICIO
+// IFL APP
 // =====================================
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -28,27 +28,72 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
     // =================================
-    // COMPROBAR SESIÓN
+    // MOSTRAR LOGIN
     // =================================
 
-    const {
-        data: { session }
-    } = await supabaseClient.auth.getSession();
-
-
-    if (session) {
-
-        mostrarApp(session.user);
-
-    } else {
-
-        mostrarLogin();
-
+    function showLogin() {
+        loginPage.style.display = "flex";
+        appPage.style.display = "none";
     }
 
 
     // =================================
-    // BOTÓN DISCORD
+    // MOSTRAR APP
+    // =================================
+
+    function showApp(user) {
+
+        loginPage.style.display = "none";
+        appPage.style.display = "block";
+
+        const discordName =
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.user_metadata?.preferred_username ||
+            user.user_metadata?.custom_claims?.global_name ||
+            "Usuario de Discord";
+
+        userInfo.textContent =
+            "Sesión iniciada como " + discordName;
+    }
+
+
+    // =================================
+    // COMPROBAR SESIÓN
+    // =================================
+
+    const {
+        data: { session },
+        error: sessionError
+    } = await supabaseClient.auth.getSession();
+
+
+    if (sessionError) {
+
+        console.error(
+            "Error comprobando la sesión:",
+            sessionError
+        );
+
+        showLogin();
+
+    } else if (session) {
+
+        console.log(
+            "Sesión encontrada:",
+            session.user
+        );
+
+        showApp(session.user);
+
+    } else {
+
+        showLogin();
+    }
+
+
+    // =================================
+    // LOGIN CON DISCORD
     // =================================
 
     discordButton.addEventListener("click", async () => {
@@ -57,21 +102,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         discordButton.textContent = "Conectando...";
 
 
-        const { error } = await supabaseClient.auth.signInWithOAuth({
+        const { error } =
+            await supabaseClient.auth.signInWithOAuth({
 
-            provider: "discord",
+                provider: "discord",
 
-            options: {
-                redirectTo:
-                    "https://iberianfootballleague.github.io/IFL/"
-            }
+                options: {
+                    redirectTo:
+                        "https://iberianfootballleague.github.io/IFL/"
+                }
 
-        });
+            });
 
 
         if (error) {
 
-            console.error(error);
+            console.error(
+                "Error iniciando sesión:",
+                error
+            );
 
             alert(
                 "No se pudo iniciar sesión con Discord.\n\n" +
@@ -87,33 +136,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
     // =================================
-    // CERRAR SESIÓN
-    // =================================
-
-    logoutButton.addEventListener("click", async () => {
-
-        await supabaseClient.auth.signOut();
-
-        mostrarLogin();
-
-    });
-
-
-    // =================================
-    // ESCUCHAR CAMBIOS DE SESIÓN
+    // CAMBIOS DE SESIÓN
     // =================================
 
     supabaseClient.auth.onAuthStateChange(
         (event, session) => {
 
+            console.log(
+                "Cambio de sesión:",
+                event
+            );
+
             if (session) {
-
-                mostrarApp(session.user);
-
+                showApp(session.user);
             } else {
-
-                mostrarLogin();
-
+                showLogin();
             }
 
         }
@@ -121,38 +158,29 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
     // =================================
-    // MOSTRAR LOGIN
+    // CERRAR SESIÓN
     // =================================
 
-    function mostrarLogin() {
+    logoutButton.addEventListener(
+        "click",
+        async () => {
 
-        loginPage.style.display = "flex";
-        appPage.style.display = "none";
-
-    }
-
-
-    // =================================
-    // MOSTRAR APP
-    // =================================
-
-    function mostrarApp(user) {
-
-        loginPage.style.display = "none";
-        appPage.style.display = "block";
+            const { error } =
+                await supabaseClient.auth.signOut();
 
 
-        const discordName =
-            user.user_metadata?.full_name ||
-            user.user_metadata?.name ||
-            user.user_metadata?.preferred_username ||
-            user.email ||
-            "Usuario de Discord";
+            if (error) {
 
+                console.error(
+                    "Error cerrando sesión:",
+                    error
+                );
 
-        userInfo.textContent =
-            "Sesión iniciada como " + discordName;
+                return;
+            }
 
-    }
+            showLogin();
+        }
+    );
 
 });
