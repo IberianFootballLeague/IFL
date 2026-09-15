@@ -2,7 +2,7 @@
 // IFL - SUPABASE + DISCORD
 // =====================================
 
-const SUPABASE_URL = "https://boazhychmpxeuplyxzsi.supabase.co";
+const SUPABASE_URL = "sb_publishable_C_iRhldD-coePRVqcNDCGA_oGIA1u3d";
 
 const SUPABASE_ANON_KEY = "boazhychmpxeuplyxzsi";
 
