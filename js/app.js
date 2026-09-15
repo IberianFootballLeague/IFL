@@ -1,33 +1,157 @@
+// =====================================
+// IFL - SUPABASE + DISCORD
+// =====================================
+
 const SUPABASE_URL = "https://boazhychmpxeuplyxzsi.supabase.co";
 
-document.addEventListener("DOMContentLoaded", async () => {
-    const discordButton = document.getElementById("discord-login");
+const SUPABASE_ANON_KEY = "PEGA_AQUI_TU_CLAVE_PUBLICA";
 
-    // Comprobar si existe una sesión de Supabase
-    const response = await fetch(
-        SUPABASE_URL + "/auth/v1/user",
-        {
-            headers: {
-                "apikey": SUPABASE_ANON_KEY,
-                "Authorization": "Bearer " + accessToken
+const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+);
+
+
+// =====================================
+// INICIO
+// =====================================
+
+document.addEventListener("DOMContentLoaded", async () => {
+
+    const loginPage = document.getElementById("login-page");
+    const appPage = document.getElementById("app");
+
+    const discordButton = document.getElementById("discord-login");
+    const logoutButton = document.getElementById("logout-button");
+    const userInfo = document.getElementById("user-info");
+
+
+    // =================================
+    // COMPROBAR SESIÓN
+    // =================================
+
+    const {
+        data: { session }
+    } = await supabaseClient.auth.getSession();
+
+
+    if (session) {
+
+        mostrarApp(session.user);
+
+    } else {
+
+        mostrarLogin();
+
+    }
+
+
+    // =================================
+    // BOTÓN DISCORD
+    // =================================
+
+    discordButton.addEventListener("click", async () => {
+
+        discordButton.disabled = true;
+        discordButton.textContent = "Conectando...";
+
+
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+
+            provider: "discord",
+
+            options: {
+                redirectTo:
+                    "https://iberianfootballleague.github.io/IFL/"
             }
+
+        });
+
+
+        if (error) {
+
+            console.error(error);
+
+            alert(
+                "No se pudo iniciar sesión con Discord.\n\n" +
+                error.message
+            );
+
+            discordButton.disabled = false;
+            discordButton.textContent =
+                "Iniciar sesión con Discord";
+        }
+
+    });
+
+
+    // =================================
+    // CERRAR SESIÓN
+    // =================================
+
+    logoutButton.addEventListener("click", async () => {
+
+        await supabaseClient.auth.signOut();
+
+        mostrarLogin();
+
+    });
+
+
+    // =================================
+    // ESCUCHAR CAMBIOS DE SESIÓN
+    // =================================
+
+    supabaseClient.auth.onAuthStateChange(
+        (event, session) => {
+
+            if (session) {
+
+                mostrarApp(session.user);
+
+            } else {
+
+                mostrarLogin();
+
+            }
+
         }
     );
 
-    if (response.ok) {
-        const user = await response.json();
-        console.log("Usuario conectado:", user);
+
+    // =================================
+    // MOSTRAR LOGIN
+    // =================================
+
+    function mostrarLogin() {
+
+        loginPage.style.display = "flex";
+        appPage.style.display = "none";
+
     }
 
-    discordButton.addEventListener("click", () => {
-        const redirectTo =
-            window.location.origin + window.location.pathname;
 
-        const loginUrl =
-            SUPABASE_URL +
-            "/auth/v1/authorize?provider=discord&redirect_to=" +
-            encodeURIComponent(redirectTo);
+    // =================================
+    // MOSTRAR APP
+    // =================================
 
-        window.location.href = loginUrl;
-    });
+    function mostrarApp(user) {
+
+        loginPage.style.display = "none";
+        appPage.style.display = "block";
+
+
+        const discordName =
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.user_metadata?.preferred_username ||
+            user.email ||
+            "Usuario de Discord";
+
+
+        userInfo.textContent =
+            "Sesión iniciada como " + discordName;
+
+    }
+
 });
