@@ -152,8 +152,8 @@ body {
 /* Logo real */
 
 .ifl-logo img {
-    width: 75%;
-    height: 75%;
+    width: 80%;
+    height: 80%;
 
     object-fit: contain;
 }
@@ -358,8 +358,8 @@ body {
     }
 
     .ifl-logo img {
-        width: 75%;
-        height: 75%;
+        width: 80%;
+        height: 80%;
     }
 
     .login-card h1 {
