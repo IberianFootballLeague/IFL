@@ -1,160 +1,97 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IFL — Iberian Football League</title>
+<meta name="description" content="Plataforma oficial de la Iberian Football League." />
 
-    <meta charset="UTF-8">
+<link rel="icon" type="image/png" href="images/IFL_Logo.png" />
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 
-    <title>IFL — Iberian Football League</title>
-
-    <link
-        rel="icon"
-        type="image/png"
-        href="images/IFL_Logo.png"
-    >
-
-    <link
-        rel="stylesheet"
-        href="css/style.css"
-    >
-
+<link rel="stylesheet" href="css/style.css" />
 </head>
-
-
 <body>
 
+<!-- =====================================
+     LOGIN
+===================================== -->
+<div id="login-page" class="login-page">
 
-    <!-- =================================
-         LOGIN
-    ================================== -->
+  <div class="login-page__field" aria-hidden="true"></div>
 
-    <main
-        class="login-page"
-        id="login-page"
-    >
+  <img
+    class="login-page__watermark"
+    src="images/IFL_Logo.png"
+    alt=""
+    aria-hidden="true"
+    onerror="this.closest('.login-page').classList.add('watermark-missing')"
+  />
 
-        <!-- LOGO GIGANTE DE FONDO -->
+  <main class="login-card">
 
-        <img
-            class="background-logo"
-            src="images/IFL_Logo.png"
-            alt=""
-            aria-hidden="true"
-        >
+    <img class="login-card__logo" src="images/IFL_Logo.png" alt="Escudo de la IFL" />
 
+    <p class="login-card__eyebrow">Plataforma oficial</p>
+    <h1 class="login-card__title">Iberian Football<br />League</h1>
 
-        <!-- TARJETA DE LOGIN -->
+    <button id="discord-login" class="btn-discord" type="button">
+      <svg class="btn-discord__icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path fill="currentColor" d="M20.317 4.369A19.79 19.79 0 0 0 15.885 3c-.211.375-.444.87-.608 1.262a18.27 18.27 0 0 0-5.487 0A12.64 12.64 0 0 0 9.182 3a19.74 19.74 0 0 0-4.435 1.371C1.865 8.19 1.086 11.913 1.474 15.584a19.9 19.9 0 0 0 5.993 3.03c.483-.658.914-1.357 1.284-2.093a12.9 12.9 0 0 1-2.022-.973c.17-.124.336-.253.497-.386 3.9 1.804 8.126 1.804 11.977 0 .163.133.329.262.497.386-.646.386-1.328.71-2.023.974.37.735.8 1.434 1.284 2.092a19.87 19.87 0 0 0 6-3.03c.457-4.253-.638-7.94-2.644-11.215ZM8.02 13.331c-1.17 0-2.13-1.074-2.13-2.395 0-1.32.94-2.396 2.13-2.396 1.19 0 2.15 1.086 2.13 2.396 0 1.32-.94 2.395-2.13 2.395Zm7.96 0c-1.17 0-2.13-1.074-2.13-2.395 0-1.32.94-2.396 2.13-2.396 1.19 0 2.15 1.086 2.13 2.396 0 1.32-.93 2.395-2.13 2.395Z"/>
+      </svg>
+      <span class="btn-discord__label">Iniciar sesión con Discord</span>
+    </button>
 
-        <div class="login-card">
+    <p class="login-card__hint">
+      Necesitas una cuenta de Discord vinculada a la liga.
+      El registro de jugadores lo gestiona la administración de la IFL.
+    </p>
 
+  </main>
 
-            <!-- LOGO PRINCIPAL -->
+  <p class="login-page__footnote">Iberian Football League · Temporada en curso</p>
 
-            <div class="ifl-logo">
+</div>
 
-                <img
-                    src="images/IFL_Logo.png"
-                    alt="IFL"
-                >
+<!-- =====================================
+     APP (post-login)
+===================================== -->
+<div id="app" class="app" style="display:none;">
 
-            </div>
+  <header class="app-header">
+    <div class="app-header__brand">
+      <img src="images/IFL_Logo.png" alt="" class="app-header__logo" />
+      <span class="app-header__name">IFL</span>
+    </div>
 
+    <nav class="app-header__nav">
+      <a href="#" class="app-header__link is-active">Inicio</a>
+      <a href="#">Calendario</a>
+      <a href="#">Clasificación</a>
+      <a href="#">Estadios</a>
+      <a href="#">Premios</a>
+      <a href="#">Mi perfil</a>
+    </nav>
 
-            <h1>
-                Iberian Football League
-            </h1>
+    <div class="app-header__account">
+      <span id="user-info" class="app-header__user"></span>
+      <button id="logout-button" class="btn-ghost" type="button">Cerrar sesión</button>
+    </div>
+  </header>
 
+  <main class="dashboard">
+    <h2 class="dashboard__title">Resumen</h2>
+    <p class="dashboard__placeholder">
+      El panel principal (calendario, clasificación, mi carrera) se construirá aquí en las próximas fases.
+    </p>
+  </main>
 
-            <p class="login-subtitle">
-                Plataforma oficial de la IFL
-            </p>
+</div>
 
-
-            <button
-                id="discord-login"
-                class="discord-button"
-            >
-                Iniciar sesión con Discord
-            </button>
-
-
-            <p class="login-info">
-                Utiliza tu cuenta de Discord para acceder a la plataforma.
-            </p>
-
-
-        </div>
-
-    </main>
-
-
-    <!-- =================================
-         APP
-    ================================== -->
-
-    <main
-        id="app"
-        class="app-page"
-        style="display: none;"
-    >
-
-        <header class="app-header">
-
-            <div>
-
-                <strong>
-                    IFL
-                </strong>
-
-                <span>
-                    Iberian Football League
-                </span>
-
-            </div>
-
-
-            <button
-                id="logout-button"
-                class="logout-button"
-            >
-                Cerrar sesión
-            </button>
-
-        </header>
-
-
-        <section class="dashboard">
-
-            <h2>
-                Bienvenido a la IFL
-            </h2>
-
-            <p id="user-info">
-                Cargando usuario...
-            </p>
-
-        </section>
-
-    </main>
-
-
-    <!-- SUPABASE -->
-
-    <script
-        src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
-    ></script>
-
-
-    <!-- IFL -->
-
-    <script src="js/app.js"></script>
-
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
 </body>
-
 </html>
