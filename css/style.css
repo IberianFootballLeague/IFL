@@ -93,6 +93,7 @@ button {
   max-height: 620px;
   background: var(--discord);
   clip-path: polygon(20% 0%, 100% 15%, 85% 100%, 0% 80%);
+  animation: float-a 22s ease-in-out infinite alternate;
 }
 
 .login-page__field::after {
@@ -105,6 +106,7 @@ button {
   background: #2a2c37;
   opacity: 0.7;
   clip-path: polygon(0% 25%, 70% 0%, 100% 70%, 30% 100%);
+  animation: float-b 26s ease-in-out infinite alternate;
 }
 
 .login-page__shape {
@@ -125,21 +127,37 @@ button {
   background: var(--discord);
   border-radius: 30% 70% 60% 40% / 40% 30% 70% 60%;
   opacity: 0.28;
+  animation: float-c 18s ease-in-out infinite alternate;
 }
 
-/* Big, quiet watermark logo behind the card. Real <img>,
-   explicit stacking — never accidentally hidden. */
+@keyframes float-a {
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
+  100% { transform: translate(6vw, 5vh) rotate(18deg) scale(1.08); }
+}
+
+@keyframes float-b {
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
+  100% { transform: translate(-5vw, -4vh) rotate(-14deg) scale(1.05); }
+}
+
+@keyframes float-c {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(-4vw, 6vh) rotate(24deg); }
+}
+
+/* Big watermark logo — sits ABOVE the blurred geometric
+   shapes so it reads as the focal point, not buried behind. */
 .login-page__watermark {
   position: absolute;
   top: 50%;
   left: 50%;
-  z-index: 1;
+  z-index: 2;
   width: min(90vw, 1180px);
   height: min(90vw, 1180px);
   max-width: none;
   transform: translate(-50%, -50%);
   object-fit: contain;
-  opacity: 0.07;
+  opacity: 0.1;
   filter: grayscale(1) brightness(6);
   pointer-events: none;
   user-select: none;
@@ -151,7 +169,7 @@ button {
 
 .login-page__footnote {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   margin: 28px 0 0;
   font-size: 12.5px;
   color: var(--gray-3);
@@ -163,7 +181,7 @@ button {
 
 .login-card {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   width: 100%;
   max-width: 340px;
   padding: 40px 32px 32px;
@@ -178,10 +196,11 @@ button {
 }
 
 .login-card__logo {
-  width: 68px;
-  height: 68px;
+  width: 88px;
+  height: 88px;
   object-fit: contain;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 22px rgba(88, 101, 242, 0.35));
 }
 
 .login-card__eyebrow {
@@ -250,59 +269,88 @@ button {
 ===================================== */
 
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
-  gap: 32px;
-  padding: 14px 28px;
-  background: var(--bg);
+  gap: 28px;
+  padding: 12px 28px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(88, 101, 242, 0.15);
 }
 
 .app-header__brand {
   display: flex;
   align-items: center;
+  filter: drop-shadow(0 0 10px rgba(88, 101, 242, 0.4));
 }
 
 .app-header__logo {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   display: block;
 }
 
 .app-header__nav {
   display: flex;
-  gap: 22px;
+  align-items: center;
+  gap: 4px;
   flex: 1;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  width: fit-content;
 }
 
-.app-header__nav a {
+.app-header__link {
+  position: relative;
+  display: flex;
+  align-items: center;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--gray-2);
-  padding-bottom: 4px;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s ease;
+  padding: 8px 16px;
+  border-radius: 999px;
+  transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 
-.app-header__nav a:hover {
+.app-header__link:hover {
   color: var(--white);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .app-header__link.is-active {
   color: var(--white);
-  border-bottom-color: var(--discord);
+  background: linear-gradient(135deg, var(--discord), #3a44c9);
+  box-shadow: 0 0 18px var(--discord-glow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .app-header__account {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .app-header__user {
   font-size: 13px;
   color: var(--gray-2);
+}
+
+.app-header__avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--discord), #262835);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 10px rgba(88, 101, 242, 0.35);
+  flex: none;
 }
 
 .btn-ghost {
@@ -350,8 +398,8 @@ button {
   }
 
   .login-card__logo {
-    width: 60px;
-    height: 60px;
+    width: 72px;
+    height: 72px;
   }
 
   .login-page__watermark {
