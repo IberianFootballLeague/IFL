@@ -113,7 +113,7 @@ button {
   max-height: 620px;
   background: var(--discord);
   clip-path: polygon(20% 0%, 100% 15%, 85% 100%, 0% 80%);
-  animation: float-a 22s ease-in-out infinite alternate;
+  animation: float-a 13s ease-in-out infinite alternate;
 }
 
 .login-page__field::after {
@@ -126,7 +126,7 @@ button {
   background: #2a2c37;
   opacity: 0.7;
   clip-path: polygon(0% 25%, 70% 0%, 100% 70%, 30% 100%);
-  animation: float-b 26s ease-in-out infinite alternate;
+  animation: float-b 16s ease-in-out infinite alternate;
 }
 
 .login-page__shape {
@@ -147,22 +147,22 @@ button {
   background: var(--discord);
   border-radius: 30% 70% 60% 40% / 40% 30% 70% 60%;
   opacity: 0.28;
-  animation: float-c 18s ease-in-out infinite alternate;
+  animation: float-c 10s ease-in-out infinite alternate;
 }
 
 @keyframes float-a {
   0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
-  100% { transform: translate(6vw, 5vh) rotate(18deg) scale(1.08); }
+  100% { transform: translate(9vw, 8vh) rotate(26deg) scale(1.15); }
 }
 
 @keyframes float-b {
   0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
-  100% { transform: translate(-5vw, -4vh) rotate(-14deg) scale(1.05); }
+  100% { transform: translate(-8vw, -7vh) rotate(-20deg) scale(1.1); }
 }
 
 @keyframes float-c {
-  0%   { transform: translate(0, 0) rotate(0deg); }
-  100% { transform: translate(-4vw, 6vh) rotate(24deg); }
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
+  100% { transform: translate(-7vw, 9vh) rotate(30deg) scale(1.12); }
 }
 
 /* Big watermark logo — sits ABOVE the blurred geometric
@@ -329,7 +329,7 @@ button {
   display: flex;
   align-items: center;
   gap: 28px;
-  padding: 12px 28px;
+  padding: 10px 28px;
   background: rgba(0, 0, 0, 0.72);
   background-image:
     repeating-linear-gradient(
@@ -353,8 +353,8 @@ button {
 }
 
 .app-header__logo {
-  width: 32px;
-  height: 32px;
+  width: 50px;
+  height: 50px;
   object-fit: contain;
   display: block;
 }
@@ -462,6 +462,257 @@ button {
 }
 
 /* =====================================
+   VIEWS — shared
+===================================== */
+
+.view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.view-lead {
+  max-width: 640px;
+  color: var(--gray-2);
+  font-size: 14.5px;
+  line-height: 1.6;
+  margin: 0 0 28px;
+}
+
+.view-foot {
+  margin: 24px 0 0;
+  font-size: 12.5px;
+  color: var(--gray-3);
+}
+
+/* =====================================
+   INICIO — stat grid
+===================================== */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.stat-tile {
+  position: relative;
+  padding: 18px 18px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.stat-tile:hover {
+  border-color: var(--discord);
+  box-shadow: 0 0 20px rgba(88, 101, 242, 0.18);
+}
+
+.stat-tile__value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: 0.01em;
+  color: var(--white);
+}
+
+.stat-tile__label {
+  font-size: 12.5px;
+  color: var(--gray-2);
+}
+
+/* =====================================
+   CALENDARIO
+===================================== */
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.calendar-nav__label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  min-width: 150px;
+  text-align: center;
+  color: var(--white);
+}
+
+.btn-ghost--icon {
+  padding: 5px 12px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 18px 0 8px;
+}
+
+.calendar-weekdays span {
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gray-3);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: minmax(84px, auto);
+  gap: 6px;
+}
+
+.calendar-cell {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-cell--empty {
+  background: transparent;
+  border-color: transparent;
+}
+
+.calendar-cell--today {
+  border-color: var(--discord);
+  box-shadow: 0 0 0 1px var(--discord), 0 0 16px rgba(88, 101, 242, 0.25);
+}
+
+.calendar-cell__num {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--gray-1);
+}
+
+.calendar-cell--today .calendar-cell__num {
+  color: var(--white);
+}
+
+.calendar-cell__slot {
+  flex: 1;
+  margin-top: 6px;
+}
+
+/* =====================================
+   CLASIFICACIÓN
+===================================== */
+
+.table-heading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--gray-1);
+  margin: 28px 0 10px;
+}
+
+.table-heading:first-of-type {
+  margin-top: 4px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+
+.standings {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  min-width: 480px;
+}
+
+.standings thead th {
+  text-align: left;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gray-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.standings tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--gray-1);
+}
+
+.standings tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.standings tbody tr:hover td {
+  background: rgba(88, 101, 242, 0.06);
+  color: var(--white);
+}
+
+.standings__pos {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--white) !important;
+}
+
+.standings__club {
+  color: var(--white) !important;
+  font-weight: 500;
+}
+
+/* =====================================
+   MI CARRERA — locked state
+===================================== */
+
+.locked-card {
+  max-width: 460px;
+  padding: 32px 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.locked-card__icon {
+  font-size: 26px;
+  filter: grayscale(1) brightness(1.6);
+  opacity: 0.8;
+}
+
+.locked-card__text {
+  margin: 0;
+  color: var(--gray-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* =====================================
    RESPONSIVE
 ===================================== */
 
@@ -491,6 +742,19 @@ button {
     width: 100%;
     gap: 16px;
     overflow-x: auto;
+  }
+
+  .calendar-grid {
+    grid-auto-rows: minmax(56px, auto);
+    gap: 4px;
+  }
+
+  .calendar-cell {
+    padding: 5px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
