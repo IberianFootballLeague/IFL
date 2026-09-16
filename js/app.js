@@ -52,6 +52,13 @@ document.addEventListener(
         }
 
 
+        const userAvatar =
+            document.getElementById("user-avatar");
+
+        const userAvatarFallback =
+            document.getElementById("user-avatar-fallback");
+
+
         // =================================
         // MOSTRAR APP
         // =================================
@@ -74,6 +81,37 @@ document.addEventListener(
             userInfo.textContent =
                 "Sesión iniciada como " +
                 discordName;
+
+
+            const avatarUrl =
+                user.user_metadata?.avatar_url ||
+                user.user_metadata?.picture;
+
+            if (avatarUrl && userAvatar) {
+
+                userAvatar.src = avatarUrl;
+                userAvatar.alt = discordName;
+                userAvatar.hidden = false;
+
+                if (userAvatarFallback) {
+                    userAvatarFallback.hidden = true;
+                }
+
+                userAvatar.onerror = () => {
+                    userAvatar.hidden = true;
+                    if (userAvatarFallback) {
+                        userAvatarFallback.hidden = false;
+                    }
+                };
+
+            } else if (userAvatarFallback) {
+
+                userAvatarFallback.textContent =
+                    discordName.charAt(0).toUpperCase();
+                userAvatarFallback.hidden = false;
+
+                if (userAvatar) userAvatar.hidden = true;
+            }
         }
 
 
