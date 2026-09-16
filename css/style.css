@@ -22,7 +22,7 @@ body {
 
 
 /* =====================================
-   LOGIN PAGE
+   LOGIN
 ===================================== */
 
 .login-page {
@@ -33,6 +33,7 @@ body {
     overflow: hidden;
 
     display: flex;
+
     align-items: center;
     justify-content: center;
 
@@ -49,14 +50,14 @@ body {
 
 
 /* =====================================
-   ÚNICO LOGO GIGANTE DE FONDO
+   LOGO GIGANTE DE FONDO
 ===================================== */
 
 .background-logo {
     position: absolute;
 
-    width: 850px;
-    height: 850px;
+    width: 900px;
+    height: 900px;
 
     max-width: none;
 
@@ -66,9 +67,11 @@ body {
     transform:
         translate(-50%, -50%);
 
+    display: block;
+
     object-fit: contain;
 
-    opacity: 0.12;
+    opacity: 0.20;
 
     pointer-events: none;
 
@@ -79,7 +82,7 @@ body {
 
 
 /* =====================================
-   BRILLO DEL FONDO
+   BRILLO
 ===================================== */
 
 .login-page::after {
@@ -107,15 +110,16 @@ body {
 
 
 /* =====================================
-   LOGIN CARD
+   TARJETA
 ===================================== */
 
 .login-card {
     position: relative;
 
-    z-index: 5;
+    z-index: 10;
 
     width: 100%;
+
     max-width: 480px;
 
     padding:
@@ -134,7 +138,6 @@ body {
     border-radius: 24px;
 
     box-shadow:
-
         0 35px 100px
         rgba(0, 0, 0, 0.65),
 
@@ -150,7 +153,7 @@ body {
 
 
 /* =====================================
-   LOGO DE LA TARJETA
+   LOGO PRINCIPAL
 ===================================== */
 
 .ifl-logo {
@@ -178,7 +181,6 @@ body {
         1px solid #3b4859;
 
     box-shadow:
-
         0 18px 45px
         rgba(0, 0, 0, 0.45),
 
@@ -186,8 +188,6 @@ body {
         rgba(255, 255, 255, 0.08);
 }
 
-
-/* Logo dentro de la tarjeta */
 
 .ifl-logo img {
     width: 85%;
@@ -230,7 +230,7 @@ body {
 
 
 /* =====================================
-   DISCORD BUTTON
+   DISCORD
 ===================================== */
 
 .discord-button {
@@ -293,7 +293,7 @@ body {
 
 
 /* =====================================
-   LOGIN INFO
+   INFORMACION
 ===================================== */
 
 .login-info {
@@ -319,7 +319,7 @@ body {
 
 
 /* =====================================
-   APP HEADER
+   HEADER
 ===================================== */
 
 .app-header {
@@ -382,8 +382,7 @@ body {
 
     cursor: pointer;
 
-    transition:
-        0.2s ease;
+    transition: 0.2s ease;
 }
 
 
@@ -428,17 +427,13 @@ body {
     }
 
 
-    /* Logo gigante */
-
     .background-logo {
-        width: 500px;
-        height: 500px;
+        width: 550px;
+        height: 550px;
 
-        opacity: 0.10;
+        opacity: 0.18;
     }
 
-
-    /* Tarjeta */
 
     .login-card {
         padding:
@@ -449,8 +444,6 @@ body {
         border-radius: 20px;
     }
 
-
-    /* Logo principal */
 
     .ifl-logo {
         width: 82px;
@@ -466,8 +459,6 @@ body {
     }
 
 
-    /* Titulo */
-
     .login-card h1 {
         font-size: 25px;
     }
@@ -477,8 +468,6 @@ body {
         margin-bottom: 28px;
     }
 
-
-    /* Header */
 
     .app-header {
         padding:
