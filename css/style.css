@@ -1,482 +1,343 @@
 /* =====================================
-   IFL — GLOBAL
+   IFL — DESIGN TOKENS
 ===================================== */
 
+:root {
+  --bg: #05070b;
+  --surface: #0d1117;
+  --surface-2: #10141c;
+  --border: #1b2230;
+  --accent: #1fad66;
+  --accent-strong: #27c878;
+  --text: #e7e9ee;
+  --text-dim: #8792a6;
+  --discord: #5865f2;
+  --discord-hover: #4752c4;
+
+  --font-display: "Oswald", "Arial Narrow", sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --radius: 14px;
+}
+
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
-html,
-body {
-    width: 100%;
-    min-height: 100%;
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
 }
 
 body {
-    font-family: Arial, Helvetica, sans-serif;
-    background: #05070b;
-    color: #ffffff;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
 }
 
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
 
 /* =====================================
-   LOGIN
+   LOGIN — STAGE
+   The watermark logo is a real <img>, stacked
+   with explicit z-index, so it can never be
+   accidentally hidden behind an opaque layer.
 ===================================== */
 
 .login-page {
-    min-height: 100vh;
-
-    position: relative;
-
-    overflow: hidden;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    padding: 30px;
-
-    background:
-        radial-gradient(
-            circle at 50% 20%,
-            #1d2938 0%,
-            #0b1017 38%,
-            #05070b 100%
-        );
+  position: relative;
+  isolation: isolate;           /* guarantees this stacking context is self-contained */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;             /* clip the oversized watermark, nothing else */
+  padding: 24px;
+  text-align: center;
 }
 
-
-/* =====================================
-   LOGO GIGANTE DE FONDO
-===================================== */
-
-.background-logo {
-    position: absolute;
-
-    width: 900px;
-    height: 900px;
-
-    max-width: none;
-
-    top: 50%;
-    left: 50%;
-
-    transform:
-        translate(-50%, -50%);
-
-    display: block;
-
-    object-fit: contain;
-
-    opacity: 0.20;
-
-    pointer-events: none;
-
-    user-select: none;
-
-    z-index: 1;
+/* Stadium-light glow + faint pitch-line texture.
+   This renders even if the logo image 404s, so the
+   stage never looks broken or empty. */
+.login-page__field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 38%, rgba(31, 173, 102, 0.16), transparent 70%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.025) 0px,
+      rgba(255, 255, 255, 0.025) 1px,
+      transparent 1px,
+      transparent 64px
+    ),
+    var(--bg);
 }
 
-
-/* =====================================
-   BRILLO
-===================================== */
-
-.login-page::after {
-    content: "";
-
-    position: absolute;
-
-    width: 600px;
-    height: 600px;
-
-    bottom: -350px;
-    right: -200px;
-
-    border-radius: 50%;
-
-    background:
-        rgba(88, 101, 242, 0.08);
-
-    filter: blur(80px);
-
-    pointer-events: none;
-
-    z-index: 2;
+.login-page__watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: min(70vw, 900px);
+  height: min(70vw, 900px);
+  max-width: none;
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+  opacity: 0.07;
+  filter: grayscale(1) brightness(1.6);
+  pointer-events: none;
+  user-select: none;
 }
 
+/* If images/IFL_Logo.png fails to load (wrong path or
+   filename case — GitHub Pages is case-sensitive), hide
+   the broken-image icon instead of showing a blank box. */
+.login-page.watermark-missing .login-page__watermark {
+  display: none;
+}
+
+.login-page__footnote {
+  position: relative;
+  z-index: 2;
+  margin: 32px 0 0;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+}
 
 /* =====================================
-   TARJETA
+   LOGIN — CARD
 ===================================== */
 
 .login-card {
-    position: relative;
-
-    z-index: 10;
-
-    width: 100%;
-
-    max-width: 480px;
-
-    padding:
-        55px
-        48px
-        45px;
-
-    text-align: center;
-
-    background:
-        rgba(15, 20, 28, 0.96);
-
-    border:
-        1px solid #303a49;
-
-    border-radius: 24px;
-
-    box-shadow:
-        0 35px 100px
-        rgba(0, 0, 0, 0.65),
-
-        0 0 0 1px
-        rgba(255, 255, 255, 0.02);
-
-    backdrop-filter:
-        blur(20px);
-
-    -webkit-backdrop-filter:
-        blur(20px);
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 380px;
+  padding: 40px 32px 32px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 20px 60px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
+.login-card__logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin-bottom: 20px;
+}
+
+.login-card__eyebrow {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent-strong);
+  letter-spacing: 0.04em;
+}
+
+.login-card__title {
+  margin: 0 0 28px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1.08;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.btn-discord {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 18px;
+  background: var(--discord);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.btn-discord:hover {
+  background: var(--discord-hover);
+}
+
+.btn-discord:active {
+  transform: scale(0.98);
+}
+
+.btn-discord:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn-discord:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.btn-discord__icon {
+  flex: none;
+}
+
+.login-card__hint {
+  margin: 20px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
 
 /* =====================================
-   LOGO PRINCIPAL
-===================================== */
-
-.ifl-logo {
-    width: 96px;
-    height: 96px;
-
-    margin:
-        0 auto 28px;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 26px;
-
-    background:
-        linear-gradient(
-            145deg,
-            #273548,
-            #111821
-        );
-
-    border:
-        1px solid #3b4859;
-
-    box-shadow:
-        0 18px 45px
-        rgba(0, 0, 0, 0.45),
-
-        inset 0 1px 0
-        rgba(255, 255, 255, 0.08);
-}
-
-
-.ifl-logo img {
-    width: 85%;
-    height: 85%;
-
-    object-fit: contain;
-
-    display: block;
-}
-
-
-/* =====================================
-   TITULO
-===================================== */
-
-.login-card h1 {
-    margin-bottom: 10px;
-
-    color: #ffffff;
-
-    font-size: 31px;
-
-    font-weight: 700;
-
-    letter-spacing: -0.8px;
-}
-
-
-/* =====================================
-   SUBTITULO
-===================================== */
-
-.login-subtitle {
-    margin-bottom: 35px;
-
-    color: #8d99a8;
-
-    font-size: 14px;
-}
-
-
-/* =====================================
-   DISCORD
-===================================== */
-
-.discord-button {
-    width: 100%;
-
-    padding:
-        17px
-        20px;
-
-    border: none;
-
-    border-radius: 12px;
-
-    background: #5865f2;
-
-    color: #ffffff;
-
-    font-size: 15px;
-
-    font-weight: 700;
-
-    cursor: pointer;
-
-    box-shadow:
-        0 12px 30px
-        rgba(88, 101, 242, 0.28);
-
-    transition:
-        transform 0.2s ease,
-        background 0.2s ease,
-        box-shadow 0.2s ease;
-}
-
-
-.discord-button:hover {
-    background: #6875f5;
-
-    transform:
-        translateY(-2px);
-
-    box-shadow:
-        0 18px 38px
-        rgba(88, 101, 242, 0.38);
-}
-
-
-.discord-button:active {
-    transform:
-        translateY(0);
-}
-
-
-.discord-button:disabled {
-    opacity: 0.65;
-
-    cursor: wait;
-
-    transform: none;
-}
-
-
-/* =====================================
-   INFORMACION
-===================================== */
-
-.login-info {
-    margin-top: 22px;
-
-    color: #667282;
-
-    font-size: 12px;
-
-    line-height: 1.6;
-}
-
-
-/* =====================================
-   APP
-===================================== */
-
-.app-page {
-    min-height: 100vh;
-
-    background: #080b10;
-}
-
-
-/* =====================================
-   HEADER
+   APP SHELL
 ===================================== */
 
 .app-header {
-    min-height: 70px;
-
-    padding:
-        0 30px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    background: #11161e;
-
-    border-bottom:
-        1px solid #242c38;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 14px 28px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
-
-.app-header div {
-    display: flex;
-
-    align-items: center;
-
-    gap: 12px;
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-
-.app-header strong {
-    font-size: 22px;
+.app-header__logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 
-
-.app-header span {
-    color: #8f9baa;
-
-    font-size: 14px;
+.app-header__name {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
-
-/* =====================================
-   LOGOUT
-===================================== */
-
-.logout-button {
-    padding:
-        10px
-        16px;
-
-    border:
-        1px solid #303947;
-
-    border-radius: 8px;
-
-    background: #1a2029;
-
-    color: #ffffff;
-
-    cursor: pointer;
-
-    transition: 0.2s ease;
+.app-header__nav {
+  display: flex;
+  gap: 22px;
+  flex: 1;
 }
 
-
-.logout-button:hover {
-    background: #252d38;
+.app-header__nav a {
+  text-decoration: none;
+  font-size: 14px;
+  color: var(--text-dim);
+  padding-bottom: 4px;
+  border-bottom: 2px solid transparent;
 }
 
+.app-header__nav a:hover {
+  color: var(--text);
+}
 
-/* =====================================
-   DASHBOARD
-===================================== */
+.app-header__link.is-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.app-header__account {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.app-header__user {
+  font-size: 13.5px;
+  color: var(--text-dim);
+}
+
+.btn-ghost {
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.btn-ghost:hover {
+  border-color: var(--text-dim);
+  background: var(--surface-2);
+}
 
 .dashboard {
-    max-width: 1100px;
-
-    margin:
-        0 auto;
-
-    padding:
-        40px 25px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 28px;
 }
 
-
-.dashboard h2 {
-    margin-bottom: 10px;
+.dashboard__title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 8px;
 }
 
-
-.dashboard p {
-    color: #9ca7b5;
+.dashboard__placeholder {
+  color: var(--text-dim);
+  font-size: 14.5px;
 }
-
 
 /* =====================================
-   MOBILE
+   RESPONSIVE
 ===================================== */
 
-@media (max-width: 600px) {
+@media (max-width: 520px) {
+  .login-card__title {
+    font-size: 26px;
+  }
 
-    .login-page {
-        padding: 18px;
-    }
+  .login-page__watermark {
+    width: 92vw;
+    height: 92vw;
+    opacity: 0.06;
+  }
 
+  .app-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
 
-    .background-logo {
-        width: 550px;
-        height: 550px;
+  .app-header__nav {
+    order: 3;
+    width: 100%;
+    gap: 16px;
+    overflow-x: auto;
+  }
+}
 
-        opacity: 0.18;
-    }
-
-
-    .login-card {
-        padding:
-            42px
-            25px
-            35px;
-
-        border-radius: 20px;
-    }
-
-
-    .ifl-logo {
-        width: 82px;
-        height: 82px;
-
-        border-radius: 22px;
-    }
-
-
-    .ifl-logo img {
-        width: 85%;
-        height: 85%;
-    }
-
-
-    .login-card h1 {
-        font-size: 25px;
-    }
-
-
-    .login-subtitle {
-        margin-bottom: 28px;
-    }
-
-
-    .app-header {
-        padding:
-            0 18px;
-    }
-
-
-    .app-header span {
-        display: none;
-    }
-
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
 }
