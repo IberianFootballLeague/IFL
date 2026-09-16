@@ -1,63 +1,149 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>IFL — Iberian Football League</title>
 
-    <link rel="stylesheet" href="css/style.css">
+    <!-- FAVICON -->
+    <link
+        rel="icon"
+        type="image/png"
+        href="images/IFL_Logo.png"
+    >
+
+    <!-- CSS -->
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    >
+
 </head>
+
 
 <body>
 
-    <!-- LOGIN -->
-    <main class="login-page" id="login-page">
+
+    <!-- =================================
+         LOGIN
+    ================================== -->
+
+    <main
+        class="login-page"
+        id="login-page"
+    >
+
+
+        <!-- LOGO GIGANTE DE FONDO -->
+
+        <img
+            class="background-logo"
+            src="images/IFL_Logo.png"
+            alt=""
+            aria-hidden="true"
+        >
+
+
+        <!-- TARJETA DE LOGIN -->
 
         <div class="login-card">
 
+
+            <!-- LOGO PRINCIPAL -->
+
             <div class="ifl-logo">
-                <img src="images/IFL_Logo.png" alt="IFL">
+
+                <img
+                    src="images/IFL_Logo.png"
+                    alt="IFL"
+                >
+
             </div>
 
-            <h1>Iberian Football League</h1>
+
+            <!-- TITULO -->
+
+            <h1>
+                Iberian Football League
+            </h1>
+
+
+            <!-- SUBTITULO -->
 
             <p class="login-subtitle">
                 Plataforma oficial de la IFL
             </p>
 
-            <button id="discord-login" class="discord-button">
+
+            <!-- DISCORD -->
+
+            <button
+                id="discord-login"
+                class="discord-button"
+            >
                 Iniciar sesión con Discord
             </button>
+
+
+            <!-- INFORMACION -->
 
             <p class="login-info">
                 Utiliza tu cuenta de Discord para acceder a la plataforma.
             </p>
+
 
         </div>
 
     </main>
 
 
-    <!-- APP -->
-    <main id="app" class="app-page" style="display: none;">
+
+    <!-- =================================
+         APP
+    ================================== -->
+
+    <main
+        id="app"
+        class="app-page"
+        style="display: none;"
+    >
+
+
+        <!-- HEADER -->
 
         <header class="app-header">
 
             <div>
-                <strong>IFL</strong>
+
+                <strong>
+                    IFL
+                </strong>
 
                 <span>
                     Iberian Football League
                 </span>
+
             </div>
 
-            <button id="logout-button" class="logout-button">
+
+            <button
+                id="logout-button"
+                class="logout-button"
+            >
                 Cerrar sesión
             </button>
 
         </header>
 
+
+        <!-- DASHBOARD -->
 
         <section class="dashboard">
 
@@ -71,14 +157,27 @@
 
         </section>
 
+
     </main>
 
 
-    <!-- SUPABASE -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <!-- IFL -->
+    <!-- =================================
+         SUPABASE
+    ================================== -->
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+    ></script>
+
+
+    <!-- =================================
+         IFL JAVASCRIPT
+    ================================== -->
+
     <script src="js/app.js"></script>
 
+
 </body>
+
 </html>
