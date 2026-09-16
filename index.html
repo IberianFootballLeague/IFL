@@ -66,12 +66,13 @@
     </div>
 
     <nav class="app-header__nav">
-      <a href="#" class="app-header__link is-active"><span>Inicio</span></a>
-      <a href="#" class="app-header__link"><span>Calendario</span></a>
-      <a href="#" class="app-header__link"><span>Clasificación</span></a>
-      <a href="#" class="app-header__link"><span>Estadios</span></a>
-      <a href="#" class="app-header__link"><span>Premios</span></a>
-      <a href="#" class="app-header__link"><span>Mi perfil</span></a>
+      <a href="#" class="app-header__link is-active" data-view="inicio"><span>Inicio</span></a>
+      <a href="#" class="app-header__link" data-view="calendario"><span>Calendario</span></a>
+      <a href="#" class="app-header__link" data-view="clasificacion"><span>Clasificación</span></a>
+      <a href="#" class="app-header__link" data-view="estadios"><span>Estadios</span></a>
+      <a href="#" class="app-header__link" data-view="premios"><span>Premios</span></a>
+      <a href="#" class="app-header__link" data-view="perfil"><span>Mi perfil</span></a>
+      <a href="#" class="app-header__link" data-view="carrera"><span>Mi carrera</span></a>
     </nav>
 
     <div class="app-header__account">
@@ -82,10 +83,106 @@
   </header>
 
   <main class="dashboard">
-    <h2 class="dashboard__title">Resumen</h2>
-    <p class="dashboard__placeholder">
-      El panel principal (calendario, clasificación, mi carrera) se construirá aquí en las próximas fases.
-    </p>
+
+    <!-- ============ INICIO ============ -->
+    <section class="view" id="view-inicio" data-view-panel="inicio">
+      <h2 class="dashboard__title">Resumen de la liga</h2>
+      <p class="view-lead">
+        La IFL es una liga de fútbol competitiva de Roblox jugada 4 contra 4,
+        organizada en dos divisiones con ascensos y descensos entre ellas.
+      </p>
+
+      <div class="stat-grid">
+        <div class="stat-tile">
+          <span class="stat-tile__value">16</span>
+          <span class="stat-tile__label">Equipos totales</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value">2</span>
+          <span class="stat-tile__label">Divisiones</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value">4v4</span>
+          <span class="stat-tile__label">Formato de juego</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value">7</span>
+          <span class="stat-tile__label">Jornadas por división</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value">20&nbsp;min</span>
+          <span class="stat-tile__label">Duración del partido</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile__value">3</span>
+          <span class="stat-tile__label">Sustituciones por equipo</span>
+        </div>
+      </div>
+
+      <p class="view-foot">Temporada 2026 · 1ª y 2ª División, 8 equipos cada una</p>
+    </section>
+
+    <!-- ============ CALENDARIO ============ -->
+    <section class="view" id="view-calendario" data-view-panel="calendario" hidden>
+      <div class="view-header">
+        <h2 class="dashboard__title">Calendario</h2>
+        <div class="calendar-nav">
+          <button id="cal-prev" class="btn-ghost btn-ghost--icon" type="button" aria-label="Mes anterior">‹</button>
+          <span id="cal-label" class="calendar-nav__label"></span>
+          <button id="cal-next" class="btn-ghost btn-ghost--icon" type="button" aria-label="Mes siguiente">›</button>
+        </div>
+      </div>
+
+      <div class="calendar-weekdays">
+        <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
+      </div>
+
+      <div id="calendar-grid" class="calendar-grid"></div>
+    </section>
+
+    <!-- ============ CLASIFICACIÓN ============ -->
+    <section class="view" id="view-clasificacion" data-view-panel="clasificacion" hidden>
+      <h2 class="dashboard__title">Clasificación</h2>
+
+      <h3 class="table-heading">Primera División</h3>
+      <div class="table-wrap">
+        <table class="standings" id="standings-primera"></table>
+      </div>
+
+      <h3 class="table-heading">Segunda División</h3>
+      <div class="table-wrap">
+        <table class="standings" id="standings-segunda"></table>
+      </div>
+    </section>
+
+    <!-- ============ MI CARRERA ============ -->
+    <section class="view" id="view-carrera" data-view-panel="carrera" hidden>
+      <h2 class="dashboard__title">Mi carrera</h2>
+      <div class="locked-card">
+        <span class="locked-card__icon" aria-hidden="true">🔒</span>
+        <p class="locked-card__text">
+          Necesitas un contrato activo o haber tenido una trayectoria en algún
+          equipo de la IFL para poder ver tu carrera.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ PLACEHOLDERS ============ -->
+    <section class="view" id="view-estadios" data-view-panel="estadios" hidden>
+      <h2 class="dashboard__title">Estadios</h2>
+      <p class="dashboard__placeholder">Próximamente.</p>
+    </section>
+
+    <section class="view" id="view-premios" data-view-panel="premios" hidden>
+      <h2 class="dashboard__title">Premios</h2>
+      <p class="dashboard__placeholder">Próximamente.</p>
+    </section>
+
+    <section class="view" id="view-perfil" data-view-panel="perfil" hidden>
+      <h2 class="dashboard__title">Mi perfil</h2>
+      <p class="dashboard__placeholder">Próximamente.</p>
+    </section>
+
   </main>
 
 </div>
