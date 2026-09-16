@@ -40,39 +40,47 @@ body {
 }
 
 
-/* Decoración del fondo */
+/* =====================================
+   LOGO GIGANTE DE FONDO
+===================================== */
 
 .login-page::before {
     content: "";
 
     position: absolute;
 
-    width: 700px;
-    height: 700px;
+    width: 850px;
+    height: 850px;
 
-    top: -450px;
+    top: 50%;
     left: 50%;
 
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
 
-    border-radius: 50%;
+    background-image: url("../images/IFL_Logo.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
 
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    opacity: 0.055;
 
-    box-shadow:
-        0 0 0 80px rgba(255, 255, 255, 0.015),
-        0 0 0 160px rgba(255, 255, 255, 0.01);
+    filter: grayscale(100%);
 
     pointer-events: none;
 }
+
+
+/* =====================================
+   BRILLO DEL FONDO
+===================================== */
 
 .login-page::after {
     content: "";
 
     position: absolute;
 
-    width: 500px;
-    height: 500px;
+    width: 600px;
+    height: 600px;
 
     bottom: -350px;
     right: -200px;
@@ -149,7 +157,7 @@ body {
 }
 
 
-/* Logo real */
+/* Logo dentro de la tarjeta */
 
 .ifl-logo img {
     width: 85%;
@@ -342,11 +350,27 @@ body {
         padding: 18px;
     }
 
+
+    /* Logo gigante de fondo en móvil */
+
+    .login-page::before {
+        width: 500px;
+        height: 500px;
+
+        opacity: 0.045;
+    }
+
+
+    /* Tarjeta */
+
     .login-card {
         padding: 42px 25px 35px;
 
         border-radius: 20px;
     }
+
+
+    /* Logo */
 
     .ifl-logo {
         width: 82px;
@@ -357,18 +381,26 @@ body {
         border-radius: 22px;
     }
 
+
     .ifl-logo img {
         width: 85%;
         height: 85%;
     }
 
+
+    /* Título */
+
     .login-card h1 {
         font-size: 25px;
     }
 
+
     .login-subtitle {
         margin-bottom: 28px;
     }
+
+
+    /* App */
 
     .app-header {
         padding: 0 18px;
