@@ -17,6 +17,8 @@
   --discord-hover: #4752c4;
   --discord-glow: rgba(88, 101, 242, 0.55);
   --cyan: #3bd6ff;
+  --green: #2ecc71;
+  --green-glow: rgba(46, 204, 113, 0.4);
 
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-display: "Barlow Condensed", var(--font);
@@ -36,6 +38,9 @@ html, body {
 
 body {
   background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 40% at 50% -5%, rgba(88, 101, 242, 0.09), transparent 65%);
+  background-attachment: fixed;
   color: var(--white);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -195,6 +200,44 @@ button {
   color: var(--gray-3);
 }
 
+.text-season {
+  color: var(--green);
+  font-weight: 600;
+}
+
+/* =====================================
+   BADGES
+===================================== */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.badge--season {
+  color: var(--green);
+  background: rgba(46, 204, 113, 0.12);
+  border: 1px solid rgba(46, 204, 113, 0.4);
+  box-shadow: 0 0 16px var(--green-glow);
+}
+
+.badge--season::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+}
+
 /* =====================================
    LOGIN — CARD
 ===================================== */
@@ -328,9 +371,9 @@ button {
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 28px;
-  padding: 10px 28px;
-  background: rgba(0, 0, 0, 0.72);
+  gap: 24px;
+  padding: 10px 32px;
+  background: rgba(0, 0, 0, 0.78);
   background-image:
     repeating-linear-gradient(
       -55deg,
@@ -339,22 +382,22 @@ button {
       transparent 1px,
       transparent 40px
     ),
-    linear-gradient(rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.72));
+    linear-gradient(rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.78));
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(88, 101, 242, 0.15), 0 2px 18px rgba(88, 101, 242, 0.08);
+  box-shadow: 0 1px 0 rgba(88, 101, 242, 0.15), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .app-header__brand {
   display: flex;
   align-items: center;
-  filter: drop-shadow(0 0 10px rgba(88, 101, 242, 0.4));
+  filter: drop-shadow(0 0 14px rgba(88, 101, 242, 0.45));
 }
 
 .app-header__logo {
-  width: 50px;
-  height: 50px;
+  width: 68px;
+  height: 68px;
   object-fit: contain;
   display: block;
 }
@@ -375,16 +418,24 @@ button {
   position: relative;
   display: flex;
   align-items: center;
+  gap: 7px;
   text-decoration: none;
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 14.5px;
+  font-size: 14px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--gray-2);
-  padding: 8px 18px;
+  padding: 8px 16px;
   clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
   transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.app-header__link-icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  opacity: 0.85;
 }
 
 .app-header__link:hover {
@@ -401,22 +452,57 @@ button {
 .app-header__account {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .app-header__user {
   font-size: 13px;
   color: var(--gray-2);
+  white-space: nowrap;
+}
+
+.app-header__profile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 3px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.2s ease;
+}
+
+.app-header__profile:hover {
+  border-color: var(--discord);
+  box-shadow: 0 0 14px rgba(88, 101, 242, 0.3);
 }
 
 .app-header__avatar {
   width: 30px;
   height: 30px;
-  background: linear-gradient(135deg, var(--discord), #262835);
+  border-radius: 50%;
+  object-fit: cover;
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 0 10px rgba(88, 101, 242, 0.35);
-  clip-path: polygon(20% 0%, 100% 0%, 100% 80%, 80% 100%, 0% 100%, 0% 20%);
   flex: none;
+}
+
+.app-header__avatar--fallback {
+  background: linear-gradient(135deg, var(--discord), #262835);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--white);
+}
+
+.app-header__chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--gray-2);
 }
 
 .btn-ghost {
@@ -513,6 +599,7 @@ button {
 .stat-tile:hover {
   border-color: var(--discord);
   box-shadow: 0 0 20px rgba(88, 101, 242, 0.18);
+  transform: translateY(-2px);
 }
 
 .stat-tile__value {
@@ -735,6 +822,15 @@ button {
   .app-header {
     flex-wrap: wrap;
     gap: 12px;
+  }
+
+  .app-header__logo {
+    width: 46px;
+    height: 46px;
+  }
+
+  .app-header__user {
+    display: none;
   }
 
   .app-header__nav {
