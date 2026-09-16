@@ -51,7 +51,7 @@
 
   </main>
 
-  <p class="login-page__footnote">Iberian Football League · Temporada en curso</p>
+  <p class="login-page__footnote">Iberian Football League · <span class="text-season">Temporada 1 en curso</span></p>
 
 </div>
 
@@ -66,18 +66,43 @@
     </div>
 
     <nav class="app-header__nav">
-      <a href="#" class="app-header__link is-active" data-view="inicio"><span>Inicio</span></a>
-      <a href="#" class="app-header__link" data-view="calendario"><span>Calendario</span></a>
-      <a href="#" class="app-header__link" data-view="clasificacion"><span>Clasificación</span></a>
-      <a href="#" class="app-header__link" data-view="estadios"><span>Estadios</span></a>
-      <a href="#" class="app-header__link" data-view="premios"><span>Premios</span></a>
-      <a href="#" class="app-header__link" data-view="perfil"><span>Mi perfil</span></a>
-      <a href="#" class="app-header__link" data-view="carrera"><span>Mi carrera</span></a>
+      <a href="#" class="app-header__link is-active" data-view="inicio">
+        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11.5 12 4l8 7.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-5.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V20h3a1 1 0 0 0 1-1v-9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Inicio</span>
+      </a>
+      <a href="#" class="app-header__link" data-view="calendario">
+        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5.5" width="16" height="15" rx="1.5"/><path d="M4 10h16M8 3.5v3M16 3.5v3" stroke-linecap="round"/></svg>
+        <span>Calendario</span>
+      </a>
+      <a href="#" class="app-header__link" data-view="clasificacion">
+        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 20V11M12 20V4M19 20v-7" stroke-linecap="round"/></svg>
+        <span>Clasificación</span>
+      </a>
+      <a href="#" class="app-header__link" data-view="estadios">
+        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="3.4" ry="2.2"/></svg>
+        <span>Estadios</span>
+      </a>
+      <a href="#" class="app-header__link" data-view="premios">
+        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" stroke-linejoin="round"/><path d="M7 6H4.5A1.5 1.5 0 0 0 3 7.5C3 9.5 4.5 11 7 11M17 6h2.5A1.5 1.5 0 0 1 21 7.5C21 9.5 19.5 11 17 11M12 13.5V17M9 20h6" stroke-linecap="round"/></svg>
+        <span>Premios</span>
+      </a>
+      <a href="#" class="app-header__link" data-view="perfil">
+        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8.5" r="3.4"/><path d="M5 20c1-3.5 4-5.5 7-5.5s6 2 7 5.5" stroke-linecap="round"/></svg>
+        <span>Mi perfil</span>
+      </a>
+      <a href="#" class="app-header__link" data-view="carrera">
+        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3.5 2.2 4.6 5 .7-3.6 3.6.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.6 5-.7L12 3.5Z" stroke-linejoin="round"/></svg>
+        <span>Mi carrera</span>
+      </a>
     </nav>
 
     <div class="app-header__account">
       <span id="user-info" class="app-header__user"></span>
-      <div class="app-header__avatar" aria-hidden="true"></div>
+      <button class="app-header__profile" type="button">
+        <img id="user-avatar" class="app-header__avatar" alt="" hidden />
+        <span id="user-avatar-fallback" class="app-header__avatar app-header__avatar--fallback"></span>
+        <svg class="app-header__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <button id="logout-button" class="btn-ghost" type="button">Cerrar sesión</button>
     </div>
   </header>
@@ -86,10 +111,34 @@
 
     <!-- ============ INICIO ============ -->
     <section class="view" id="view-inicio" data-view-panel="inicio">
-      <h2 class="dashboard__title">Resumen de la liga</h2>
+      <div class="view-header">
+        <h2 class="dashboard__title">Resumen de la liga</h2>
+        <span class="badge badge--season">Temporada 1</span>
+      </div>
+
       <p class="view-lead">
-        La IFL es una liga de fútbol competitiva de Roblox jugada 4 contra 4,
-        organizada en dos divisiones con ascensos y descensos entre ellas.
+        La <strong>Iberian Football League (IFL)</strong> es una competición oficial de
+        fútbol 4 contra 4 en Roblox, organizada en dos divisiones —
+        <strong>Primera</strong> y <strong>Segunda División</strong>, con 8 equipos
+        cada una— unidas por un sistema de ascensos y descensos al final de la temporada.
+      </p>
+
+      <p class="view-lead">
+        Cada división disputa una liga a una sola vuelta de <strong>7 jornadas</strong>,
+        un partido contra cada rival. El campeón de Primera se corona directamente
+        al finalizar la liga regular, sin necesidad de disputar una final. Los tres
+        últimos de Primera descienden, mientras que en Segunda los dos primeros
+        ascienden de forma directa y el 3.º y 4.º se juegan una plaza más en un
+        <strong>playoff</strong> a partido único.
+      </p>
+
+      <p class="view-lead">
+        Los partidos duran <strong>20 minutos</strong> (10 + 2 de descanso + 10),
+        cada equipo dispone de <strong>3 sustituciones</strong> y un mínimo de
+        3 jugadores en el terreno de juego para poder disputar el encuentro. Los
+        fichajes y traspasos se gestionan a través de ventanas de mercado oficiales
+        (verano e invierno), y toda la actividad —resultados, estadísticas y
+        palmarés— se centraliza en esta plataforma.
       </p>
 
       <div class="stat-grid">
@@ -118,8 +167,6 @@
           <span class="stat-tile__label">Sustituciones por equipo</span>
         </div>
       </div>
-
-      <p class="view-foot">Temporada 2026 · 1ª y 2ª División, 8 equipos cada una</p>
     </section>
 
     <!-- ============ CALENDARIO ============ -->
