@@ -131,38 +131,28 @@
       }
     });
 
-    /* Puente de navegación
-       app.js engancha los clics con ".app-header__link", así que
-       reenviamos el clic del desplegable al enlace del nav que toca.
-       Así no hay que duplicar showView() ni tocar app.js. */
+    /* Los ítems con data-view (Mi perfil, Mi carrera, Configuración) ya
+       llevan la clase app-header__link, así que app.js los navega solo.
+       Aquí solo cerramos el menú tras cualquier clic dentro de él. */
     profileMenu.addEventListener("click", function (e) {
-      const item = e.target.closest(".profile-menu__item");
-      if (!item) return;
-
-      const view = item.dataset.view;
-
-      if (view) {
-        e.preventDefault();
-        const navLink = document.querySelector(
-          '.app-header__link[data-view="' + view + '"]'
-        );
-        if (navLink) navLink.click();
-      }
-
-      closeMenu();
+      if (e.target.closest(".profile-menu__item")) closeMenu();
     });
 
     /* Nombre en la cabecera del menú.
        app.js escribe "Sesión iniciada como X" en #user-info;
-       aquí nos quedamos solo con el nombre. */
+       aquí nos quedamos solo con el nombre, y lo reflejamos también
+       en la tarjeta de Mi perfil. */
     const userInfo = document.getElementById("user-info");
     const menuName = document.getElementById("profile-menu-name");
+    const settingsName = document.getElementById("settings-name");
 
-    if (userInfo && menuName) {
+    if (userInfo) {
       const syncName = function () {
         const raw = (userInfo.textContent || "").trim();
         if (!raw) return;
-        menuName.textContent = raw.replace(/^Sesión iniciada como\s*/i, "");
+        const clean = raw.replace(/^Sesión iniciada como\s*/i, "");
+        if (menuName) menuName.textContent = clean;
+        if (settingsName) settingsName.textContent = clean;
       };
       syncName();
       new MutationObserver(syncName).observe(userInfo, {
@@ -171,10 +161,121 @@
         subtree: true,
       });
     }
+
+    /* Avatar en Mi perfil, reflejando el de la cabecera. */
+    const headerAvatar = document.getElementById("user-avatar");
+    const headerFallback = document.getElementById("user-avatar-fallback");
+    const settingsAvatar = document.getElementById("settings-avatar");
+    const settingsFallback = document.getElementById("settings-avatar-fallback");
+
+    if (headerAvatar && settingsAvatar && headerFallback && settingsFallback) {
+      const syncAvatar = function () {
+        if (!headerAvatar.hidden) {
+          settingsAvatar.src = headerAvatar.src;
+          settingsAvatar.alt = headerAvatar.alt;
+          settingsAvatar.hidden = false;
+          settingsFallback.hidden = true;
+        } else {
+          settingsFallback.textContent = headerFallback.textContent;
+          settingsFallback.hidden = false;
+          settingsAvatar.hidden = true;
+        }
+      };
+      syncAvatar();
+      const avatarObs = new MutationObserver(syncAvatar);
+      avatarObs.observe(headerAvatar, { attributes: true, attributeFilter: ["hidden", "src"] });
+      avatarObs.observe(headerFallback, { attributes: true, childList: true, characterData: true, subtree: true });
+    }
   }
 
   /* ---------------------------------
-     3. ZONAS DE LA CLASIFICACIÓN
+     3. AJUSTES: acento, animaciones,
+     notificaciones y privacidad
+  --------------------------------- */
+
+  const SETTINGS_KEY = "ifl-settings";
+  const ACCENT_KEY = "ifl-accent";
+
+  const loadSettings = function () {
+    try {
+      return Object.assign(
+        { reduceMotion: false, notifPartidos: true, notifClub: true, publicProfile: true },
+        JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")
+      );
+    } catch (e) {
+      return { reduceMotion: false, notifPartidos: true, notifClub: true, publicProfile: true };
+    }
+  };
+
+  const saveSettings = function (settings) {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e) {
+      /* almacenamiento no disponible: seguimos sin persistir */
+    }
+  };
+
+  const settings = loadSettings();
+
+  const bindToggle = function (id, key) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.checked = !!settings[key];
+    input.addEventListener("change", function () {
+      settings[key] = input.checked;
+      saveSettings(settings);
+      if (key === "reduceMotion") {
+        document.documentElement.classList.toggle("reduce-motion", input.checked);
+      }
+    });
+  };
+
+  document.documentElement.classList.toggle("reduce-motion", settings.reduceMotion);
+  bindToggle("setting-reduce-motion", "reduceMotion");
+  bindToggle("setting-notif-partidos", "notifPartidos");
+  bindToggle("setting-notif-club", "notifClub");
+  bindToggle("setting-public-profile", "publicProfile");
+
+  const accentRow = document.getElementById("accent-row");
+
+  if (accentRow) {
+    const swatches = Array.prototype.slice.call(
+      accentRow.querySelectorAll(".accent-swatch")
+    );
+
+    const applyAccent = function (value) {
+      if (value === "blurple") {
+        document.documentElement.removeAttribute("data-accent");
+      } else {
+        document.documentElement.setAttribute("data-accent", value);
+      }
+      swatches.forEach(function (sw) {
+        sw.setAttribute("aria-pressed", sw.dataset.accent === value ? "true" : "false");
+      });
+    };
+
+    let savedAccent = "blurple";
+    try {
+      savedAccent = localStorage.getItem(ACCENT_KEY) || "blurple";
+    } catch (e) {
+      /* sin almacenamiento: usamos el valor por defecto */
+    }
+    applyAccent(savedAccent);
+
+    accentRow.addEventListener("click", function (e) {
+      const btn = e.target.closest(".accent-swatch");
+      if (!btn) return;
+      applyAccent(btn.dataset.accent);
+      try {
+        localStorage.setItem(ACCENT_KEY, btn.dataset.accent);
+      } catch (err) {
+        /* sin almacenamiento: el cambio dura solo esta visita */
+      }
+    });
+  }
+
+  /* ---------------------------------
+     4. ZONAS DE LA CLASIFICACIÓN
      Primera: 3 últimos -> descenso (rojo)
      Segunda: 1-2 ascenso (verde), 3-4 playoff (amarillo)
   --------------------------------- */
