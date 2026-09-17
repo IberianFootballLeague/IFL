@@ -55,6 +55,105 @@ button {
 }
 
 /* =====================================
+   LOADING SCREEN
+===================================== */
+
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--bg);
+  overflow: hidden;
+  transition: opacity 0.5s ease;
+}
+
+.loading-screen.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-screen__field {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    -55deg,
+    rgba(255, 255, 255, 0.03) 0px,
+    rgba(255, 255, 255, 0.03) 1px,
+    transparent 1px,
+    transparent 46px
+  );
+  mask-image: radial-gradient(ellipse 60% 55% at 50% 45%, black 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 45%, black 20%, transparent 75%);
+}
+
+.loading-screen__badge {
+  position: relative;
+  z-index: 1;
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(88, 101, 242, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 34px rgba(88, 101, 242, 0.28);
+  animation: pulse-ring 2.4s ease-in-out infinite;
+}
+
+.loading-screen__logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 24px rgba(88, 101, 242, 0.22); }
+  50%      { box-shadow: 0 0 42px rgba(88, 101, 242, 0.4); }
+}
+
+.loading-screen__title {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  color: var(--gray-1);
+}
+
+.loading-screen__bar {
+  position: relative;
+  z-index: 1;
+  width: 220px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.loading-screen__fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--discord), var(--cyan));
+  box-shadow: 0 0 10px var(--discord-glow);
+  transition: width 0.35s ease;
+}
+
+.loading-screen__hint {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--gray-3);
+}
+
+/* =====================================
    LOGIN — STAGE
 ===================================== */
 
@@ -365,107 +464,163 @@ button {
    APP SHELL
 ===================================== */
 
-.app-header {
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* =====================================
+   SIDEBAR
+===================================== */
+
+.sidebar {
   position: sticky;
   top: 0;
-  z-index: 10;
+  height: 100vh;
+  width: 248px;
+  flex: none;
   display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 10px 32px;
-  background: rgba(0, 0, 0, 0.78);
+  flex-direction: column;
+  padding: 20px 16px 18px;
+  background: rgba(0, 0, 0, 0.82);
   background-image:
     repeating-linear-gradient(
       -55deg,
-      rgba(255, 255, 255, 0.025) 0px,
-      rgba(255, 255, 255, 0.025) 1px,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
       transparent 1px,
       transparent 40px
     ),
-    linear-gradient(rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.78));
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(88, 101, 242, 0.15), 0 8px 24px rgba(0, 0, 0, 0.35);
+    linear-gradient(rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.82));
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
 }
 
-.app-header__brand {
+.sidebar__top {
+  display: flex;
+  margin-bottom: 22px;
+}
+
+.sidebar__icon-btn {
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
-  filter: drop-shadow(0 0 14px rgba(88, 101, 242, 0.45));
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--gray-2);
+  cursor: pointer;
+  transition: color 0.15s ease;
 }
 
-.app-header__logo {
-  width: 68px;
-  height: 68px;
+.sidebar__icon-btn:hover {
+  color: var(--white);
+}
+
+.sidebar__icon-btn svg {
+  width: 19px;
+  height: 19px;
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+  margin-bottom: 30px;
+  filter: drop-shadow(0 0 14px rgba(88, 101, 242, 0.4));
+}
+
+.sidebar__logo {
+  width: 40px;
+  height: 40px;
   object-fit: contain;
-  display: block;
 }
 
-.app-header__nav {
+.sidebar__wordmark {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: 0.01em;
+  color: var(--white);
+}
+
+.sidebar__nav {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 2px;
-  flex: 1;
-  padding: 4px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  width: fit-content;
 }
 
-.app-header__link {
+.sidebar__link {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 12px;
   text-decoration: none;
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15.5px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--gray-2);
-  padding: 8px 16px;
-  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
-  transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  padding: 11px 12px;
+  border-left: 2px solid transparent;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
 
-.app-header__link-icon {
-  width: 15px;
-  height: 15px;
+.sidebar__link-icon {
+  width: 17px;
+  height: 17px;
   flex: none;
   opacity: 0.85;
 }
 
-.app-header__link:hover {
+.sidebar__link:hover {
   color: var(--white);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.app-header__link.is-active {
+.sidebar__link.is-active {
   color: var(--white);
-  background: linear-gradient(100deg, var(--discord), var(--cyan));
-  box-shadow: 0 0 18px var(--discord-glow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  background: linear-gradient(90deg, rgba(88, 101, 242, 0.22), transparent);
+  border-left-color: var(--discord);
+  box-shadow: inset 0 0 20px rgba(88, 101, 242, 0.08);
 }
 
-.app-header__account {
+.sidebar__link.is-active .sidebar__link-icon {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(88, 101, 242, 0.6));
+}
+
+.sidebar__footer {
+  margin-top: auto;
+  padding: 14px 4px 4px;
+}
+
+/* =====================================
+   TOPBAR + PROFILE
+===================================== */
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-topbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.app-profile {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
-}
-
-.app-header__user {
-  font-size: 13px;
-  color: var(--gray-2);
-  white-space: nowrap;
-}
-
-.app-header__profile {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px 3px 3px;
+  gap: 8px;
+  padding: 5px 12px 5px 5px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -473,12 +628,13 @@ button {
   transition: border-color 0.15s ease, box-shadow 0.2s ease;
 }
 
-.app-header__profile:hover {
+.app-profile:hover,
+.app-profile.is-open {
   border-color: var(--discord);
   box-shadow: 0 0 14px rgba(88, 101, 242, 0.3);
 }
 
-.app-header__avatar {
+.app-profile__avatar {
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -488,7 +644,7 @@ button {
   flex: none;
 }
 
-.app-header__avatar--fallback {
+.app-profile__avatar--fallback {
   background: linear-gradient(135deg, var(--discord), #262835);
   display: flex;
   align-items: center;
@@ -499,10 +655,65 @@ button {
   color: var(--white);
 }
 
-.app-header__chevron {
+.app-profile__name {
+  font-size: 13px;
+  color: var(--gray-1);
+  white-space: nowrap;
+}
+
+.app-profile__chevron {
   width: 14px;
   height: 14px;
   color: var(--gray-2);
+  transition: transform 0.18s ease;
+}
+
+.app-profile.is-open .app-profile__chevron {
+  transform: rotate(180deg);
+}
+
+.app-profile__menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 190px;
+  padding: 6px;
+  background: rgba(15, 15, 17, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+}
+
+.app-profile__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--white);
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.app-profile__menu-item:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.app-profile__menu-item svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
 }
 
 .btn-ghost {
@@ -529,7 +740,7 @@ button {
 .dashboard {
   max-width: 960px;
   margin: 0 auto;
-  padding: 48px 28px;
+  padding: 40px 32px 56px;
 }
 
 .dashboard__title {
@@ -770,6 +981,82 @@ button {
   font-weight: 500;
 }
 
+.standings__status {
+  width: 18px;
+  padding-left: 14px !important;
+}
+
+.standings__status-box {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.standings__status-box--down {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+.standings__status-box--up {
+  background: var(--green);
+  box-shadow: 0 0 8px rgba(46, 204, 113, 0.6);
+}
+
+.standings__status-box--playoff {
+  background: #f5c542;
+  box-shadow: 0 0 8px rgba(245, 197, 66, 0.55);
+}
+
+tr.standings__row--down td {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+tr.standings__row--up td {
+  background: rgba(46, 204, 113, 0.05);
+}
+
+tr.standings__row--playoff td {
+  background: rgba(245, 197, 66, 0.05);
+}
+
+.standings-legend {
+  display: flex;
+  gap: 18px;
+  margin: 10px 2px 0;
+  flex-wrap: wrap;
+}
+
+.standings-legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--gray-2);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.legend-dot--down {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+
+.legend-dot--up {
+  background: var(--green);
+  box-shadow: 0 0 6px rgba(46, 204, 113, 0.6);
+}
+
+.legend-dot--playoff {
+  background: #f5c542;
+  box-shadow: 0 0 6px rgba(245, 197, 66, 0.55);
+}
+
 /* =====================================
    MI CARRERA — locked state
 ===================================== */
@@ -819,25 +1106,70 @@ button {
     opacity: 0.06;
   }
 
-  .app-header {
-    flex-wrap: wrap;
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
     gap: 12px;
+    padding: 10px 14px;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
   }
 
-  .app-header__logo {
-    width: 46px;
-    height: 46px;
-  }
-
-  .app-header__user {
+  .sidebar__top {
     display: none;
   }
 
-  .app-header__nav {
-    order: 3;
-    width: 100%;
-    gap: 16px;
-    overflow-x: auto;
+  .sidebar__brand {
+    margin-bottom: 0;
+    flex: none;
+  }
+
+  .sidebar__logo {
+    width: 30px;
+    height: 30px;
+  }
+
+  .sidebar__wordmark {
+    font-size: 20px;
+  }
+
+  .sidebar__nav {
+    flex-direction: row;
+    gap: 2px;
+  }
+
+  .sidebar__link {
+    padding: 8px 10px;
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+
+  .sidebar__link span {
+    display: none;
+  }
+
+  .sidebar__link.is-active {
+    border-left: none;
+    border-bottom-color: var(--discord);
+  }
+
+  .sidebar__footer {
+    display: none;
+  }
+
+  .app-profile__name {
+    display: none;
   }
 
   .calendar-grid {
