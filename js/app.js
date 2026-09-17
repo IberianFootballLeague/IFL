@@ -24,12 +24,6 @@ document.addEventListener(
     "DOMContentLoaded",
     async () => {
 
-        const loadingScreen =
-            document.getElementById("loading-screen");
-
-        const loadingFill =
-            document.getElementById("loading-screen__fill");
-
         const loginPage =
             document.getElementById("login-page");
 
@@ -39,6 +33,11 @@ document.addEventListener(
         const discordButton =
             document.getElementById("discord-login");
 
+        // Solo el texto: así el icono de Discord no se borra
+        // al cambiar el botón a "Conectando...".
+        const discordLabel =
+            discordButton.querySelector(".btn-discord__label");
+
         const logoutButton =
             document.getElementById("logout-button");
 
@@ -46,34 +45,13 @@ document.addEventListener(
             document.getElementById("user-info");
 
 
-        // =================================
-        // PANTALLA DE CARGA
-        // =================================
+        function setDiscordLabel(text) {
 
-        if (loadingFill) {
-
-            requestAnimationFrame(() => {
-                loadingFill.style.width = "70%";
-            });
-        }
-
-        function hideLoadingScreen() {
-
-            if (!loadingScreen) return;
-
-            if (loadingFill) {
-                loadingFill.style.width = "100%";
+            if (discordLabel) {
+                discordLabel.textContent = text;
+            } else {
+                discordButton.textContent = text;
             }
-
-            setTimeout(() => {
-
-                loadingScreen.classList.add("is-hidden");
-
-                setTimeout(() => {
-                    loadingScreen.style.display = "none";
-                }, 500);
-
-            }, 250);
         }
 
 
@@ -86,8 +64,6 @@ document.addEventListener(
             loginPage.style.display = "flex";
 
             appPage.style.display = "none";
-
-            hideLoadingScreen();
         }
 
 
@@ -108,7 +84,6 @@ document.addEventListener(
 
             appPage.style.display = "block";
 
-            hideLoadingScreen();
 
             const discordName =
                 user.user_metadata?.full_name ||
@@ -140,6 +115,8 @@ document.addEventListener(
                 userAvatar.onerror = () => {
                     userAvatar.hidden = true;
                     if (userAvatarFallback) {
+                        userAvatarFallback.textContent =
+                            discordName.charAt(0).toUpperCase();
                         userAvatarFallback.hidden = false;
                     }
                 };
@@ -206,8 +183,7 @@ document.addEventListener(
 
                 discordButton.disabled = true;
 
-                discordButton.textContent =
-                    "Conectando...";
+                setDiscordLabel("Conectando...");
 
 
                 const { error } =
@@ -244,8 +220,7 @@ document.addEventListener(
                     discordButton.disabled =
                         false;
 
-                    discordButton.textContent =
-                        "Iniciar sesión con Discord";
+                    setDiscordLabel("Iniciar sesión con Discord");
                 }
 
             }
@@ -319,7 +294,7 @@ document.addEventListener(
         // =================================
 
         const navLinks =
-            document.querySelectorAll(".sidebar__link");
+            document.querySelectorAll(".app-header__link");
 
         const views =
             document.querySelectorAll(".view");
@@ -364,41 +339,6 @@ document.addEventListener(
             });
 
         });
-
-
-        // =================================
-        // MENÚ DE PERFIL
-        // =================================
-
-        const profileToggle =
-            document.getElementById("profile-toggle");
-
-        const profileMenu =
-            document.getElementById("profile-menu");
-
-        if (profileToggle && profileMenu) {
-
-            profileToggle.addEventListener("click", (event) => {
-
-                event.stopPropagation();
-
-                const isOpen =
-                    profileToggle.classList.toggle("is-open");
-
-                profileMenu.hidden = !isOpen;
-
-            });
-
-            document.addEventListener("click", (event) => {
-
-                if (!profileToggle.contains(event.target)) {
-
-                    profileToggle.classList.remove("is-open");
-                    profileMenu.hidden = true;
-                }
-
-            });
-        }
 
 
         // =================================
@@ -510,7 +450,7 @@ document.addEventListener(
         // CLASIFICACIÓN
         // =================================
 
-        function buildStandingsTable(tableEl, teamCount, division) {
+        function buildStandingsTable(tableEl, teamCount) {
 
             if (!tableEl) return;
 
@@ -518,28 +458,8 @@ document.addEventListener(
 
             for (let i = 1; i <= teamCount; i++) {
 
-                let rowClass = "";
-                let statusBox = "";
-
-                if (division === "primera" && i >= 6) {
-
-                    rowClass = "standings__row--down";
-                    statusBox = '<span class="standings__status-box standings__status-box--down" title="Desciende"></span>';
-
-                } else if (division === "segunda" && i <= 2) {
-
-                    rowClass = "standings__row--up";
-                    statusBox = '<span class="standings__status-box standings__status-box--up" title="Asciende"></span>';
-
-                } else if (division === "segunda" && (i === 3 || i === 4)) {
-
-                    rowClass = "standings__row--playoff";
-                    statusBox = '<span class="standings__status-box standings__status-box--playoff" title="Playoff"></span>';
-                }
-
                 rows += `
-                    <tr class="${rowClass}">
-                        <td class="standings__status">${statusBox}</td>
+                    <tr>
                         <td class="standings__pos">${i}</td>
                         <td class="standings__club">Equipo ${i}</td>
                         <td>0</td>
@@ -555,7 +475,6 @@ document.addEventListener(
             tableEl.innerHTML = `
                 <thead>
                     <tr>
-                        <th></th>
                         <th>Pos</th>
                         <th>Club</th>
                         <th>Pts</th>
@@ -576,14 +495,12 @@ document.addEventListener(
 
             buildStandingsTable(
                 document.getElementById("standings-primera"),
-                8,
-                "primera"
+                8
             );
 
             buildStandingsTable(
                 document.getElementById("standings-segunda"),
-                8,
-                "segunda"
+                8
             );
         }
 
