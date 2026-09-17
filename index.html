@@ -17,9 +17,28 @@
 <body>
 
 <!-- =====================================
+     LOADING SCREEN
+===================================== -->
+<div id="loading-screen" class="loading-screen">
+  <div class="loading-screen__field" aria-hidden="true"></div>
+
+  <div class="loading-screen__badge">
+    <img src="images/IFL_Logo.png" alt="" class="loading-screen__logo" />
+  </div>
+
+  <p class="loading-screen__title">IBERIAN FOOTBALL LEAGUE</p>
+
+  <div class="loading-screen__bar">
+    <div id="loading-screen__fill" class="loading-screen__fill"></div>
+  </div>
+
+  <p class="loading-screen__hint">Cargando…</p>
+</div>
+
+<!-- =====================================
      LOGIN
 ===================================== -->
-<div id="login-page" class="login-page">
+<div id="login-page" class="login-page" style="display:none;">
 
   <div class="login-page__field" aria-hidden="true"></div>
   <div class="login-page__shape login-page__shape--1" aria-hidden="true"></div>
@@ -60,177 +79,213 @@
 ===================================== -->
 <div id="app" class="app" style="display:none;">
 
-  <header class="app-header">
-    <div class="app-header__brand">
-      <img src="images/IFL_Logo.png" alt="IFL" class="app-header__logo" />
-    </div>
+  <div class="app-shell">
 
-    <nav class="app-header__nav">
-      <a href="#" class="app-header__link is-active" data-view="inicio">
-        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11.5 12 4l8 7.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-5.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V20h3a1 1 0 0 0 1-1v-9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Inicio</span>
-      </a>
-      <a href="#" class="app-header__link" data-view="calendario">
-        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5.5" width="16" height="15" rx="1.5"/><path d="M4 10h16M8 3.5v3M16 3.5v3" stroke-linecap="round"/></svg>
-        <span>Calendario</span>
-      </a>
-      <a href="#" class="app-header__link" data-view="clasificacion">
-        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 20V11M12 20V4M19 20v-7" stroke-linecap="round"/></svg>
-        <span>Clasificación</span>
-      </a>
-      <a href="#" class="app-header__link" data-view="estadios">
-        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="3.4" ry="2.2"/></svg>
-        <span>Estadios</span>
-      </a>
-      <a href="#" class="app-header__link" data-view="premios">
-        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" stroke-linejoin="round"/><path d="M7 6H4.5A1.5 1.5 0 0 0 3 7.5C3 9.5 4.5 11 7 11M17 6h2.5A1.5 1.5 0 0 1 21 7.5C21 9.5 19.5 11 17 11M12 13.5V17M9 20h6" stroke-linecap="round"/></svg>
-        <span>Premios</span>
-      </a>
-      <a href="#" class="app-header__link" data-view="perfil">
-        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8.5" r="3.4"/><path d="M5 20c1-3.5 4-5.5 7-5.5s6 2 7 5.5" stroke-linecap="round"/></svg>
-        <span>Mi perfil</span>
-      </a>
-      <a href="#" class="app-header__link" data-view="carrera">
-        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3.5 2.2 4.6 5 .7-3.6 3.6.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.6 5-.7L12 3.5Z" stroke-linejoin="round"/></svg>
-        <span>Mi carrera</span>
-      </a>
-    </nav>
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
 
-    <div class="app-header__account">
-      <span id="user-info" class="app-header__user"></span>
-      <button class="app-header__profile" type="button">
-        <img id="user-avatar" class="app-header__avatar" alt="" hidden />
-        <span id="user-avatar-fallback" class="app-header__avatar app-header__avatar--fallback"></span>
-        <svg class="app-header__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <button id="logout-button" class="btn-ghost" type="button">Cerrar sesión</button>
-    </div>
-  </header>
+      <div class="sidebar__top">
+        <button class="sidebar__icon-btn" type="button" aria-label="Ajustes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.04 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.04Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
 
-  <main class="dashboard">
+      <div class="sidebar__brand">
+        <img src="images/IFL_Logo.png" alt="IFL" class="sidebar__logo" />
+        <span class="sidebar__wordmark">IFL</span>
+      </div>
 
-    <!-- ============ INICIO ============ -->
-    <section class="view" id="view-inicio" data-view-panel="inicio">
-      <div class="view-header">
-        <h2 class="dashboard__title">Resumen de la liga</h2>
+      <nav class="sidebar__nav">
+        <a href="#" class="sidebar__link is-active" data-view="inicio">
+          <svg class="sidebar__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11.5 12 4l8 7.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-5.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V20h3a1 1 0 0 0 1-1v-9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Inicio</span>
+        </a>
+        <a href="#" class="sidebar__link" data-view="calendario">
+          <svg class="sidebar__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5.5" width="16" height="15" rx="1.5"/><path d="M4 10h16M8 3.5v3M16 3.5v3" stroke-linecap="round"/></svg>
+          <span>Calendario</span>
+        </a>
+        <a href="#" class="sidebar__link" data-view="clasificacion">
+          <svg class="sidebar__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 20V11M12 20V4M19 20v-7" stroke-linecap="round"/></svg>
+          <span>Clasificación</span>
+        </a>
+        <a href="#" class="sidebar__link" data-view="estadios">
+          <svg class="sidebar__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="3.4" ry="2.2"/></svg>
+          <span>Estadios</span>
+        </a>
+        <a href="#" class="sidebar__link" data-view="premios">
+          <svg class="sidebar__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" stroke-linejoin="round"/><path d="M7 6H4.5A1.5 1.5 0 0 0 3 7.5C3 9.5 4.5 11 7 11M17 6h2.5A1.5 1.5 0 0 1 21 7.5C21 9.5 19.5 11 17 11M12 13.5V17M9 20h6" stroke-linecap="round"/></svg>
+          <span>Premios</span>
+        </a>
+        <a href="#" class="sidebar__link" data-view="perfil">
+          <svg class="sidebar__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8.5" r="3.4"/><path d="M5 20c1-3.5 4-5.5 7-5.5s6 2 7 5.5" stroke-linecap="round"/></svg>
+          <span>Mi perfil</span>
+        </a>
+        <a href="#" class="sidebar__link" data-view="carrera">
+          <svg class="sidebar__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3.5 2.2 4.6 5 .7-3.6 3.6.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.6 5-.7L12 3.5Z" stroke-linejoin="round"/></svg>
+          <span>Mi carrera</span>
+        </a>
+      </nav>
+
+      <div class="sidebar__footer">
         <span class="badge badge--season">Temporada 1</span>
       </div>
 
-      <p class="view-lead">
-        La <strong>Iberian Football League (IFL)</strong> es una competición oficial de
-        fútbol 4 contra 4 en Roblox, organizada en dos divisiones —
-        <strong>Primera</strong> y <strong>Segunda División</strong>, con 8 equipos
-        cada una— unidas por un sistema de ascensos y descensos al final de la temporada.
-      </p>
+    </aside>
 
-      <p class="view-lead">
-        Cada división disputa una liga a una sola vuelta de <strong>7 jornadas</strong>,
-        un partido contra cada rival. El campeón de Primera se corona directamente
-        al finalizar la liga regular, sin necesidad de disputar una final. Los tres
-        últimos de Primera descienden, mientras que en Segunda los dos primeros
-        ascienden de forma directa y el 3.º y 4.º se juegan una plaza más en un
-        <strong>playoff</strong> a partido único.
-      </p>
+    <!-- ============ MAIN ============ -->
+    <div class="app-main">
 
-      <p class="view-lead">
-        Los partidos duran <strong>20 minutos</strong> (10 + 2 de descanso + 10),
-        cada equipo dispone de <strong>3 sustituciones</strong> y un mínimo de
-        3 jugadores en el terreno de juego para poder disputar el encuentro. Los
-        fichajes y traspasos se gestionan a través de ventanas de mercado oficiales
-        (verano e invierno), y toda la actividad —resultados, estadísticas y
-        palmarés— se centraliza en esta plataforma.
-      </p>
+      <div class="app-topbar">
+        <div class="app-profile" id="profile-toggle">
+          <img id="user-avatar" class="app-profile__avatar" alt="" hidden />
+          <span id="user-avatar-fallback" class="app-profile__avatar app-profile__avatar--fallback"></span>
+          <span id="user-info" class="app-profile__name"></span>
+          <svg class="app-profile__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
 
-      <div class="stat-grid">
-        <div class="stat-tile">
-          <span class="stat-tile__value">16</span>
-          <span class="stat-tile__label">Equipos totales</span>
-        </div>
-        <div class="stat-tile">
-          <span class="stat-tile__value">2</span>
-          <span class="stat-tile__label">Divisiones</span>
-        </div>
-        <div class="stat-tile">
-          <span class="stat-tile__value">4v4</span>
-          <span class="stat-tile__label">Formato de juego</span>
-        </div>
-        <div class="stat-tile">
-          <span class="stat-tile__value">7</span>
-          <span class="stat-tile__label">Jornadas por división</span>
-        </div>
-        <div class="stat-tile">
-          <span class="stat-tile__value">20&nbsp;min</span>
-          <span class="stat-tile__label">Duración del partido</span>
-        </div>
-        <div class="stat-tile">
-          <span class="stat-tile__value">3</span>
-          <span class="stat-tile__label">Sustituciones por equipo</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ CALENDARIO ============ -->
-    <section class="view" id="view-calendario" data-view-panel="calendario" hidden>
-      <div class="view-header">
-        <h2 class="dashboard__title">Calendario</h2>
-        <div class="calendar-nav">
-          <button id="cal-prev" class="btn-ghost btn-ghost--icon" type="button" aria-label="Mes anterior">‹</button>
-          <span id="cal-label" class="calendar-nav__label"></span>
-          <button id="cal-next" class="btn-ghost btn-ghost--icon" type="button" aria-label="Mes siguiente">›</button>
+          <div class="app-profile__menu" id="profile-menu" hidden>
+            <button id="logout-button" class="app-profile__menu-item" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3" stroke-linecap="round" stroke-linejoin="round"/><path d="m16 17 5-5-5-5M21 12H9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Cerrar sesión
+            </button>
+          </div>
         </div>
       </div>
 
-      <div class="calendar-weekdays">
-        <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
-      </div>
+      <main class="dashboard">
 
-      <div id="calendar-grid" class="calendar-grid"></div>
-    </section>
+        <!-- ============ INICIO ============ -->
+        <section class="view" id="view-inicio" data-view-panel="inicio">
+          <div class="view-header">
+            <h2 class="dashboard__title">Resumen de la liga</h2>
+            <span class="badge badge--season">Temporada 1</span>
+          </div>
 
-    <!-- ============ CLASIFICACIÓN ============ -->
-    <section class="view" id="view-clasificacion" data-view-panel="clasificacion" hidden>
-      <h2 class="dashboard__title">Clasificación</h2>
+          <p class="view-lead">
+            La <strong>Iberian Football League (IFL)</strong> es una competición oficial de
+            fútbol 4 contra 4 en Roblox, organizada en dos divisiones —
+            <strong>Primera</strong> y <strong>Segunda División</strong>, con 8 equipos
+            cada una— unidas por un sistema de ascensos y descensos al final de la temporada.
+          </p>
 
-      <h3 class="table-heading">Primera División</h3>
-      <div class="table-wrap">
-        <table class="standings" id="standings-primera"></table>
-      </div>
+          <p class="view-lead">
+            Cada división disputa una liga a una sola vuelta de <strong>7 jornadas</strong>,
+            un partido contra cada rival. El campeón de Primera se corona directamente
+            al finalizar la liga regular, sin necesidad de disputar una final. Los tres
+            últimos de Primera descienden, mientras que en Segunda los dos primeros
+            ascienden de forma directa y el 3.º y 4.º se juegan una plaza más en un
+            <strong>playoff</strong> a partido único.
+          </p>
 
-      <h3 class="table-heading">Segunda División</h3>
-      <div class="table-wrap">
-        <table class="standings" id="standings-segunda"></table>
-      </div>
-    </section>
+          <p class="view-lead">
+            Los partidos duran <strong>20 minutos</strong> (10 + 2 de descanso + 10),
+            cada equipo dispone de <strong>3 sustituciones</strong> y un mínimo de
+            3 jugadores en el terreno de juego para poder disputar el encuentro. Los
+            fichajes y traspasos se gestionan a través de ventanas de mercado oficiales
+            (verano e invierno), y toda la actividad —resultados, estadísticas y
+            palmarés— se centraliza en esta plataforma.
+          </p>
 
-    <!-- ============ MI CARRERA ============ -->
-    <section class="view" id="view-carrera" data-view-panel="carrera" hidden>
-      <h2 class="dashboard__title">Mi carrera</h2>
-      <div class="locked-card">
-        <span class="locked-card__icon" aria-hidden="true">🔒</span>
-        <p class="locked-card__text">
-          Necesitas un contrato activo o haber tenido una trayectoria en algún
-          equipo de la IFL para poder ver tu carrera.
-        </p>
-      </div>
-    </section>
+          <div class="stat-grid">
+            <div class="stat-tile">
+              <span class="stat-tile__value">16</span>
+              <span class="stat-tile__label">Equipos totales</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-tile__value">2</span>
+              <span class="stat-tile__label">Divisiones</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-tile__value">4v4</span>
+              <span class="stat-tile__label">Formato de juego</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-tile__value">7</span>
+              <span class="stat-tile__label">Jornadas por división</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-tile__value">20&nbsp;min</span>
+              <span class="stat-tile__label">Duración del partido</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-tile__value">3</span>
+              <span class="stat-tile__label">Sustituciones por equipo</span>
+            </div>
+          </div>
+        </section>
 
-    <!-- ============ PLACEHOLDERS ============ -->
-    <section class="view" id="view-estadios" data-view-panel="estadios" hidden>
-      <h2 class="dashboard__title">Estadios</h2>
-      <p class="dashboard__placeholder">Próximamente.</p>
-    </section>
+        <!-- ============ CALENDARIO ============ -->
+        <section class="view" id="view-calendario" data-view-panel="calendario" hidden>
+          <div class="view-header">
+            <h2 class="dashboard__title">Calendario</h2>
+            <div class="calendar-nav">
+              <button id="cal-prev" class="btn-ghost btn-ghost--icon" type="button" aria-label="Mes anterior">‹</button>
+              <span id="cal-label" class="calendar-nav__label"></span>
+              <button id="cal-next" class="btn-ghost btn-ghost--icon" type="button" aria-label="Mes siguiente">›</button>
+            </div>
+          </div>
 
-    <section class="view" id="view-premios" data-view-panel="premios" hidden>
-      <h2 class="dashboard__title">Premios</h2>
-      <p class="dashboard__placeholder">Próximamente.</p>
-    </section>
+          <div class="calendar-weekdays">
+            <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
+          </div>
 
-    <section class="view" id="view-perfil" data-view-panel="perfil" hidden>
-      <h2 class="dashboard__title">Mi perfil</h2>
-      <p class="dashboard__placeholder">Próximamente.</p>
-    </section>
+          <div id="calendar-grid" class="calendar-grid"></div>
+        </section>
 
-  </main>
+        <!-- ============ CLASIFICACIÓN ============ -->
+        <section class="view" id="view-clasificacion" data-view-panel="clasificacion" hidden>
+          <h2 class="dashboard__title">Clasificación</h2>
+
+          <h3 class="table-heading">Primera División</h3>
+          <div class="table-wrap">
+            <table class="standings" id="standings-primera"></table>
+          </div>
+          <div class="standings-legend">
+            <span><i class="legend-dot legend-dot--down"></i> Descenso</span>
+          </div>
+
+          <h3 class="table-heading">Segunda División</h3>
+          <div class="table-wrap">
+            <table class="standings" id="standings-segunda"></table>
+          </div>
+          <div class="standings-legend">
+            <span><i class="legend-dot legend-dot--up"></i> Ascenso directo</span>
+            <span><i class="legend-dot legend-dot--playoff"></i> Playoff de ascenso</span>
+          </div>
+        </section>
+
+        <!-- ============ MI CARRERA ============ -->
+        <section class="view" id="view-carrera" data-view-panel="carrera" hidden>
+          <h2 class="dashboard__title">Mi carrera</h2>
+          <div class="locked-card">
+            <span class="locked-card__icon" aria-hidden="true">🔒</span>
+            <p class="locked-card__text">
+              Necesitas un contrato activo o haber tenido una trayectoria en algún
+              equipo de la IFL para poder ver tu carrera.
+            </p>
+          </div>
+        </section>
+
+        <!-- ============ PLACEHOLDERS ============ -->
+        <section class="view" id="view-estadios" data-view-panel="estadios" hidden>
+          <h2 class="dashboard__title">Estadios</h2>
+          <p class="dashboard__placeholder">Próximamente.</p>
+        </section>
+
+        <section class="view" id="view-premios" data-view-panel="premios" hidden>
+          <h2 class="dashboard__title">Premios</h2>
+          <p class="dashboard__placeholder">Próximamente.</p>
+        </section>
+
+        <section class="view" id="view-perfil" data-view-panel="perfil" hidden>
+          <h2 class="dashboard__title">Mi perfil</h2>
+          <p class="dashboard__placeholder">Próximamente.</p>
+        </section>
+
+      </main>
+
+    </div>
+
+  </div>
 
 </div>
 
