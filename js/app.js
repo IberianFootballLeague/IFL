@@ -16,6 +16,12 @@ const supabaseClient =
     );
 
 
+// Discord al que se le muestra el acceso al Admin Panel.
+// El panel (admin.html) vuelve a comprobar esto por su cuenta,
+// así que esto solo controla si el enlace se ve o no.
+const ADMIN_DISCORD_USERNAME = "aitor_lorente";
+
+
 // =====================================
 // IFL APP
 // =====================================
@@ -75,6 +81,71 @@ document.addEventListener(
 
 
         // =================================
+        // MENÚ DE PERFIL: enlace "Admin Panel"
+        // Solo se inyecta si el usuario de Discord conectado
+        // (el nombre de usuario, no el nombre visible) es
+        // ADMIN_DISCORD_USERNAME. admin.html vuelve a comprobar
+        // la sesión por su lado, esto es solo la entrada visual.
+        // =================================
+
+        function getDiscordUsername(user) {
+
+            const m = user.user_metadata || {};
+
+            return (
+                m.user_name ||
+                m.preferred_username ||
+                (m.custom_claims && m.custom_claims.global_name) ||
+                m.name ||
+                ""
+            ).toString().trim().toLowerCase();
+        }
+
+
+        function ensureAdminPanelLink(user) {
+
+            const profileMenu =
+                document.getElementById("profile-menu");
+
+            if (!profileMenu) return;
+
+            const existing =
+                document.getElementById("admin-panel-menu-link");
+
+            const isAdmin =
+                getDiscordUsername(user) === ADMIN_DISCORD_USERNAME;
+
+            if (!isAdmin) {
+
+                if (existing) existing.remove();
+
+                return;
+            }
+
+            if (existing) return;
+
+            const link =
+                document.createElement("a");
+
+            link.id = "admin-panel-menu-link";
+            link.href = "admin.html";
+            link.className = "profile-menu__item";
+            link.textContent = "Admin Panel";
+
+            // Se coloca justo antes del botón de cerrar sesión
+            // si existe; si no, al final del menú.
+            const logoutItem =
+                profileMenu.querySelector(".profile-menu__item--danger");
+
+            if (logoutItem) {
+                profileMenu.insertBefore(link, logoutItem);
+            } else {
+                profileMenu.appendChild(link);
+            }
+        }
+
+
+        // =================================
         // MOSTRAR APP
         // =================================
 
@@ -129,6 +200,8 @@ document.addEventListener(
 
                 if (userAvatar) userAvatar.hidden = true;
             }
+
+            ensureAdminPanelLink(user);
         }
 
 
