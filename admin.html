@@ -1,1 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel · IFL</title>
+<meta name="robots" content="noindex, nofollow">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="fc-chevrons">
+
+<!-- =====================================
+     ACCESO DENEGADO (Discord distinto de aitor_lorente)
+===================================== -->
+<div id="admin-denied" class="login-page" hidden>
+  <div class="login-page__field"></div>
+  <div class="login-page__shape login-page__shape--1" aria-hidden="true"></div>
+  <img class="login-page__watermark" src="images/IFL_Logo.png" alt="" aria-hidden="true"
+       onerror="this.closest('.login-page').classList.add('watermark-missing')">
+  <div class="locked-card" style="position:relative;z-index:3;">
+    <img src="images/IFL_Logo.png" alt="" style="width:48px;height:48px;object-fit:contain;opacity:.85;" onerror="this.style.display='none'">
+    <span class="locked-card__icon">⛔</span>
+    <p class="locked-card__text">
+      Acceso denegado. El panel de administración solo está disponible para la cuenta de
+      Discord <strong>aitor_lorente</strong>.
+    </p>
+    <a href="index.html" class="btn-admin" style="text-decoration:none;">Volver a la IFL</a>
+  </div>
+</div>
+
+<!-- =====================================
+     PUERTA INTERNA (usuario/contraseña AdminPanel)
+===================================== -->
+<div id="admin-gate" class="login-page" hidden>
+  <div class="login-page__field"></div>
+  <div class="login-page__shape login-page__shape--1" aria-hidden="true"></div>
+  <img class="login-page__watermark" src="images/IFL_Logo.png" alt="" aria-hidden="true"
+       onerror="this.closest('.login-page').classList.add('watermark-missing')">
+  <div class="login-card" style="position:relative;z-index:3;">
+    <img class="login-card__logo" src="images/IFL_Logo.png" alt="Escudo de la IFL" onerror="this.style.display='none'">
+    <h1 class="login-card__title">Admin Panel</h1>
+    <form id="admin-gate-form" class="gate-card__form" autocomplete="off">
+      <div class="admin-field">
+        <label for="gate-user">Usuario</label>
+        <input class="admin-input" id="gate-user" name="gate-user" type="text" autocomplete="username" required>
+      </div>
+      <div class="admin-field">
+        <label for="gate-pass">Contraseña</label>
+        <input class="admin-input" id="gate-pass" name="gate-pass" type="password" autocomplete="current-password" required>
+      </div>
+      <p id="gate-error" class="gate-error" hidden>Usuario o contraseña incorrectos.</p>
+      <button type="submit" class="btn-admin btn-admin--solid">Entrar</button>
+    </form>
+    <p class="login-card__hint">Acceso restringido al staff de la IFL. Tu cuenta de Discord ya ha sido verificada.</p>
+  </div>
+</div>
+
+<!-- =====================================
+     PANEL DE ADMINISTRACIÓN
+===================================== -->
+<div id="admin-app" class="admin" hidden>
+
+  <aside class="admin-side">
+    <div class="admin-side__brand">
+      <img src="images/IFL_Logo.png" alt="IFL" class="admin-side__logo" onerror="this.style.display='none'">
+      <div>
+        <div class="admin-side__title">Admin Panel</div>
+        <div class="admin-side__subtitle" id="admin-season-label">Temporada 13</div>
+      </div>
+    </div>
+
+    <nav class="admin-nav" id="admin-nav">
+      <button type="button" class="admin-nav__link is-active" data-admin-view="overview">Resumen</button>
+      <button type="button" class="admin-nav__link" data-admin-view="teams">Equipos</button>
+      <button type="button" class="admin-nav__link" data-admin-view="contracts">Contratos</button>
+      <button type="button" class="admin-nav__link" data-admin-view="divisions">Divisiones</button>
+    </nav>
+
+    <div class="admin-side__search">
+      <input type="text" id="admin-search" placeholder="Buscar club…">
+      <kbd>/</kbd>
+    </div>
+
+    <div class="chip-row" id="division-chips">
+      <span class="chip is-active" data-division="todos">Todos</span>
+      <span class="chip" data-division="primera">Primera</span>
+      <span class="chip" data-division="segunda">Segunda</span>
+      <span class="chip" data-division="null">Sin asignar</span>
+    </div>
+
+    <div class="chip-row" id="status-chips">
+      <span class="chip is-active" data-status="cualquiera">Cualquiera</span>
+      <span class="chip" data-status="actualizado">Actualizado</span>
+      <span class="chip" data-status="pendiente">Pendiente</span>
+    </div>
+
+    <div class="admin-clubs" id="admin-clubs"></div>
+
+    <div class="admin-side__footer">
+      <img id="admin-avatar" class="admin-side__avatar" alt="" hidden>
+      <span id="admin-avatar-fallback" class="admin-side__avatar admin-side__avatar--fallback" hidden></span>
+      <div class="admin-side__who">
+        <div class="admin-side__name" id="admin-name">Administrador</div>
+        <div class="admin-side__role">Admin Panel</div>
+      </div>
+      <button type="button" class="admin-side__signout" id="admin-signout">Salir</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-top">
+      <div class="admin-top__crumb" id="admin-crumb">Overview</div>
+      <div class="admin-top__search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" placeholder="Find a player…" disabled title="Próximamente: aún no hay base de datos de jugadores">
+        <kbd>/</kbd>
+      </div>
+      <div class="admin-top__actions">
+        <button type="button" class="btn-admin" title="Próximamente">Verify accounts</button>
+        <button type="button" class="btn-admin" title="Próximamente">Transfer funds</button>
+        <button type="button" class="btn-admin" title="Próximamente">Export</button>
+        <button type="button" class="btn-admin btn-admin--solid" id="admin-refresh">Refresh</button>
+      </div>
+    </div>
+
+    <div class="admin-body">
+
+      <!-- ============ RESUMEN ============ -->
+      <section class="admin-view" data-admin-view="overview">
+        <div class="admin-view-head">
+          <div>
+            <h1 class="admin-body__title">BFL club database</h1>
+            <p class="admin-body__subtitle" id="admin-overview-subtitle"></p>
+          </div>
+        </div>
+
+        <div class="admin-stats">
+          <div class="admin-stat">
+            <div class="admin-stat__label">Team sheets</div>
+            <div class="admin-stat__value"><span id="stat-teamsheets-current">0</span><small id="stat-teamsheets-total">/0</small></div>
+            <div class="admin-stat__foot">Updated and accurate</div>
+            <div class="admin-stat__bar"><span id="stat-teamsheets-bar" style="width:0%"></span></div>
+          </div>
+          <div class="admin-stat">
+            <div class="admin-stat__label">Players</div>
+            <div class="admin-stat__value"><span id="stat-players">0</span></div>
+            <div class="admin-stat__foot" id="stat-players-foot"></div>
+          </div>
+          <div class="admin-stat">
+            <div class="admin-stat__label">Squads</div>
+            <div class="admin-stat__value"><span id="stat-squads">0</span></div>
+            <div class="admin-stat__foot">All clubs have players</div>
+          </div>
+          <div class="admin-stat">
+            <div class="admin-stat__label">Contratos activos</div>
+            <div class="admin-stat__value"><span id="stat-contracts-active">0</span></div>
+            <div class="admin-stat__foot" id="stat-contracts-foot"></div>
+          </div>
+        </div>
+
+        <div class="admin-panels">
+          <div class="admin-panel">
+            <div class="admin-panel__head">
+              <div class="admin-panel__head-title">Updated team sheets</div>
+              <span class="admin-panel__pill admin-panel__pill--up" id="admin-updated-pct">0% done</span>
+            </div>
+            <div class="admin-panel__body" id="admin-updated-list"></div>
+          </div>
+
+          <div class="admin-panel">
+            <div class="admin-panel__head">
+              <div class="admin-panel__head-title">Needs attention</div>
+              <span class="admin-panel__pill admin-panel__pill--count" id="admin-attention-count">0</span>
+            </div>
+            <div class="admin-panel__body" id="admin-attention-list"></div>
+          </div>
+
+          <div class="admin-panel">
+            <div class="admin-panel__head">
+              <div class="admin-panel__head-title">Live now</div>
+            </div>
+            <div class="admin-panel__body">
+              <div class="admin-panel__empty">Checking who is online…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-grid-head">
+          <div class="admin-section-label" style="margin:0;">Not updated yet · <span id="admin-pending-count">0</span></div>
+          <a href="#" onclick="return false;">Filter list</a>
+        </div>
+        <div class="admin-grid" id="admin-pending-grid"></div>
+      </section>
+
+      <!-- ============ EQUIPOS ============ -->
+      <section class="admin-view" data-admin-view="teams" hidden>
+        <div class="admin-view-head">
+          <div>
+            <h1 class="admin-body__title">Equipos</h1>
+            <p class="admin-body__subtitle" id="admin-teams-subtitle"></p>
+          </div>
+        </div>
+
+        <form id="team-form" class="admin-form">
+          <div class="admin-form__title">Añadir equipo</div>
+          <div class="admin-field">
+            <label for="team-name">Nombre del club</label>
+            <input class="admin-input" id="team-name" placeholder="p. ej. Rentford FC" required>
+          </div>
+          <div class="admin-field">
+            <label for="team-code">Código corto</label>
+            <input class="admin-input" id="team-code" placeholder="p. ej. REN" maxlength="4" required>
+          </div>
+          <div class="admin-field">
+            <label for="team-division">División inicial</label>
+            <select class="admin-select" id="team-division">
+              <option value="">Sin asignar</option>
+              <option value="primera">Primera</option>
+              <option value="segunda">Segunda</option>
+            </select>
+          </div>
+          <div class="admin-field">
+            <label for="team-players">Jugadores</label>
+            <input class="admin-input" id="team-players" type="number" min="0" value="0">
+          </div>
+          <div class="admin-form__actions">
+            <button type="submit" class="btn-admin btn-admin--solid">Añadir equipo</button>
+          </div>
+        </form>
+
+        <div class="table-wrap">
+          <table class="standings" id="teams-table">
+            <thead>
+              <tr>
+                <th>Club</th>
+                <th>Código</th>
+                <th>División</th>
+                <th>Jugadores</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="teams-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ CONTRATOS ============ -->
+      <section class="admin-view" data-admin-view="contracts" hidden>
+        <div class="admin-view-head">
+          <div>
+            <h1 class="admin-body__title">Contratos</h1>
+            <p class="admin-body__subtitle">Discord · Roblox · Temporadas · Precio · Club</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="badge badge--season" id="contracts-season-badge">Temporada 13</span>
+            <button type="button" class="btn-admin" id="advance-season-btn">Avanzar temporada</button>
+          </div>
+        </div>
+
+        <form id="contract-form" class="admin-form">
+          <div class="admin-form__title">Añadir contrato</div>
+          <div class="admin-field">
+            <label for="contract-discord">Usuario de Discord</label>
+            <input class="admin-input" id="contract-discord" placeholder="p. ej. aitor_lorente" required>
+          </div>
+          <div class="admin-field">
+            <label for="contract-roblox">Usuario de Roblox</label>
+            <input class="admin-input" id="contract-roblox" placeholder="p. ej. AitorRBX" required>
+          </div>
+          <div class="admin-field">
+            <label for="contract-seasons">Temporadas</label>
+            <input class="admin-input" id="contract-seasons" type="number" min="1" value="1" required>
+          </div>
+          <div class="admin-field">
+            <label for="contract-price">Precio</label>
+            <input class="admin-input" id="contract-price" type="number" min="0" step="0.01" placeholder="0.00" required>
+          </div>
+          <div class="admin-field">
+            <label for="contract-club">Club</label>
+            <select class="admin-select" id="contract-club" required>
+              <option value="" disabled selected>— Selecciona club —</option>
+            </select>
+          </div>
+          <div class="admin-form__actions">
+            <button type="submit" class="btn-admin btn-admin--solid">Añadir contrato</button>
+          </div>
+          <p class="admin-form__note">El contrato se firma en la temporada actual y se reduce automáticamente cada vez que pulsas «Avanzar temporada». Al llegar a 0 pasa a INACTIVO con la fecha en que terminó.</p>
+        </form>
+
+        <div class="table-wrap">
+          <table class="standings" id="contracts-table">
+            <thead>
+              <tr>
+                <th>Discord</th>
+                <th>Roblox</th>
+                <th>Club</th>
+                <th>Precio</th>
+                <th>Firmado</th>
+                <th>Restan</th>
+                <th>Estado</th>
+                <th>Fin</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="contracts-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ DIVISIONES ============ -->
+      <section class="admin-view" data-admin-view="divisions" hidden>
+        <div class="admin-view-head">
+          <div>
+            <h1 class="admin-body__title">Divisiones</h1>
+            <p class="admin-body__subtitle">Asigna cada equipo a Primera o Segunda división, o quítalo si aún no tiene sitio.</p>
+          </div>
+        </div>
+
+        <div class="division-board">
+          <div class="division-column">
+            <div class="division-column__head"><span>Sin asignar</span><span id="division-count-null">0</span></div>
+            <div class="division-column__body" id="division-list-null"></div>
+          </div>
+          <div class="division-column">
+            <div class="division-column__head"><span>Primera</span><span id="division-count-primera">0</span></div>
+            <div class="division-column__body" id="division-list-primera"></div>
+          </div>
+          <div class="division-column">
+            <div class="division-column__head"><span>Segunda</span><span id="division-count-segunda">0</span></div>
+            <div class="division-column__body" id="division-list-segunda"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
