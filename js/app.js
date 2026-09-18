@@ -88,17 +88,47 @@ document.addEventListener(
         // la sesión por su lado, esto es solo la entrada visual.
         // =================================
 
-        function getDiscordUsername(user) {
+        function getDiscordUsernameCandidates(user) {
 
             const m = user.user_metadata || {};
 
-            return (
-                m.user_name ||
-                m.preferred_username ||
-                (m.custom_claims && m.custom_claims.global_name) ||
-                m.name ||
-                ""
-            ).toString().trim().toLowerCase();
+            const identities = user.identities || [];
+
+            const discordIdentity = identities.filter(
+                (i) => i.provider === "discord"
+            )[0];
+
+            const idData =
+                (discordIdentity && discordIdentity.identity_data) || {};
+
+            return [
+                m.user_name,
+                m.preferred_username,
+                m.name,
+                m.full_name,
+                m.custom_claims && m.custom_claims.global_name,
+                idData.user_name,
+                idData.username,
+                idData.global_name,
+                idData.name,
+                idData.full_name,
+            ]
+                .filter(Boolean)
+                .map((c) => c.toString().trim().toLowerCase());
+        }
+
+
+        function isAdminUser(user) {
+
+            const candidates =
+                getDiscordUsernameCandidates(user);
+
+            console.log(
+                "[IFL] Candidatos de usuario de Discord detectados:",
+                candidates
+            );
+
+            return candidates.indexOf(ADMIN_DISCORD_USERNAME) !== -1;
         }
 
 
@@ -113,7 +143,7 @@ document.addEventListener(
                 document.getElementById("admin-panel-menu-link");
 
             const isAdmin =
-                getDiscordUsername(user) === ADMIN_DISCORD_USERNAME;
+                isAdminUser(user);
 
             if (!isAdmin) {
 
