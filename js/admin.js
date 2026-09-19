@@ -59,6 +59,7 @@
       const raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : fallback;
     } catch (e) {
+      console.warn("[IFL Admin] Error leyendo localStorage:", key, e);
       return fallback;
     }
   }
@@ -733,28 +734,37 @@
       function (e) {
         e.preventDefault();
 
+        const nameEl =
+          document.getElementById("team-name");
+
+        const codeEl =
+          document.getElementById("team-code");
+
+        const divisionEl =
+          document.getElementById("team-division");
+
+        const playersEl =
+          document.getElementById("team-players");
+
         const name =
-          document.getElementById(
-            "team-name"
-          ).value.trim();
+          nameEl
+            ? nameEl.value.trim()
+            : "";
 
         const code =
-          document.getElementById(
-            "team-code"
-          ).value.trim().toUpperCase();
+          codeEl
+            ? codeEl.value.trim().toUpperCase()
+            : "";
 
         const division =
-          document.getElementById(
-            "team-division"
-          ).value || null;
+          divisionEl
+            ? divisionEl.value || null
+            : null;
 
         const players =
-          parseInt(
-            document.getElementById(
-              "team-players"
-            ).value,
-            10
-          ) || 0;
+          playersEl
+            ? parseInt(playersEl.value, 10) || 0
+            : 0;
 
         if (!name || !code) return;
 
@@ -785,13 +795,8 @@
 
         teamForm.reset();
 
-        const playersInput =
-          document.getElementById(
-            "team-players"
-          );
-
-        if (playersInput) {
-          playersInput.value = 0;
+        if (playersEl) {
+          playersEl.value = 0;
         }
 
         renderAll();
@@ -1025,30 +1030,45 @@
       function (e) {
         e.preventDefault();
 
-        const discordUser =
+        const discordEl =
           document.getElementById(
             "contract-discord"
-          ).value.trim();
+          );
 
-        const robloxUser =
+        const robloxEl =
           document.getElementById(
             "contract-roblox"
-          ).value.trim();
+          );
+
+        const seasonsEl =
+          document.getElementById(
+            "contract-seasons"
+          );
+
+        const priceEl =
+          document.getElementById(
+            "contract-price"
+          );
+
+        const discordUser =
+          discordEl
+            ? discordEl.value.trim()
+            : "";
+
+        const robloxUser =
+          robloxEl
+            ? robloxEl.value.trim()
+            : "";
 
         const seasonsTotal =
-          parseInt(
-            document.getElementById(
-              "contract-seasons"
-            ).value,
-            10
-          );
+          seasonsEl
+            ? parseInt(seasonsEl.value, 10)
+            : 0;
 
         const price =
-          parseFloat(
-            document.getElementById(
-              "contract-price"
-            ).value
-          );
+          priceEl
+            ? parseFloat(priceEl.value)
+            : NaN;
 
         const clubCode =
           contractClubSelect
@@ -1270,21 +1290,21 @@
             if (key !== "primera") {
               actions +=
                 '<button type="button" class="btn-admin btn-admin--small" data-assign="' +
-                t.code +
+                escapeHTML(t.code) +
                 '::primera">→ Primera</button>';
             }
 
             if (key !== "segunda") {
               actions +=
                 '<button type="button" class="btn-admin btn-admin--small" data-assign="' +
-                t.code +
+                escapeHTML(t.code) +
                 '::segunda">→ Segunda</button>';
             }
 
             if (key !== "null") {
               actions +=
                 '<button type="button" class="btn-admin btn-admin--small" data-assign="' +
-                t.code +
+                escapeHTML(t.code) +
                 '::null">Quitar</button>';
             }
 
@@ -1475,14 +1495,17 @@
   function hideAllScreens() {
     if (deniedEl) {
       deniedEl.hidden = true;
+      deniedEl.style.display = "none";
     }
 
     if (gateEl) {
       gateEl.hidden = true;
+      gateEl.style.display = "none";
     }
 
     if (appEl) {
       appEl.hidden = true;
+      appEl.style.display = "none";
     }
   }
 
@@ -1491,6 +1514,7 @@
 
     if (deniedEl) {
       deniedEl.hidden = false;
+      deniedEl.style.display = "";
     }
   }
 
@@ -1499,6 +1523,7 @@
 
     if (gateEl) {
       gateEl.hidden = false;
+      gateEl.style.display = "";
     }
 
     const userInput =
@@ -1507,7 +1532,9 @@
       );
 
     if (userInput) {
-      userInput.focus();
+      setTimeout(function () {
+        userInput.focus();
+      }, 50);
     }
   }
 
@@ -1515,8 +1542,6 @@
     console.log(
       "[IFL Admin] Mostrando panel de administración."
     );
-
-    hideAllScreens();
 
     if (!appEl) {
       console.error(
@@ -1526,7 +1551,20 @@
       return;
     }
 
+    if (deniedEl) {
+      deniedEl.hidden = true;
+      deniedEl.style.display = "none";
+    }
+
+    if (gateEl) {
+      gateEl.hidden = true;
+      gateEl.style.display = "none";
+    }
+
     appEl.hidden = false;
+    appEl.style.display = "";
+    appEl.style.visibility = "visible";
+    appEl.style.opacity = "1";
 
     console.log(
       "[IFL Admin] #admin-app visible."
@@ -1546,38 +1584,144 @@
     }
   }
 
+  /* =====================================
+     11.1 DETECCIÓN ROBUSTA DEL DISCORD ID
+  ===================================== */
+
+  function addCandidate(list, value) {
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+      return;
+    }
+
+    const normalized =
+      String(value).trim();
+
+    if (!normalized) return;
+
+    if (!list.includes(normalized)) {
+      list.push(normalized);
+    }
+  }
+
   function getDiscordIdCandidates(user) {
+    const candidates = [];
+
+    if (!user) {
+      return candidates;
+    }
+
     const metadata =
       user.user_metadata || {};
 
-    const identities =
-      user.identities || [];
+    const appMetadata =
+      user.app_metadata || {};
 
-    const discordIdentity =
-      identities.find(
-        function (identity) {
-          return identity.provider === "discord";
-        }
+    const identities =
+      Array.isArray(user.identities)
+        ? user.identities
+        : [];
+
+    /*
+      Algunos proyectos reciben el ID directamente
+      en distintos campos del usuario.
+    */
+
+    addCandidate(
+      candidates,
+      user.discord_id
+    );
+
+    addCandidate(
+      candidates,
+      user.discord_user_id
+    );
+
+    addCandidate(
+      candidates,
+      user.provider_id
+    );
+
+    addCandidate(
+      candidates,
+      metadata.discord_id
+    );
+
+    addCandidate(
+      candidates,
+      metadata.discord_user_id
+    );
+
+    addCandidate(
+      candidates,
+      metadata.provider_id
+    );
+
+    addCandidate(
+      candidates,
+      metadata.sub
+    );
+
+    addCandidate(
+      candidates,
+      appMetadata.discord_id
+    );
+
+    addCandidate(
+      candidates,
+      appMetadata.discord_user_id
+    );
+
+    /*
+      Identidades OAuth de Supabase.
+    */
+
+    identities.forEach(function (identity) {
+      if (!identity) return;
+
+      addCandidate(
+        candidates,
+        identity.provider_id
       );
 
-    const identityData =
-      (
-        discordIdentity &&
-        discordIdentity.identity_data
-      ) || {};
+      const identityData =
+        identity.identity_data || {};
 
-    return [
-      identityData.id,
-      identityData.user_id,
-      identityData.discord_id,
-      metadata.provider_id,
-      metadata.discord_id,
-      metadata.discord_user_id
-    ]
-      .filter(Boolean)
-      .map(function (id) {
-        return String(id).trim();
-      });
+      addCandidate(
+        candidates,
+        identityData.id
+      );
+
+      addCandidate(
+        candidates,
+        identityData.user_id
+      );
+
+      addCandidate(
+        candidates,
+        identityData.discord_id
+      );
+
+      addCandidate(
+        candidates,
+        identityData.discord_user_id
+      );
+
+      addCandidate(
+        candidates,
+        identityData.provider_id
+      );
+
+      addCandidate(
+        candidates,
+        identityData.sub
+      );
+    });
+
+    return candidates;
   }
 
   function isAdminUser(user) {
@@ -1594,9 +1738,17 @@
       ADMIN_DISCORD_ID
     );
 
-    return candidates.includes(
-      String(ADMIN_DISCORD_ID)
+    const authorized =
+      candidates.includes(
+        String(ADMIN_DISCORD_ID)
+      );
+
+    console.log(
+      "[IFL Admin] ¿Discord autorizado?:",
+      authorized
     );
+
+    return authorized;
   }
 
   function paintSidebarUser(user) {
@@ -1624,7 +1776,9 @@
           user.user_metadata.full_name ||
           user.user_metadata.name ||
           user.user_metadata.preferred_username ||
-          user.user_metadata.user_name
+          user.user_metadata.user_name ||
+          user.user_metadata.custom_claims?.global_name ||
+          user.user_metadata.custom_claims?.username
         )
       ) ||
       "Administrador";
@@ -1731,6 +1885,21 @@
           return;
         }
 
+        console.log(
+          "[IFL Admin] Usuario Supabase:",
+          session.user
+        );
+
+        const candidates =
+          getDiscordIdCandidates(
+            session.user
+          );
+
+        console.log(
+          "[IFL Admin] Candidatos finales de Discord:",
+          candidates
+        );
+
         if (
           !isAdminUser(
             session.user
@@ -1787,6 +1956,46 @@
         showDenied();
       });
 
+    /*
+      También comprobamos cambios de sesión.
+      Esto evita que el panel se quede en un estado
+      antiguo si Supabase cambia la sesión.
+    */
+
+    supabaseClient.auth.onAuthStateChange(
+      function (event, session) {
+        console.log(
+          "[IFL Admin] Cambio de sesión:",
+          event
+        );
+
+        if (
+          event === "SIGNED_OUT"
+        ) {
+          try {
+            sessionStorage.removeItem(
+              GATE_SESSION_KEY
+            );
+          } catch (e) {}
+
+          window.location.href =
+            "index.html";
+
+          return;
+        }
+
+        if (
+          event === "SIGNED_IN" &&
+          session &&
+          isAdminUser(session.user)
+        ) {
+          paintSidebarUser(
+            session.user
+          );
+        }
+      }
+    );
+
     const signoutBtn =
       document.getElementById(
         "admin-signout"
@@ -1805,6 +2014,15 @@
           supabaseClient.auth
             .signOut()
             .then(function () {
+              window.location.href =
+                "index.html";
+            })
+            .catch(function (error) {
+              console.error(
+                "[IFL Admin] Error cerrando sesión:",
+                error
+              );
+
               window.location.href =
                 "index.html";
             });
