@@ -1,1 +1,272 @@
+/* =====================================
+   IFL — ESTILOS NUEVOS (Fase 2)
+   Componentes añadidos: modales de partido/estadio,
+   tutorial en carrusel, chips de partido en el
+   calendario, tarjetas de estadio, y utilidades del
+   admin panel (toast, buscador, formulario de resultado).
+   Se carga DESPUÉS de style.css / admin.css.
+===================================== */
 
+/* ---- Modal genérico (partido / estadio) ---- */
+
+.ifl-modal[hidden] { display: none; }
+
+.ifl-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.ifl-modal__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.ifl-modal__box {
+  position: relative;
+  width: min(480px, 100%);
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 28px;
+  background: var(--surface, #0e0e12);
+  border: 1px solid var(--border, #23232b);
+  border-radius: 12px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+
+.ifl-modal__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--white, #fff);
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ifl-modal__close:hover { background: rgba(255, 255, 255, 0.14); }
+
+.ifl-modal__title {
+  margin: 6px 0 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--white, #fff);
+}
+
+.ifl-modal__meta { margin: 0 0 4px; font-size: 13px; color: var(--gray-2, #8b8d96); }
+
+.ifl-modal__score {
+  margin: 12px 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 34px;
+  color: var(--white, #fff);
+}
+
+/* ---- Chips de partido en el calendario ---- */
+
+.match-chip {
+  display: block;
+  width: 100%;
+  margin-bottom: 3px;
+  padding: 3px 6px;
+  background: rgba(88, 101, 242, 0.16);
+  border: 1px solid rgba(88, 101, 242, 0.35);
+  border-radius: 4px;
+  color: var(--white, #fff);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.match-chip:hover { background: rgba(88, 101, 242, 0.3); }
+
+/* ---- Tarjetas de estadio ---- */
+
+.stadiums-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.stadium-card {
+  text-align: left;
+  padding: 16px 18px;
+  background: var(--surface, #0e0e12);
+  border: 1px solid var(--border, #23232b);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.stadium-card:hover { border-color: var(--gray-2, #8b8d96); }
+
+.stadium-card__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--white, #fff);
+  margin-bottom: 4px;
+}
+
+.stadium-card__meta { font-size: 12.5px; color: var(--gray-2, #8b8d96); }
+
+/* ---- Tutorial en carrusel ---- */
+
+.ifl-tutorial[hidden] { display: none; }
+
+.ifl-tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.ifl-tutorial__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+.ifl-tutorial__box {
+  position: relative;
+  width: min(460px, 100%);
+  padding: 34px 30px 28px;
+  background: var(--surface, #0e0e12);
+  border: 1px solid var(--border, #23232b);
+  border-radius: 14px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+
+.ifl-tutorial__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--white, #fff);
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.ifl-tutorial__icon { font-size: 40px; margin-bottom: 10px; }
+
+.ifl-tutorial__title {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--white, #fff);
+}
+
+.ifl-tutorial__body {
+  margin: 0 0 22px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--gray-2, #8b8d96);
+}
+
+.ifl-tutorial__dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.ifl-tutorial__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.ifl-tutorial__dot.is-active { background: var(--accent, #5865f2); }
+
+.ifl-tutorial__nav {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* ---- Admin: notificación flotante (toast) ---- */
+
+.admin-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  z-index: 99999;
+  padding: 10px 20px;
+  background: rgba(20, 20, 26, 0.96);
+  border: 1px solid var(--border, #23232b);
+  border-radius: 8px;
+  color: var(--white, #fff);
+  font-size: 13.5px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.admin-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.admin-toast--error { border-color: rgba(239, 68, 68, 0.5); color: #ff8787; }
+
+/* ---- Admin: resultados de búsqueda flotantes ---- */
+
+.admin-search-results {
+  position: absolute;
+  z-index: 20;
+  margin-top: 4px;
+  width: 100%;
+  max-height: 260px;
+  overflow-y: auto;
+  background: rgba(14, 14, 18, 0.98);
+  border: 1px solid var(--border, #23232b);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.admin-field, .admin-top__search { position: relative; }
+
+/* ---- Admin: formulario de resultado (eventos del partido) ---- */
+
+.result-events { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 14px; }
+
+.result-event-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 720px) {
+  .result-event-row { grid-template-columns: 1fr; }
+}
