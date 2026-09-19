@@ -1538,6 +1538,46 @@
     }
   }
 
+     /* =====================================
+     11.0 BIENVENIDA DEL ADMIN
+  ===================================== */
+
+  function showAdminWelcome() {
+    const welcome =
+      document.getElementById("admin-welcome");
+
+    const closeButton =
+      document.getElementById("admin-welcome-close");
+
+    if (!welcome || !closeButton) {
+      return;
+    }
+
+    const alreadySeen =
+      localStorage.getItem(
+        "ifl-admin-welcome-seen"
+      ) === "1";
+
+    if (alreadySeen) {
+      return;
+    }
+
+    welcome.hidden = false;
+
+    closeButton.addEventListener(
+      "click",
+      function () {
+        localStorage.setItem(
+          "ifl-admin-welcome-seen",
+          "1"
+        );
+
+        welcome.hidden = true;
+      },
+      { once: true }
+    );
+  }
+   
   function showPanel() {
     console.log(
       "[IFL Admin] Mostrando panel de administración."
