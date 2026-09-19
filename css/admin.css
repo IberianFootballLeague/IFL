@@ -991,3 +991,127 @@
   .admin-top { padding: 12px 18px; flex-wrap: wrap; }
   .admin-body { padding: 24px 18px 48px; }
 }
+
+/* =====================================
+   BIENVENIDA DEL PANEL ADMIN
+===================================== */
+
+.admin-welcome[hidden] {
+  display: none !important;
+}
+
+.admin-welcome {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.admin-welcome__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+.admin-welcome__modal {
+  position: relative;
+  width: min(680px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 32px;
+  background: var(--surface, #16161c);
+  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border-radius: 14px;
+  box-shadow: 0 25px 80px rgba(0,0,0,.5);
+}
+
+.admin-welcome__badge {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 5px 9px;
+  border-radius: 5px;
+  background: rgba(255,255,255,.08);
+  color: var(--gray-2, #aaa);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.admin-welcome__modal h2 {
+  margin: 0 0 10px;
+  color: var(--white, #fff);
+  font-size: 25px;
+}
+
+.admin-welcome__modal > p {
+  margin: 0;
+  color: var(--gray-2, #aaa);
+  line-height: 1.6;
+}
+
+.admin-welcome__items {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 24px 0 14px;
+}
+
+.admin-welcome__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 15px;
+  background: rgba(255,255,255,.035);
+  border: 1px solid var(--border, rgba(255,255,255,.08));
+  border-radius: 8px;
+}
+
+.admin-welcome__item strong {
+  color: var(--white, #fff);
+  font-size: 13px;
+}
+
+.admin-welcome__item span {
+  color: var(--gray-3, #777);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.admin-welcome__warning {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 20px;
+  padding: 13px;
+  border: 1px solid rgba(255,180,0,.2);
+  border-radius: 8px;
+  background: rgba(255,180,0,.06);
+}
+
+.admin-welcome__warning strong {
+  font-size: 12px;
+}
+
+.admin-welcome__warning span {
+  color: var(--gray-2, #aaa);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .admin-welcome {
+    padding: 14px;
+  }
+
+  .admin-welcome__modal {
+    padding: 22px;
+  }
+
+  .admin-welcome__items {
+    grid-template-columns: 1fr;
+  }
+}
