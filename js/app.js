@@ -8,7 +8,6 @@ const SUPABASE_URL =
 const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_C_iRhldD-coePRVqcNDCGA_oGIA1u3d";
 
-
 const supabaseClient =
     supabase.createClient(
         SUPABASE_URL,
@@ -16,10 +15,14 @@ const supabaseClient =
     );
 
 
-// Discord al que se le muestra el acceso al Admin Panel.
-// El panel (admin.html) vuelve a comprobar esto por su cuenta,
-// así que esto solo controla si el enlace se ve o no.
-const ADMIN_DISCORD_USERNAME = "aitor_lorente";
+// =====================================
+// ADMIN
+// =====================================
+
+// El mismo Discord ID que utiliza admin.js.
+// Este archivo solo controla si aparece el enlace.
+// admin.html hace la comprobación real de acceso.
+const ADMIN_DISCORD_ID = "1149380955316957266";
 
 
 // =====================================
@@ -39,6 +42,13 @@ document.addEventListener(
         const discordButton =
             document.getElementById("discord-login");
 
+        if (!loginPage || !appPage || !discordButton) {
+            console.error(
+                "[IFL] No se encontraron los elementos principales de la aplicación."
+            );
+            return;
+        }
+
         // Solo el texto: así el icono de Discord no se borra
         // al cambiar el botón a "Conectando...".
         const discordLabel =
@@ -50,7 +60,6 @@ document.addEventListener(
         const userInfo =
             document.getElementById("user-info");
 
-
         function setDiscordLabel(text) {
 
             if (discordLabel) {
@@ -58,6 +67,7 @@ document.addEventListener(
             } else {
                 discordButton.textContent = text;
             }
+
         }
 
 
@@ -68,8 +78,8 @@ document.addEventListener(
         function showLogin() {
 
             loginPage.style.display = "flex";
-
             appPage.style.display = "none";
+
         }
 
 
@@ -81,97 +91,264 @@ document.addEventListener(
 
 
         // =================================
-        // MENÚ DE PERFIL: enlace "Admin Panel"
-        // Solo se inyecta si el usuario de Discord conectado
-        // (el nombre de usuario, no el nombre visible) es
-        // ADMIN_DISCORD_USERNAME. admin.html vuelve a comprobar
-        // la sesión por su lado, esto es solo la entrada visual.
+        // DISCORD ID
         // =================================
 
-        function getDiscordUsernameCandidates(user) {
+        function addCandidate(list, value) {
 
-            const m = user.user_metadata || {};
+            if (
+                value === undefined ||
+                value === null
+            ) {
+                return;
+            }
 
-            const identities = user.identities || [];
+            const valueString =
+                String(value).trim();
 
-            const discordIdentity = identities.filter(
-                (i) => i.provider === "discord"
-            )[0];
+            if (!valueString) {
+                return;
+            }
 
-            const idData =
-                (discordIdentity && discordIdentity.identity_data) || {};
+            if (!list.includes(valueString)) {
+                list.push(valueString);
+            }
 
-            return [
-                m.user_name,
-                m.preferred_username,
-                m.name,
-                m.full_name,
-                m.custom_claims && m.custom_claims.global_name,
-                idData.user_name,
-                idData.username,
-                idData.global_name,
-                idData.name,
-                idData.full_name,
-            ]
-                .filter(Boolean)
-                .map((c) => c.toString().trim().toLowerCase());
+        }
+
+
+        function getDiscordIdCandidates(user) {
+
+            const candidates = [];
+
+            if (!user) {
+                return candidates;
+            }
+
+            const metadata =
+                user.user_metadata || {};
+
+            const appMetadata =
+                user.app_metadata || {};
+
+            const identities =
+                Array.isArray(user.identities)
+                    ? user.identities
+                    : [];
+
+
+            // Campos directos de Supabase
+            addCandidate(
+                candidates,
+                user.discord_id
+            );
+
+            addCandidate(
+                candidates,
+                user.discord_user_id
+            );
+
+            addCandidate(
+                candidates,
+                user.provider_id
+            );
+
+
+            // user_metadata
+            addCandidate(
+                candidates,
+                metadata.discord_id
+            );
+
+            addCandidate(
+                candidates,
+                metadata.discord_user_id
+            );
+
+            addCandidate(
+                candidates,
+                metadata.provider_id
+            );
+
+            addCandidate(
+                candidates,
+                metadata.sub
+            );
+
+
+            // app_metadata
+            addCandidate(
+                candidates,
+                appMetadata.discord_id
+            );
+
+            addCandidate(
+                candidates,
+                appMetadata.discord_user_id
+            );
+
+            addCandidate(
+                candidates,
+                appMetadata.provider_id
+            );
+
+
+            // Identidades OAuth
+            identities.forEach(
+                (identity) => {
+
+                    if (!identity) {
+                        return;
+                    }
+
+                    addCandidate(
+                        candidates,
+                        identity.provider_id
+                    );
+
+                    const identityData =
+                        identity.identity_data || {};
+
+                    addCandidate(
+                        candidates,
+                        identityData.id
+                    );
+
+                    addCandidate(
+                        candidates,
+                        identityData.user_id
+                    );
+
+                    addCandidate(
+                        candidates,
+                        identityData.discord_id
+                    );
+
+                    addCandidate(
+                        candidates,
+                        identityData.discord_user_id
+                    );
+
+                    addCandidate(
+                        candidates,
+                        identityData.provider_id
+                    );
+
+                    addCandidate(
+                        candidates,
+                        identityData.sub
+                    );
+
+                }
+            );
+
+
+            return candidates;
+
         }
 
 
         function isAdminUser(user) {
 
             const candidates =
-                getDiscordUsernameCandidates(user);
+                getDiscordIdCandidates(user);
 
             console.log(
-                "[IFL] Candidatos de usuario de Discord detectados:",
+                "[IFL] Discord IDs detectados:",
                 candidates
             );
 
-            return candidates.indexOf(ADMIN_DISCORD_USERNAME) !== -1;
+            console.log(
+                "[IFL] Discord ID autorizado:",
+                ADMIN_DISCORD_ID
+            );
+
+            return candidates.includes(
+                ADMIN_DISCORD_ID
+            );
+
         }
 
+
+        // =================================
+        // ENLACE ADMIN PANEL
+        // =================================
 
         function ensureAdminPanelLink(user) {
 
             const profileMenu =
                 document.getElementById("profile-menu");
 
-            if (!profileMenu) return;
+            if (!profileMenu) {
+                return;
+            }
+
 
             const existing =
-                document.getElementById("admin-panel-menu-link");
+                document.getElementById(
+                    "admin-panel-menu-link"
+                );
+
 
             const isAdmin =
                 isAdminUser(user);
 
+
             if (!isAdmin) {
 
-                if (existing) existing.remove();
+                if (existing) {
+                    existing.remove();
+                }
 
+                return;
+
+            }
+
+
+            if (existing) {
                 return;
             }
 
-            if (existing) return;
 
             const link =
                 document.createElement("a");
 
-            link.id = "admin-panel-menu-link";
-            link.href = "admin.html";
-            link.className = "profile-menu__item";
-            link.textContent = "Admin Panel";
+            link.id =
+                "admin-panel-menu-link";
 
-            // Se coloca justo antes del botón de cerrar sesión
-            // si existe; si no, al final del menú.
+            link.href =
+                "admin.html";
+
+            link.className =
+                "profile-menu__item";
+
+            link.textContent =
+                "Admin Panel";
+
+
+            // Se coloca justo antes del botón
+            // de cerrar sesión si existe.
             const logoutItem =
-                profileMenu.querySelector(".profile-menu__item--danger");
+                profileMenu.querySelector(
+                    ".profile-menu__item--danger"
+                );
+
 
             if (logoutItem) {
-                profileMenu.insertBefore(link, logoutItem);
+
+                profileMenu.insertBefore(
+                    link,
+                    logoutItem
+                );
+
             } else {
-                profileMenu.appendChild(link);
+
+                profileMenu.appendChild(
+                    link
+                );
+
             }
+
         }
 
 
@@ -181,9 +358,11 @@ document.addEventListener(
 
         function showApp(user) {
 
-            loginPage.style.display = "none";
+            loginPage.style.display =
+                "none";
 
-            appPage.style.display = "block";
+            appPage.style.display =
+                "block";
 
 
             const discordName =
@@ -194,44 +373,89 @@ document.addEventListener(
                 "Usuario de Discord";
 
 
-            userInfo.textContent =
-                "Sesión iniciada como " +
-                discordName;
+            if (userInfo) {
+
+                userInfo.textContent =
+                    "Sesión iniciada como " +
+                    discordName;
+
+            }
 
 
             const avatarUrl =
                 user.user_metadata?.avatar_url ||
                 user.user_metadata?.picture;
 
-            if (avatarUrl && userAvatar) {
 
-                userAvatar.src = avatarUrl;
-                userAvatar.alt = discordName;
-                userAvatar.hidden = false;
+            if (
+                avatarUrl &&
+                userAvatar
+            ) {
+
+                userAvatar.src =
+                    avatarUrl;
+
+                userAvatar.alt =
+                    discordName;
+
+                userAvatar.hidden =
+                    false;
+
 
                 if (userAvatarFallback) {
-                    userAvatarFallback.hidden = true;
+
+                    userAvatarFallback.hidden =
+                        true;
+
                 }
 
-                userAvatar.onerror = () => {
-                    userAvatar.hidden = true;
-                    if (userAvatarFallback) {
-                        userAvatarFallback.textContent =
-                            discordName.charAt(0).toUpperCase();
-                        userAvatarFallback.hidden = false;
-                    }
-                };
 
-            } else if (userAvatarFallback) {
+                userAvatar.onerror =
+                    () => {
+
+                        userAvatar.hidden =
+                            true;
+
+                        if (userAvatarFallback) {
+
+                            userAvatarFallback.textContent =
+                                discordName
+                                    .charAt(0)
+                                    .toUpperCase();
+
+                            userAvatarFallback.hidden =
+                                false;
+
+                        }
+
+                    };
+
+
+            } else if (
+                userAvatarFallback
+            ) {
 
                 userAvatarFallback.textContent =
-                    discordName.charAt(0).toUpperCase();
-                userAvatarFallback.hidden = false;
+                    discordName
+                        .charAt(0)
+                        .toUpperCase();
 
-                if (userAvatar) userAvatar.hidden = true;
+                userAvatarFallback.hidden =
+                    false;
+
+
+                if (userAvatar) {
+
+                    userAvatar.hidden =
+                        true;
+
+                }
+
             }
 
+
             ensureAdminPanelLink(user);
+
         }
 
 
@@ -249,7 +473,7 @@ document.addEventListener(
         if (sessionError) {
 
             console.error(
-                "Error comprobando la sesión:",
+                "[IFL] Error comprobando la sesión:",
                 sessionError
             );
 
@@ -260,7 +484,7 @@ document.addEventListener(
         else if (session) {
 
             console.log(
-                "Sesión encontrada:",
+                "[IFL] Sesión encontrada:",
                 session.user
             );
 
@@ -273,6 +497,7 @@ document.addEventListener(
         else {
 
             showLogin();
+
         }
 
 
@@ -284,9 +509,12 @@ document.addEventListener(
             "click",
             async () => {
 
-                discordButton.disabled = true;
+                discordButton.disabled =
+                    true;
 
-                setDiscordLabel("Conectando...");
+                setDiscordLabel(
+                    "Conectando..."
+                );
 
 
                 const { error } =
@@ -294,7 +522,8 @@ document.addEventListener(
                         .auth
                         .signInWithOAuth({
 
-                            provider: "discord",
+                            provider:
+                                "discord",
 
                             options: {
 
@@ -309,7 +538,7 @@ document.addEventListener(
                 if (error) {
 
                     console.error(
-                        "Error iniciando sesión con Discord:",
+                        "[IFL] Error iniciando sesión con Discord:",
                         error
                     );
 
@@ -323,7 +552,10 @@ document.addEventListener(
                     discordButton.disabled =
                         false;
 
-                    setDiscordLabel("Iniciar sesión con Discord");
+                    setDiscordLabel(
+                        "Iniciar sesión con Discord"
+                    );
+
                 }
 
             }
@@ -335,10 +567,13 @@ document.addEventListener(
         // =================================
 
         supabaseClient.auth.onAuthStateChange(
-            (event, session) => {
+            (
+                event,
+                session
+            ) => {
 
                 console.log(
-                    "Cambio de sesión:",
+                    "[IFL] Cambio de sesión:",
                     event
                 );
 
@@ -349,9 +584,7 @@ document.addEventListener(
                         session.user
                     );
 
-                }
-
-                else {
+                } else {
 
                     showLogin();
 
@@ -365,31 +598,36 @@ document.addEventListener(
         // LOGOUT
         // =================================
 
-        logoutButton.addEventListener(
-            "click",
-            async () => {
+        if (logoutButton) {
 
-                const { error } =
-                    await supabaseClient
-                        .auth
-                        .signOut();
+            logoutButton.addEventListener(
+                "click",
+                async () => {
+
+                    const { error } =
+                        await supabaseClient
+                            .auth
+                            .signOut();
 
 
-                if (error) {
+                    if (error) {
 
-                    console.error(
-                        "Error cerrando sesión:",
-                        error
-                    );
+                        console.error(
+                            "[IFL] Error cerrando sesión:",
+                            error
+                        );
 
-                    return;
+                        return;
+
+                    }
+
+
+                    showLogin();
+
                 }
+            );
 
-
-                showLogin();
-
-            }
-        );
+        }
 
 
         // =================================
@@ -397,51 +635,82 @@ document.addEventListener(
         // =================================
 
         const navLinks =
-            document.querySelectorAll(".app-header__link");
+            document.querySelectorAll(
+                ".app-header__link"
+            );
 
         const views =
-            document.querySelectorAll(".view");
+            document.querySelectorAll(
+                ".view"
+            );
+
 
         function showView(name) {
 
-            views.forEach((section) => {
+            views.forEach(
+                (section) => {
 
-                section.hidden =
-                    section.dataset.viewPanel !== name;
+                    section.hidden =
+                        section.dataset.viewPanel !==
+                        name;
 
-            });
+                }
+            );
 
-            navLinks.forEach((link) => {
 
-                link.classList.toggle(
-                    "is-active",
-                    link.dataset.view === name
-                );
+            navLinks.forEach(
+                (link) => {
 
-            });
+                    link.classList.toggle(
+                        "is-active",
+                        link.dataset.view ===
+                        name
+                    );
 
-            if (name === "calendario") {
+                }
+            );
+
+
+            if (
+                name ===
+                "calendario"
+            ) {
 
                 renderCalendar();
+
             }
 
-            if (name === "clasificacion") {
+
+            if (
+                name ===
+                "clasificacion"
+            ) {
 
                 renderStandings();
+
             }
+
         }
 
-        navLinks.forEach((link) => {
 
-            link.addEventListener("click", (event) => {
+        navLinks.forEach(
+            (link) => {
 
-                event.preventDefault();
+                link.addEventListener(
+                    "click",
+                    (event) => {
 
-                showView(link.dataset.view);
+                        event.preventDefault();
 
-            });
+                        showView(
+                            link.dataset.view
+                        );
 
-        });
+                    }
+                );
+
+            }
+        );
 
 
         // =================================
@@ -449,103 +718,239 @@ document.addEventListener(
         // =================================
 
         const calGrid =
-            document.getElementById("calendar-grid");
+            document.getElementById(
+                "calendar-grid"
+            );
 
         const calLabel =
-            document.getElementById("cal-label");
+            document.getElementById(
+                "cal-label"
+            );
 
         const calPrev =
-            document.getElementById("cal-prev");
+            document.getElementById(
+                "cal-prev"
+            );
 
         const calNext =
-            document.getElementById("cal-next");
+            document.getElementById(
+                "cal-next"
+            );
+
 
         const monthNames = [
-            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+            "Enero",
+            "Febrero",
+            "Marzo",
+            "Abril",
+            "Mayo",
+            "Junio",
+            "Julio",
+            "Agosto",
+            "Septiembre",
+            "Octubre",
+            "Noviembre",
+            "Diciembre"
         ];
 
-        let calDate = new Date();
+
+        let calDate =
+            new Date();
+
         calDate.setDate(1);
+
 
         function renderCalendar() {
 
-            if (!calGrid) return;
+            if (!calGrid) {
+                return;
+            }
 
-            calGrid.innerHTML = "";
 
-            const year = calDate.getFullYear();
-            const month = calDate.getMonth();
+            calGrid.innerHTML =
+                "";
 
-            calLabel.textContent =
-                monthNames[month] + " " + year;
 
-            const firstDay = new Date(year, month, 1);
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const year =
+                calDate.getFullYear();
+
+            const month =
+                calDate.getMonth();
+
+
+            if (calLabel) {
+
+                calLabel.textContent =
+                    monthNames[month] +
+                    " " +
+                    year;
+
+            }
+
+
+            const firstDay =
+                new Date(
+                    year,
+                    month,
+                    1
+                );
+
+
+            const daysInMonth =
+                new Date(
+                    year,
+                    month + 1,
+                    0
+                ).getDate();
+
 
             // Lunes = 0 ... Domingo = 6
-            let startWeekday = firstDay.getDay() - 1;
-            if (startWeekday < 0) startWeekday = 6;
+            let startWeekday =
+                firstDay.getDay() - 1;
+
+
+            if (startWeekday < 0) {
+                startWeekday = 6;
+            }
+
 
             const totalCells =
-                Math.ceil((startWeekday + daysInMonth) / 7) * 7;
+                Math.ceil(
+                    (
+                        startWeekday +
+                        daysInMonth
+                    ) / 7
+                ) * 7;
 
-            const today = new Date();
+
+            const today =
+                new Date();
+
+
             const isCurrentMonth =
-                today.getFullYear() === year &&
-                today.getMonth() === month;
+                today.getFullYear() ===
+                    year &&
+                today.getMonth() ===
+                    month;
 
-            for (let i = 0; i < totalCells; i++) {
 
-                const dayNumber = i - startWeekday + 1;
+            for (
+                let i = 0;
+                i < totalCells;
+                i++
+            ) {
 
-                const cell = document.createElement("div");
-                cell.className = "calendar-cell";
+                const dayNumber =
+                    i -
+                    startWeekday +
+                    1;
 
-                if (dayNumber < 1 || dayNumber > daysInMonth) {
 
-                    cell.classList.add("calendar-cell--empty");
+                const cell =
+                    document.createElement(
+                        "div"
+                    );
 
-                } else {
+                cell.className =
+                    "calendar-cell";
 
-                    if (isCurrentMonth && dayNumber === today.getDate()) {
 
-                        cell.classList.add("calendar-cell--today");
+                if (
+                    dayNumber < 1 ||
+                    dayNumber >
+                        daysInMonth
+                ) {
+
+                    cell.classList.add(
+                        "calendar-cell--empty"
+                    );
+
+                }
+
+                else {
+
+                    if (
+                        isCurrentMonth &&
+                        dayNumber ===
+                            today.getDate()
+                    ) {
+
+                        cell.classList.add(
+                            "calendar-cell--today"
+                        );
+
                     }
 
-                    const num = document.createElement("span");
-                    num.className = "calendar-cell__num";
-                    num.textContent = dayNumber;
 
-                    const slot = document.createElement("div");
-                    slot.className = "calendar-cell__slot";
+                    const num =
+                        document.createElement(
+                            "span"
+                        );
+
+                    num.className =
+                        "calendar-cell__num";
+
+                    num.textContent =
+                        dayNumber;
+
+
+                    const slot =
+                        document.createElement(
+                            "div"
+                        );
+
+                    slot.className =
+                        "calendar-cell__slot";
+
 
                     cell.appendChild(num);
                     cell.appendChild(slot);
+
                 }
 
-                calGrid.appendChild(cell);
+
+                calGrid.appendChild(
+                    cell
+                );
+
             }
+
         }
+
 
         if (calPrev) {
 
-            calPrev.addEventListener("click", () => {
+            calPrev.addEventListener(
+                "click",
+                () => {
 
-                calDate.setMonth(calDate.getMonth() - 1);
-                renderCalendar();
+                    calDate.setMonth(
+                        calDate.getMonth() - 1
+                    );
 
-            });
+                    renderCalendar();
+
+                }
+            );
+
         }
+
 
         if (calNext) {
 
-            calNext.addEventListener("click", () => {
+            calNext.addEventListener(
+                "click",
+                () => {
 
-                calDate.setMonth(calDate.getMonth() + 1);
-                renderCalendar();
+                    calDate.setMonth(
+                        calDate.getMonth() + 1
+                    );
 
-            });
+                    renderCalendar();
+
+                }
+            );
+
         }
 
 
@@ -553,13 +958,24 @@ document.addEventListener(
         // CLASIFICACIÓN
         // =================================
 
-        function buildStandingsTable(tableEl, teamCount) {
+        function buildStandingsTable(
+            tableEl,
+            teamCount
+        ) {
 
-            if (!tableEl) return;
+            if (!tableEl) {
+                return;
+            }
+
 
             let rows = "";
 
-            for (let i = 1; i <= teamCount; i++) {
+
+            for (
+                let i = 1;
+                i <= teamCount;
+                i++
+            ) {
 
                 rows += `
                     <tr>
@@ -573,7 +989,9 @@ document.addEventListener(
                         <td>0</td>
                     </tr>
                 `;
+
             }
+
 
             tableEl.innerHTML = `
                 <thead>
@@ -592,20 +1010,29 @@ document.addEventListener(
                     ${rows}
                 </tbody>
             `;
+
         }
+
 
         function renderStandings() {
 
             buildStandingsTable(
-                document.getElementById("standings-primera"),
+                document.getElementById(
+                    "standings-primera"
+                ),
                 8
             );
 
+
             buildStandingsTable(
-                document.getElementById("standings-segunda"),
+                document.getElementById(
+                    "standings-segunda"
+                ),
                 8
             );
+
         }
+
 
     }
 );
