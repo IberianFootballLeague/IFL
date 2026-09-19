@@ -66,6 +66,68 @@
 ===================================== -->
 <div id="admin-app" class="admin" hidden>
 
+     <div id="admin-welcome" class="admin-welcome" hidden>
+  <div class="admin-welcome__overlay"></div>
+
+  <div class="admin-welcome__modal">
+    <span class="admin-welcome__badge">IFL ADMIN</span>
+
+    <h2>Bienvenido al panel de administración</h2>
+
+    <p>
+      Desde aquí puedes gestionar los principales datos administrativos
+      de la Iberian Football League.
+    </p>
+
+    <div class="admin-welcome__items">
+      <div class="admin-welcome__item">
+        <strong>🏟️ Equipos</strong>
+        <span>
+          Añade equipos, consulta sus datos y administra sus divisiones.
+        </span>
+      </div>
+
+      <div class="admin-welcome__item">
+        <strong>📋 Contratos</strong>
+        <span>
+          Registra contratos, clubes, precios y temporadas.
+        </span>
+      </div>
+
+      <div class="admin-welcome__item">
+        <strong>🏆 Divisiones</strong>
+        <span>
+          Organiza los clubes entre Primera, Segunda o Sin asignar.
+        </span>
+      </div>
+
+      <div class="admin-welcome__item">
+        <strong>📊 Resumen</strong>
+        <span>
+          Consulta rápidamente equipos, jugadores, contratos y elementos
+          pendientes.
+        </span>
+      </div>
+    </div>
+
+    <div class="admin-welcome__warning">
+      <strong>Importante</strong>
+      <span>
+        Revisa los cambios antes de guardarlos. Los datos administrativos
+        actuales se almacenan localmente en este navegador.
+      </span>
+    </div>
+
+    <button
+      id="admin-welcome-close"
+      type="button"
+      class="btn-admin btn-admin--solid"
+    >
+      Entendido, entrar al panel
+    </button>
+  </div>
+</div>
+     
   <aside class="admin-side">
     <div class="admin-side__brand">
       <img src="images/IFL_Logo.png" alt="IFL" class="admin-side__logo" onerror="this.style.display='none'">
