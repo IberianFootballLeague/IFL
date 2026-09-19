@@ -1,220 +1,107 @@
 /* =====================================
-   IFL — PANEL DE ADMINISTRACIÓN
-   - Acceso: solo el Discord ID autorizado
-   - Puerta interna: usuario/contraseña "AdminPanel"
-   - Equipos, Contratos (con temporadas) y Divisiones
-     se guardan en localStorage porque todavía no hay
-     tablas para esto en Supabase.
+   IFL — PANEL DE ADMINISTRACIÓN (Supabase real)
+   Requiere js/ifl-db.js cargado antes de este archivo.
 ===================================== */
 
 (function () {
   "use strict";
 
-  /* =====================================
-     0. CONFIGURACIÓN DE ACCESO
-  ===================================== */
-
+  const db = window.IFLDB;
   const ADMIN_DISCORD_ID = "1149380955316957266";
 
   const GATE_USER = "AdminPanel";
   const GATE_PASS = "ifl.oficial.admins";
   const GATE_SESSION_KEY = "ifl-admin-gate-ok";
+  const GATE_FAILS_KEY = "ifl-admin-gate-fails";
+  const CAPTCHA_THRESHOLD = 3;
 
-  /* =====================================
-     1. DATOS DE EJEMPLO
-  ===================================== */
+  const CURRENT_SEASON_FALLBACK = 1;
 
-  const SAMPLE_CLUBS = [
-    { code: "P1", name: "Club P1", division: "primera", players: 24, status: "up", updated: "4 m" },
-    { code: "P2", name: "Club P2", division: "primera", players: 22, status: "up", updated: "1 h" },
-    { code: "P3", name: "Club P3", division: "primera", players: 25, status: "up", updated: "1 h" },
-    { code: "P4", name: "Club P4", division: "primera", players: 21, status: "up", updated: "1 h" },
-    { code: "P5", name: "Club P5", division: "primera", players: 23, status: "pending", manager: false },
-    { code: "P6", name: "Club P6", division: "primera", players: 20, status: "pending", manager: false },
-    { code: "P7", name: "Club P7", division: "primera", players: 24, status: "up", updated: "2 h" },
-    { code: "P8", name: "Club P8", division: "primera", players: 22, status: "pending", manager: true },
-    { code: "S1", name: "Club S1", division: "segunda", players: 24, status: "up", updated: "3 h" },
-    { code: "S2", name: "Club S2", division: "segunda", players: 23, status: "up", updated: "3 h" },
-    { code: "S3", name: "Club S3", division: "segunda", players: 25, status: "pending", manager: false },
-    { code: "S4", name: "Club S4", division: "segunda", players: 24, status: "pending", manager: false },
-    { code: "S5", name: "Club S5", division: "segunda", players: 21, status: "pending", manager: true },
-    { code: "S6", name: "Club S6", division: "segunda", players: 26, status: "up", updated: "5 h" },
-    { code: "S7", name: "Club S7", division: "segunda", players: 22, status: "pending", manager: false },
-    { code: "S8", name: "Club S8", division: "segunda", players: 23, status: "pending", manager: true }
-  ];
+  // =====================================
+  // ESTADO EN MEMORIA (se recarga de Supabase)
+  // =====================================
 
-  /* =====================================
-     2. ALMACENAMIENTO LOCAL
-  ===================================== */
-
-  const STORAGE = {
-    teams: "ifl-admin-teams",
-    overrides: "ifl-admin-team-overrides",
-    contracts: "ifl-admin-contracts",
-    season: "ifl-admin-season"
+  const state = {
+    teams: [],
+    stadiums: [],
+    contracts: [],
+    matches: [],
+    admins: [],
+    season: CURRENT_SEASON_FALLBACK,
+    isSuperAdmin: false,
+    currentDiscordId: null,
+    currentDiscordName: null,
   };
 
-  function loadJSON(key, fallback) {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (e) {
-      console.warn("[IFL Admin] Error leyendo localStorage:", key, e);
-      return fallback;
-    }
-  }
+  // =====================================
+  // UTILIDADES
+  // =====================================
 
-  function saveJSON(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch (e) {
-      console.warn("[IFL Admin] No se pudo guardar:", key, e);
-    }
-  }
-
-  function loadCustomTeams() {
-    return loadJSON(STORAGE.teams, []);
-  }
-
-  function saveCustomTeams(list) {
-    saveJSON(STORAGE.teams, list);
-  }
-
-  function loadOverrides() {
-    return loadJSON(STORAGE.overrides, {});
-  }
-
-  function saveOverrides(obj) {
-    saveJSON(STORAGE.overrides, obj);
-  }
-
-  function loadContracts() {
-    return loadJSON(STORAGE.contracts, []);
-  }
-
-  function saveContracts(list) {
-    saveJSON(STORAGE.contracts, list);
-  }
-
-  function loadSeason() {
-    return loadJSON(STORAGE.season, 13);
-  }
-
-  function saveSeason(n) {
-    saveJSON(STORAGE.season, n);
-  }
-
-  function allTeams() {
-    const overrides = loadOverrides();
-
-    const base = SAMPLE_CLUBS.map(function (c) {
-      const ov = overrides[c.code];
-
-      return ov
-        ? Object.assign({}, c, ov)
-        : Object.assign({}, c);
-    });
-
-    const custom = loadCustomTeams();
-
-    return base.concat(custom);
-  }
-
-  function findTeam(code) {
-    return allTeams().filter(function (t) {
-      return t.code === code;
-    })[0] || null;
-  }
-
-  function isCustomTeam(code) {
-    return loadCustomTeams().some(function (t) {
-      return t.code === code;
-    });
-  }
-
-  function setTeamDivision(code, division) {
-    if (isCustomTeam(code)) {
-      const custom = loadCustomTeams();
-
-      custom.forEach(function (t) {
-        if (t.code === code) {
-          t.division = division;
-        }
-      });
-
-      saveCustomTeams(custom);
-    } else {
-      const overrides = loadOverrides();
-
-      overrides[code] = Object.assign(
-        {},
-        overrides[code],
-        { division: division }
-      );
-
-      saveOverrides(overrides);
-    }
-  }
-
-  function deleteCustomTeam(code) {
-    saveCustomTeams(
-      loadCustomTeams().filter(function (t) {
-        return t.code !== code;
-      })
-    );
-
-    const overrides = loadOverrides();
-
-    delete overrides[code];
-
-    saveOverrides(overrides);
-  }
-
-  function divisionLabel(div) {
-    if (div === "primera") return "Primera";
-    if (div === "segunda") return "Segunda";
-
-    return "Sin asignar";
+  function escapeHTML(str) {
+    return String(str == null ? "" : str).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
   }
 
   function formatDate(iso) {
     if (!iso) return "—";
-
     try {
-      return new Date(iso).toLocaleDateString(
-        "es-ES",
-        {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric"
-        }
-      );
+      return new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
     } catch (e) {
       return "—";
     }
   }
 
-  function escapeHTML(str) {
-    return String(str == null ? "" : str).replace(
-      /[&<>"']/g,
-      function (c) {
-        return {
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;"
-        }[c];
-      }
-    );
+  function formatDateTime(iso) {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" });
+    } catch (e) {
+      return "—";
+    }
   }
 
-  /* =====================================
-     3. ELEMENTOS
-  ===================================== */
+  function divisionLabel(div) {
+    if (div === "primera") return "Primera";
+    if (div === "segunda") return "Segunda";
+    return "Sin asignar";
+  }
+
+  function toast(message, isError) {
+    let el = document.getElementById("admin-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "admin-toast";
+      el.className = "admin-toast";
+      document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.classList.toggle("admin-toast--error", !!isError);
+    el.classList.add("is-visible");
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove("is-visible"), 3200);
+  }
+
+  async function withBusy(button, fn) {
+    const original = button ? button.textContent : null;
+    if (button) { button.disabled = true; button.textContent = "Guardando…"; }
+    try {
+      await fn();
+    } catch (e) {
+      console.error("[IFL Admin]", e);
+      toast("Error: " + (e.message || "algo ha fallado"), true);
+    } finally {
+      if (button) { button.disabled = false; button.textContent = original; }
+    }
+  }
+
+  // =====================================
+  // ELEMENTOS
+  // =====================================
 
   const clubsEl = document.getElementById("admin-clubs");
   const searchInput = document.getElementById("admin-search");
+  const topSearchInput = document.getElementById("admin-top-search");
   const updatedList = document.getElementById("admin-updated-list");
   const attentionList = document.getElementById("admin-attention-list");
   const attentionCount = document.getElementById("admin-attention-count");
@@ -224,1950 +111,1295 @@
   const seasonLabelEl = document.getElementById("admin-season-label");
   const seasonBadgeEl = document.getElementById("contracts-season-badge");
 
-  /* =====================================
-     4. CLUBES
-  ===================================== */
+  let activeDivision = "todos";
+  let activeStatus = "cualquiera";
+
+  // =====================================
+  // CARGA DE DATOS
+  // =====================================
+
+  async function reloadAll() {
+    const [teams, stadiums, contracts, matches] = await Promise.all([
+      db.getTeams(),
+      db.getStadiums(),
+      db.getContracts(),
+      db.getMatches(null),
+    ]);
+    state.teams = teams;
+    state.stadiums = stadiums;
+    state.contracts = contracts;
+    state.matches = matches;
+
+    if (state.isSuperAdmin) {
+      try { state.admins = await db.getAdmins(); } catch (e) { state.admins = []; }
+    }
+  }
+
+  function teamPlayerCount(teamId) {
+    return state.contracts.filter((c) => c.team_id === teamId && c.status === "ACTIVO").length;
+  }
+
+  function teamHasStatus(team) {
+    // "Actualizado" = tiene al menos un contrato activo, "Pendiente" = sin plantilla
+    return teamPlayerCount(team.id) > 0 ? "up" : "pending";
+  }
+
+  // =====================================
+  // SIDEBAR: CLUBES
+  // =====================================
 
   function renderSideClubs(filterDivision, filterStatus, query) {
     if (!clubsEl) return;
-
     clubsEl.innerHTML = "";
 
     const groups = [
       { key: "primera", label: "Primera división" },
       { key: "segunda", label: "Segunda división" },
-      { key: "null", label: "Sin asignar" }
+      { key: "null", label: "Sin asignar" },
     ];
 
-    const teams = allTeams();
+    groups.forEach((g) => {
+      if (filterDivision !== "todos" && filterDivision !== g.key) return;
 
-    groups.forEach(function (g) {
-      if (
-        filterDivision !== "todos" &&
-        filterDivision !== g.key
-      ) {
-        return;
-      }
-
-      const items = teams.filter(function (c) {
-        const div = c.division || "null";
-
+      const items = state.teams.filter((t) => {
+        const div = t.division || "null";
         if (div !== g.key) return false;
-
-        if (
-          filterStatus !== "cualquiera" &&
-          c.status !== (
-            filterStatus === "actualizado"
-              ? "up"
-              : "pending"
-          )
-        ) {
-          return false;
-        }
-
-        if (
-          query &&
-          c.name.toLowerCase().indexOf(query) === -1
-        ) {
-          return false;
-        }
-
+        const status = teamHasStatus(t);
+        if (filterStatus !== "cualquiera" && status !== (filterStatus === "actualizado" ? "up" : "pending")) return false;
+        if (query && t.name.toLowerCase().indexOf(query) === -1) return false;
         return true;
       });
 
       if (!items.length) return;
 
       const group = document.createElement("div");
-
       group.className = "admin-clubs__group";
-
-      group.innerHTML =
-        "<span>" +
-        g.label +
-        "</span><span>" +
-        items.length +
-        "</span>";
-
+      group.innerHTML = `<span>${g.label}</span><span>${items.length}</span>`;
       clubsEl.appendChild(group);
 
-      items.forEach(function (c) {
+      items.forEach((t) => {
+        const status = teamHasStatus(t);
         const row = document.createElement("div");
-
         row.className = "admin-club-row";
-
-        row.innerHTML =
-          '<span class="admin-club-row__bar admin-club-row__bar--' +
-          (c.status === "up" ? "up" : "pending") +
-          '"></span>' +
-
-          '<div style="min-width:0;">' +
-
-          '<div class="admin-club-row__name">' +
-          escapeHTML(c.name) +
-          "</div>" +
-
-          '<div class="admin-club-row__meta">' +
-          escapeHTML(c.code) +
-          " · " +
-          (c.players || 0) +
-          " jugadores</div>" +
-
-          "</div>";
-
+        row.innerHTML = `
+          <span class="admin-club-row__bar admin-club-row__bar--${status === "up" ? "up" : "pending"}"></span>
+          <div style="min-width:0;">
+            <div class="admin-club-row__name">${escapeHTML(t.name)}</div>
+            <div class="admin-club-row__meta">${escapeHTML(t.code)} · ${teamPlayerCount(t.id)} jugadores</div>
+          </div>
+        `;
         clubsEl.appendChild(row);
       });
     });
 
     if (!clubsEl.children.length) {
-      clubsEl.innerHTML =
-        '<div class="admin-panel__empty">Sin resultados.</div>';
+      clubsEl.innerHTML = '<div class="admin-panel__empty">Sin resultados.</div>';
     }
   }
 
-  let activeDivision = "todos";
-  let activeStatus = "cualquiera";
-
   function wireChips(containerId, attr, onChange) {
     const container = document.getElementById(containerId);
-
     if (!container) return;
-
-    container.addEventListener("click", function (e) {
+    container.addEventListener("click", (e) => {
       const chip = e.target.closest(".chip");
-
       if (!chip) return;
-
-      container.querySelectorAll(".chip").forEach(function (c) {
-        c.classList.toggle("is-active", c === chip);
-      });
-
+      container.querySelectorAll(".chip").forEach((c) => c.classList.toggle("is-active", c === chip));
       onChange(chip.dataset[attr]);
     });
   }
 
-  wireChips(
-    "division-chips",
-    "division",
-    function (value) {
-      activeDivision = value;
+  wireChips("division-chips", "division", (value) => {
+    activeDivision = value;
+    renderSideClubs(activeDivision, activeStatus, (searchInput?.value || "").trim().toLowerCase());
+  });
 
-      renderSideClubs(
-        activeDivision,
-        activeStatus,
-        searchInput
-          ? (searchInput.value || "").trim().toLowerCase()
-          : ""
-      );
-    }
-  );
-
-  wireChips(
-    "status-chips",
-    "status",
-    function (value) {
-      activeStatus = value;
-
-      renderSideClubs(
-        activeDivision,
-        activeStatus,
-        searchInput
-          ? (searchInput.value || "").trim().toLowerCase()
-          : ""
-      );
-    }
-  );
+  wireChips("status-chips", "status", (value) => {
+    activeStatus = value;
+    renderSideClubs(activeDivision, activeStatus, (searchInput?.value || "").trim().toLowerCase());
+  });
 
   if (searchInput) {
-    searchInput.addEventListener("input", function () {
-      renderSideClubs(
-        activeDivision,
-        activeStatus,
-        searchInput.value.trim().toLowerCase()
-      );
+    searchInput.addEventListener("input", () => {
+      renderSideClubs(activeDivision, activeStatus, searchInput.value.trim().toLowerCase());
     });
   }
 
-  document.addEventListener("keydown", function (e) {
-    if (
-      e.key === "/" &&
-      document.activeElement !== searchInput
-    ) {
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "/" && document.activeElement !== searchInput) {
       e.preventDefault();
-
-      if (searchInput) {
-        searchInput.focus();
-      }
+      if (searchInput) searchInput.focus();
     }
   });
 
-  /* =====================================
-     5. OVERVIEW
-  ===================================== */
+  // Buscador superior: jugadores/contratos por nombre de Discord o Roblox
+  if (topSearchInput) {
+    topSearchInput.disabled = false;
+    topSearchInput.placeholder = "Buscar jugador (Discord o Roblox)…";
+    let resultsBox = null;
+
+    function closeResults() {
+      if (resultsBox) resultsBox.remove();
+      resultsBox = null;
+    }
+
+    topSearchInput.addEventListener("input", () => {
+      const q = topSearchInput.value.trim().toLowerCase();
+      closeResults();
+      if (!q) return;
+
+      const matches = state.contracts.filter((c) => {
+        const p = c.player;
+        if (!p) return false;
+        return (p.roblox_username || "").toLowerCase().includes(q) || (p.discord_username || "").toLowerCase().includes(q);
+      }).slice(0, 8);
+
+      resultsBox = document.createElement("div");
+      resultsBox.className = "admin-search-results";
+      if (!matches.length) {
+        resultsBox.innerHTML = '<div class="admin-panel__empty">Sin resultados.</div>';
+      } else {
+        matches.forEach((c) => {
+          const row = document.createElement("div");
+          row.className = "admin-row";
+          row.style.cursor = "pointer";
+          row.innerHTML = `
+            <div class="admin-row__body">
+              <div class="admin-row__name">${escapeHTML(c.player.roblox_username)}</div>
+              <div class="admin-row__meta">${escapeHTML(c.player.discord_username)} · ${c.team ? escapeHTML(c.team.name) : "Sin club"}</div>
+            </div>
+          `;
+          row.addEventListener("click", () => {
+            showAdminView("contracts");
+            closeResults();
+            topSearchInput.value = "";
+          });
+          resultsBox.appendChild(row);
+        });
+      }
+      topSearchInput.parentElement.appendChild(resultsBox);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (resultsBox && !topSearchInput.parentElement.contains(e.target)) closeResults();
+    });
+  }
+
+  // =====================================
+  // OVERVIEW
+  // =====================================
 
   function renderOverview() {
-    const teams = allTeams();
-    const contracts = loadContracts();
+    const teams = state.teams;
+    const updatedTeams = teams.filter((t) => teamHasStatus(t) === "up");
+    const pendingTeams = teams.filter((t) => teamHasStatus(t) === "pending");
+    const totalPlayers = state.contracts.filter((c) => c.status === "ACTIVO").length;
+    const activeContracts = state.contracts.filter((c) => c.status === "ACTIVO");
 
-    const updatedTeams = teams.filter(function (c) {
-      return c.status === "up";
-    });
-
-    const noManagerTeams = teams.filter(function (c) {
-      return (
-        c.status === "pending" &&
-        c.manager === false
-      );
-    });
-
-    const pendingTeams = teams.filter(function (c) {
-      return c.status === "pending";
-    });
-
-    const totalPlayers = teams.reduce(
-      function (sum, c) {
-        return sum + (c.players || 0);
-      },
-      0
-    );
-
-    const activeContracts = contracts.filter(function (c) {
-      return c.status === "ACTIVO";
-    });
-
-    const subtitle = document.getElementById(
-      "admin-overview-subtitle"
-    );
-
+    const subtitle = document.getElementById("admin-overview-subtitle");
     if (subtitle) {
-      subtitle.textContent =
-        "Temporada " +
-        loadSeason() +
-        " · " +
-        teams.length +
-        " clubes · " +
-        contracts.length +
-        " contratos registrados";
+      subtitle.textContent = `Temporada ${state.season} · ${teams.length} clubes · ${state.contracts.length} contratos registrados`;
     }
 
-    const teamsCurrent = document.getElementById(
-      "stat-teamsheets-current"
-    );
+    const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
 
-    const teamsTotal = document.getElementById(
-      "stat-teamsheets-total"
-    );
-
-    const teamsBar = document.getElementById(
-      "stat-teamsheets-bar"
-    );
-
-    const players = document.getElementById(
-      "stat-players"
-    );
-
-    const playersFoot = document.getElementById(
-      "stat-players-foot"
-    );
-
-    const squads = document.getElementById(
-      "stat-squads"
-    );
-
-    const contractsActive = document.getElementById(
-      "stat-contracts-active"
-    );
-
-    const contractsFoot = document.getElementById(
-      "stat-contracts-foot"
-    );
-
-    if (teamsCurrent) {
-      teamsCurrent.textContent = updatedTeams.length;
-    }
-
-    if (teamsTotal) {
-      teamsTotal.textContent = "/" + teams.length;
-    }
-
-    const pct = teams.length
-      ? Math.round(
-          (updatedTeams.length / teams.length) * 100
-        )
-      : 0;
-
-    if (teamsBar) {
-      teamsBar.style.width = pct + "%";
-    }
-
-    if (updatedPct) {
-      updatedPct.textContent = pct + "% done";
-    }
-
-    if (players) {
-      players.textContent = totalPlayers;
-    }
-
-    if (playersFoot) {
-      playersFoot.textContent =
-        totalPlayers +
-        " jugadores registrados";
-    }
-
-    if (squads) {
-      squads.textContent = teams.length;
-    }
-
-    if (contractsActive) {
-      contractsActive.textContent =
-        activeContracts.length;
-    }
-
-    if (contractsFoot) {
-      contractsFoot.textContent =
-        (contracts.length -
-          activeContracts.length) +
-        " inactivos";
-    }
+    set("stat-teamsheets-current", updatedTeams.length);
+    set("stat-teamsheets-total", "/" + teams.length);
+    const pct = teams.length ? Math.round((updatedTeams.length / teams.length) * 100) : 0;
+    const bar = document.getElementById("stat-teamsheets-bar");
+    if (bar) bar.style.width = pct + "%";
+    if (updatedPct) updatedPct.textContent = pct + "% done";
+    set("stat-players", totalPlayers);
+    set("stat-players-foot", totalPlayers + " jugadores con contrato activo");
+    set("stat-squads", teams.length);
+    set("stat-contracts-active", activeContracts.length);
+    set("stat-contracts-foot", (state.contracts.length - activeContracts.length) + " inactivos");
 
     if (updatedList) {
-      updatedList.innerHTML = "";
-
-      updatedTeams.forEach(function (c) {
-        const row = document.createElement("div");
-
-        row.className = "admin-row";
-
-        row.innerHTML =
-          '<div class="admin-row__body">' +
-          '<div class="admin-row__name">' +
-          escapeHTML(c.name) +
-          "</div>" +
-          '<div class="admin-row__meta">' +
-          escapeHTML(c.code) +
-          "</div>" +
-          "</div>" +
-
-          '<span class="admin-row__time">' +
-          (
-            c.updated
-              ? "hace " + escapeHTML(c.updated)
-              : ""
-          ) +
-          "</span>" +
-
-          '<span class="admin-mini-toggle" aria-hidden="true"></span>';
-
-        updatedList.appendChild(row);
-      });
-
-      if (!updatedTeams.length) {
-        updatedList.innerHTML =
-          '<div class="admin-panel__empty">' +
-          "Nada actualizado todavía." +
-          "</div>";
-      }
+      updatedList.innerHTML = updatedTeams.map((t) => `
+        <div class="admin-row">
+          <div class="admin-row__body">
+            <div class="admin-row__name">${escapeHTML(t.name)}</div>
+            <div class="admin-row__meta">${escapeHTML(t.code)}</div>
+          </div>
+        </div>
+      `).join("") || '<div class="admin-panel__empty">Nada actualizado todavía.</div>';
     }
 
     if (attentionList) {
-      attentionList.innerHTML = "";
-
-      noManagerTeams.forEach(function (c) {
-        const row = document.createElement("div");
-
-        row.className = "admin-row";
-
-        row.innerHTML =
-          '<span class="admin-row__dot admin-row__dot--warn"></span>' +
-
-          '<div class="admin-row__body">' +
-
-          '<div class="admin-row__name">' +
-          escapeHTML(c.name) +
-          "</div>" +
-
-          '<div class="admin-row__meta">' +
-          escapeHTML(c.code) +
-          "</div>" +
-
-          "</div>" +
-
-          '<span class="admin-tag admin-tag--down">' +
-          "Sin entrenador" +
-          "</span>";
-
-        attentionList.appendChild(row);
-      });
-
-      if (!noManagerTeams.length) {
-        attentionList.innerHTML =
-          '<div class="admin-panel__empty">' +
-          "Todo en orden." +
-          "</div>";
-      }
+      attentionList.innerHTML = pendingTeams.map((t) => `
+        <div class="admin-row">
+          <span class="admin-row__dot admin-row__dot--warn"></span>
+          <div class="admin-row__body">
+            <div class="admin-row__name">${escapeHTML(t.name)}</div>
+            <div class="admin-row__meta">${escapeHTML(t.code)}</div>
+          </div>
+          <span class="admin-tag admin-tag--down">Sin plantilla</span>
+        </div>
+      `).join("") || '<div class="admin-panel__empty">Todo en orden.</div>';
     }
 
-    if (attentionCount) {
-      attentionCount.textContent =
-        noManagerTeams.length;
-    }
+    if (attentionCount) attentionCount.textContent = pendingTeams.length;
 
     if (pendingGrid) {
-      pendingGrid.innerHTML = "";
-
-      pendingTeams.forEach(function (c) {
-        const card = document.createElement("div");
-
-        card.className = "admin-card";
-
-        card.innerHTML =
-          '<span class="admin-card__badge">' +
-          escapeHTML(c.code) +
-          "</span>" +
-
-          '<div class="admin-card__body">' +
-
-          '<div class="admin-card__name">' +
-          escapeHTML(c.name) +
-          "</div>" +
-
-          '<div class="admin-card__meta">' +
-          escapeHTML(c.code) +
-          " · " +
-          (c.players || 0) +
-          " jugadores</div>" +
-
-          "</div>" +
-
-          '<span class="admin-card__tag">' +
-          "Pendiente" +
-          "</span>";
-
-        pendingGrid.appendChild(card);
-      });
+      pendingGrid.innerHTML = pendingTeams.map((t) => `
+        <div class="admin-card">
+          <span class="admin-card__badge">${escapeHTML(t.code)}</span>
+          <div class="admin-card__body">
+            <div class="admin-card__name">${escapeHTML(t.name)}</div>
+            <div class="admin-card__meta">${escapeHTML(t.code)} · ${teamPlayerCount(t.id)} jugadores</div>
+          </div>
+          <span class="admin-card__tag">Pendiente</span>
+        </div>
+      `).join("");
     }
 
-    if (pendingCount) {
-      pendingCount.textContent =
-        pendingTeams.length;
-    }
+    if (pendingCount) pendingCount.textContent = pendingTeams.length;
   }
 
-  /* =====================================
-     6. EQUIPOS
-  ===================================== */
+  // =====================================
+  // EQUIPOS (con edición inline + Guardar)
+  // =====================================
 
-  const teamForm =
-    document.getElementById("team-form");
-
-  const teamsTableBody =
-    document.getElementById("teams-table-body");
+  const teamForm = document.getElementById("team-form");
+  const teamsTableBody = document.getElementById("teams-table-body");
+  let editingTeamId = null;
 
   function renderTeamsView() {
     if (!teamsTableBody) return;
+    const subtitle = document.getElementById("admin-teams-subtitle");
+    if (subtitle) subtitle.textContent = state.teams.length + " clubes en total";
 
-    const teams = allTeams();
-
-    const subtitle =
-      document.getElementById(
-        "admin-teams-subtitle"
-      );
-
-    if (subtitle) {
-      subtitle.textContent =
-        teams.length +
-        " clubes en total";
-    }
-
-    teamsTableBody.innerHTML = "";
-
-    if (!teams.length) {
-      teamsTableBody.innerHTML =
-        '<tr><td colspan="5" class="admin-table-empty">' +
-        "Todavía no hay equipos." +
-        "</td></tr>";
-
+    if (!state.teams.length) {
+      teamsTableBody.innerHTML = '<tr><td colspan="5" class="admin-table-empty">Todavía no hay equipos.</td></tr>';
       return;
     }
 
-    teams.forEach(function (c) {
-      const custom = isCustomTeam(c.code);
-
-      const tr =
-        document.createElement("tr");
-
-      tr.innerHTML =
-        '<td class="standings__club">' +
-        escapeHTML(c.name) +
-        "</td>" +
-
-        "<td>" +
-        escapeHTML(c.code) +
-        "</td>" +
-
-        "<td>" +
-        divisionLabel(c.division) +
-        "</td>" +
-
-        '<td class="is-num">' +
-        (c.players || 0) +
-        "</td>" +
-
-        '<td class="admin-table__actions">' +
-
-        (
-          custom
-            ? '<button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-delete-team="' +
-              escapeHTML(c.code) +
-              '">Eliminar</button>'
-            : '<span class="badge-state badge-state--neutral">Ejemplo</span>'
-        ) +
-
-        "</td>";
-
-      teamsTableBody.appendChild(tr);
-    });
+    teamsTableBody.innerHTML = state.teams.map((t) => {
+      if (editingTeamId === t.id) {
+        return `
+          <tr data-team-row="${t.id}">
+            <td><input class="admin-input" data-edit="name" value="${escapeHTML(t.name)}"></td>
+            <td><input class="admin-input" data-edit="code" maxlength="4" value="${escapeHTML(t.code)}"></td>
+            <td>
+              <select class="admin-select" data-edit="division">
+                <option value="" ${!t.division ? "selected" : ""}>Sin asignar</option>
+                <option value="primera" ${t.division === "primera" ? "selected" : ""}>Primera</option>
+                <option value="segunda" ${t.division === "segunda" ? "selected" : ""}>Segunda</option>
+              </select>
+            </td>
+            <td>${teamPlayerCount(t.id)}</td>
+            <td class="admin-table__actions">
+              <button type="button" class="btn-admin btn-admin--small btn-admin--solid" data-save-team="${t.id}">Guardar</button>
+              <button type="button" class="btn-admin btn-admin--small" data-cancel-edit-team="${t.id}">Cancelar</button>
+            </td>
+          </tr>
+        `;
+      }
+      return `
+        <tr>
+          <td class="standings__club">${escapeHTML(t.name)}</td>
+          <td>${escapeHTML(t.code)}</td>
+          <td>${divisionLabel(t.division)}</td>
+          <td class="is-num">${teamPlayerCount(t.id)}</td>
+          <td class="admin-table__actions">
+            <button type="button" class="btn-admin btn-admin--small" data-edit-team="${t.id}">Editar</button>
+            <button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-delete-team="${t.id}">Eliminar</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
   }
 
   if (teamForm) {
-    teamForm.addEventListener(
-      "submit",
-      function (e) {
-        e.preventDefault();
+    teamForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("team-name")?.value.trim();
+      const code = document.getElementById("team-code")?.value.trim().toUpperCase();
+      const division = document.getElementById("team-division")?.value || null;
+      const submitBtn = teamForm.querySelector('button[type="submit"]');
 
-        const nameEl =
-          document.getElementById("team-name");
-
-        const codeEl =
-          document.getElementById("team-code");
-
-        const divisionEl =
-          document.getElementById("team-division");
-
-        const playersEl =
-          document.getElementById("team-players");
-
-        const name =
-          nameEl
-            ? nameEl.value.trim()
-            : "";
-
-        const code =
-          codeEl
-            ? codeEl.value.trim().toUpperCase()
-            : "";
-
-        const division =
-          divisionEl
-            ? divisionEl.value || null
-            : null;
-
-        const players =
-          playersEl
-            ? parseInt(playersEl.value, 10) || 0
-            : 0;
-
-        if (!name || !code) return;
-
-        if (findTeam(code)) {
-          alert(
-            'Ya existe un equipo con el código "' +
-            code +
-            '". Usa otro código.'
-          );
-
-          return;
-        }
-
-        const custom =
-          loadCustomTeams();
-
-        custom.push({
-          code: code,
-          name: name,
-          division: division,
-          players: players,
-          status: "pending",
-          manager: false,
-          custom: true
-        });
-
-        saveCustomTeams(custom);
-
-        teamForm.reset();
-
-        if (playersEl) {
-          playersEl.value = 0;
-        }
-
-        renderAll();
+      if (!name || !code) return;
+      if (state.teams.some((t) => t.code === code)) {
+        alert(`Ya existe un equipo con el código "${code}". Usa otro código.`);
+        return;
       }
-    );
+
+      withBusy(submitBtn, async () => {
+        await db.addTeam({ code, name, division });
+        teamForm.reset();
+        await reloadAll();
+        renderAll();
+        toast("Equipo añadido.");
+      });
+    });
   }
 
   if (teamsTableBody) {
-    teamsTableBody.addEventListener(
-      "click",
-      function (e) {
-        const btn =
-          e.target.closest(
-            "[data-delete-team]"
-          );
-
-        if (!btn) return;
-
-        const code =
-          btn.getAttribute(
-            "data-delete-team"
-          );
-
-        if (
-          !confirm(
-            '¿Eliminar el equipo "' +
-            code +
-            '"? Esta acción no se puede deshacer.'
-          )
-        ) {
-          return;
-        }
-
-        deleteCustomTeam(code);
-
-        renderAll();
+    teamsTableBody.addEventListener("click", (e) => {
+      const editBtn = e.target.closest("[data-edit-team]");
+      if (editBtn) {
+        editingTeamId = editBtn.getAttribute("data-edit-team");
+        renderTeamsView();
+        return;
       }
-    );
+
+      const cancelBtn = e.target.closest("[data-cancel-edit-team]");
+      if (cancelBtn) {
+        editingTeamId = null;
+        renderTeamsView();
+        return;
+      }
+
+      const saveBtn = e.target.closest("[data-save-team]");
+      if (saveBtn) {
+        const id = saveBtn.getAttribute("data-save-team");
+        const row = document.querySelector(`[data-team-row="${id}"]`);
+        const patch = {
+          name: row.querySelector('[data-edit="name"]').value.trim(),
+          code: row.querySelector('[data-edit="code"]').value.trim().toUpperCase(),
+          division: row.querySelector('[data-edit="division"]').value || null,
+        };
+        withBusy(saveBtn, async () => {
+          await db.updateTeam(id, patch);
+          editingTeamId = null;
+          await reloadAll();
+          renderAll();
+          toast("Cambios guardados.");
+        });
+        return;
+      }
+
+      const deleteBtn = e.target.closest("[data-delete-team]");
+      if (deleteBtn) {
+        const id = deleteBtn.getAttribute("data-delete-team");
+        if (!confirm("¿Eliminar este equipo? También se eliminarán sus contratos y partidos asociados si los tuviera.")) return;
+        withBusy(deleteBtn, async () => {
+          await db.deleteTeam(id);
+          await reloadAll();
+          renderAll();
+          toast("Equipo eliminado.");
+        });
+      }
+    });
   }
 
-  /* =====================================
-     7. CONTRATOS
-  ===================================== */
+  // =====================================
+  // ESTADIOS
+  // =====================================
 
-  const contractForm =
-    document.getElementById(
-      "contract-form"
-    );
+  const stadiumForm = document.getElementById("stadium-form");
+  const stadiumsTableBody = document.getElementById("stadiums-table-body");
+  const stadiumTeamSelect = document.getElementById("stadium-team");
 
-  const contractClubSelect =
-    document.getElementById(
-      "contract-club"
-    );
+  function populateStadiumTeamSelect() {
+    if (!stadiumTeamSelect) return;
+    const current = stadiumTeamSelect.value;
+    stadiumTeamSelect.innerHTML = '<option value="">— Sin equipo —</option>' +
+      state.teams.map((t) => `<option value="${t.id}">${escapeHTML(t.name)}</option>`).join("");
+    stadiumTeamSelect.value = current;
+  }
 
-  const contractsTableBody =
-    document.getElementById(
-      "contracts-table-body"
-    );
+  function renderStadiumsView() {
+    if (!stadiumsTableBody) return;
+    populateStadiumTeamSelect();
 
-  const advanceSeasonBtn =
-    document.getElementById(
-      "advance-season-btn"
-    );
+    if (!state.stadiums.length) {
+      stadiumsTableBody.innerHTML = '<tr><td colspan="5" class="admin-table-empty">Todavía no hay estadios.</td></tr>';
+      return;
+    }
+
+    stadiumsTableBody.innerHTML = state.stadiums.map((s) => `
+      <tr>
+        <td class="standings__club">${escapeHTML(s.name)}</td>
+        <td>${s.team ? escapeHTML(s.team.name) : "—"}</td>
+        <td>${escapeHTML(s.city || "—")}</td>
+        <td class="is-num">${s.capacity || "—"}</td>
+        <td class="admin-table__actions">
+          <button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-delete-stadium="${s.id}">Eliminar</button>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  if (stadiumForm) {
+    stadiumForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("stadium-name")?.value.trim();
+      const teamId = stadiumTeamSelect?.value || null;
+      const city = document.getElementById("stadium-city")?.value.trim() || null;
+      const capacity = parseInt(document.getElementById("stadium-capacity")?.value, 10) || null;
+      const description = document.getElementById("stadium-description")?.value.trim() || null;
+      const submitBtn = stadiumForm.querySelector('button[type="submit"]');
+
+      if (!name) return;
+
+      withBusy(submitBtn, async () => {
+        await db.addStadium({ name, team_id: teamId, city, capacity, description });
+        stadiumForm.reset();
+        await reloadAll();
+        renderAll();
+        toast("Estadio añadido.");
+      });
+    });
+  }
+
+  if (stadiumsTableBody) {
+    stadiumsTableBody.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-delete-stadium]");
+      if (!btn) return;
+      if (!confirm("¿Eliminar este estadio?")) return;
+      withBusy(btn, async () => {
+        await db.deleteStadium(btn.getAttribute("data-delete-stadium"));
+        await reloadAll();
+        renderAll();
+        toast("Estadio eliminado.");
+      });
+    });
+  }
+
+  // =====================================
+  // CONTRATOS (con buscador de jugador por Roblox)
+  // =====================================
+
+  const contractForm = document.getElementById("contract-form");
+  const contractClubSelect = document.getElementById("contract-club");
+  const contractsTableBody = document.getElementById("contracts-table-body");
+  const advanceSeasonBtn = document.getElementById("advance-season-btn");
+  const contractRobloxInput = document.getElementById("contract-roblox");
+  const contractDiscordUserInput = document.getElementById("contract-discord");
+  const contractDiscordIdInput = document.getElementById("contract-discord-id");
+
+  let selectedPlayer = null; // jugador existente elegido desde el buscador
 
   function populateContractClubSelect() {
     if (!contractClubSelect) return;
+    const current = contractClubSelect.value;
+    contractClubSelect.innerHTML = '<option value="" disabled>— Selecciona club —</option>' +
+      state.teams.map((t) => `<option value="${t.id}">${escapeHTML(t.name)} (${escapeHTML(t.code)})</option>`).join("");
+    if (current && state.teams.some((t) => t.id === current)) contractClubSelect.value = current;
+    else contractClubSelect.selectedIndex = 0;
+  }
 
-    const current =
-      contractClubSelect.value;
+  // Buscador de jugador por Roblox: si ya existe, lo reutilizamos (autocompleta Discord)
+  if (contractRobloxInput) {
+    let box = null;
+    function closeBox() { if (box) box.remove(); box = null; }
 
-    const teams = allTeams();
+    contractRobloxInput.addEventListener("input", async () => {
+      selectedPlayer = null;
+      const q = contractRobloxInput.value.trim();
+      closeBox();
+      if (!q) return;
 
-    contractClubSelect.innerHTML =
-      '<option value="" disabled>— Selecciona club —</option>';
+      let results = [];
+      try { results = await db.searchPlayers(q); } catch (e) { console.error(e); }
+      if (!results.length) return;
 
-    teams.forEach(function (c) {
-      const opt =
-        document.createElement("option");
-
-      opt.value = c.code;
-
-      opt.textContent =
-        c.name +
-        " (" +
-        c.code +
-        ")";
-
-      contractClubSelect.appendChild(opt);
+      box = document.createElement("div");
+      box.className = "admin-search-results";
+      results.forEach((p) => {
+        const row = document.createElement("div");
+        row.className = "admin-row";
+        row.style.cursor = "pointer";
+        row.innerHTML = `
+          <div class="admin-row__body">
+            <div class="admin-row__name">${escapeHTML(p.roblox_username)}</div>
+            <div class="admin-row__meta">${escapeHTML(p.discord_username)}</div>
+          </div>
+        `;
+        row.addEventListener("click", () => {
+          selectedPlayer = p;
+          contractRobloxInput.value = p.roblox_username;
+          if (contractDiscordUserInput) contractDiscordUserInput.value = p.discord_username;
+          if (contractDiscordIdInput) contractDiscordIdInput.value = p.discord_id || "";
+          closeBox();
+        });
+        box.appendChild(row);
+      });
+      contractRobloxInput.parentElement.appendChild(box);
     });
 
-    if (
-      current &&
-      teams.some(function (t) {
-        return t.code === current;
-      })
-    ) {
-      contractClubSelect.value =
-        current;
-    } else {
-      contractClubSelect.selectedIndex = 0;
-    }
+    document.addEventListener("click", (e) => {
+      if (box && !contractRobloxInput.parentElement.contains(e.target)) closeBox();
+    });
   }
 
   function renderContractsView() {
-    const season = loadSeason();
-
-    if (seasonLabelEl) {
-      seasonLabelEl.textContent =
-        "Temporada " + season;
-    }
-
-    if (seasonBadgeEl) {
-      seasonBadgeEl.textContent =
-        "Temporada " + season;
-    }
-
+    if (seasonLabelEl) seasonLabelEl.textContent = "Temporada " + state.season;
+    if (seasonBadgeEl) seasonBadgeEl.textContent = "Temporada " + state.season;
     populateContractClubSelect();
 
     if (!contractsTableBody) return;
-
-    const contracts =
-      loadContracts();
-
-    contractsTableBody.innerHTML = "";
-
-    if (!contracts.length) {
-      contractsTableBody.innerHTML =
-        '<tr><td colspan="9" class="admin-table-empty">' +
-        "Todavía no hay contratos." +
-        "</td></tr>";
-
+    if (!state.contracts.length) {
+      contractsTableBody.innerHTML = '<tr><td colspan="9" class="admin-table-empty">Todavía no hay contratos.</td></tr>';
       return;
     }
 
-    contracts
-      .slice()
-      .sort(function (a, b) {
-        return b.id - a.id;
-      })
-      .forEach(function (c) {
-        const team =
-          findTeam(c.clubCode);
-
-        const clubName =
-          team
-            ? team.name
-            : (c.clubName || c.clubCode);
-
-        const isActive =
-          c.status === "ACTIVO";
-
-        const tr =
-          document.createElement("tr");
-
-        tr.innerHTML =
-          "<td>" +
-          escapeHTML(c.discordUser) +
-          "</td>" +
-
-          "<td>" +
-          escapeHTML(c.robloxUser) +
-          "</td>" +
-
-          "<td>" +
-          escapeHTML(clubName) +
-          "</td>" +
-
-          '<td class="is-num">' +
-          Number(c.price).toFixed(2) +
-          "</td>" +
-
-          '<td class="is-muted">T' +
-          c.signedSeason +
-          "</td>" +
-
-          '<td class="is-num">' +
-          (
-            isActive
-              ? c.seasonsLeft
-              : "—"
-          ) +
-          "</td>" +
-
-          "<td>" +
-
-          '<span class="badge-state ' +
-          (
-            isActive
-              ? "badge-state--active"
-              : "badge-state--inactive"
-          ) +
-          '">' +
-
-          (
-            isActive
-              ? "ACTIVO"
-              : "INACTIVO"
-          ) +
-
-          "</span>" +
-
-          "</td>" +
-
-          '<td class="is-muted">' +
-          (
-            isActive
-              ? "—"
-              : formatDate(c.endedAt)
-          ) +
-          "</td>" +
-
-          '<td class="admin-table__actions">' +
-
-          '<button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-delete-contract="' +
-          c.id +
-          '">' +
-
-          "Eliminar" +
-
-          "</button>" +
-
-          "</td>";
-
-        contractsTableBody.appendChild(tr);
-      });
+    contractsTableBody.innerHTML = state.contracts.map((c) => {
+      const isActive = c.status === "ACTIVO";
+      return `
+        <tr>
+          <td>${escapeHTML(c.player ? c.player.discord_username : "—")}</td>
+          <td>${escapeHTML(c.player ? c.player.roblox_username : "—")}</td>
+          <td>${escapeHTML(c.team ? c.team.name : "—")}</td>
+          <td class="is-num">${Number(c.price).toFixed(2)}</td>
+          <td class="is-muted">T${c.signed_season}</td>
+          <td class="is-num">${isActive ? c.seasons_left : "—"}</td>
+          <td><span class="badge-state ${isActive ? "badge-state--active" : "badge-state--inactive"}">${isActive ? "ACTIVO" : "INACTIVO"}</span></td>
+          <td class="is-muted">${isActive ? "—" : formatDate(c.ended_at)}</td>
+          <td class="admin-table__actions">
+            <button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-delete-contract="${c.id}">Eliminar</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
   }
 
   if (contractForm) {
-    contractForm.addEventListener(
-      "submit",
-      function (e) {
-        e.preventDefault();
+    contractForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const robloxUser = contractRobloxInput?.value.trim();
+      const discordUser = contractDiscordUserInput?.value.trim();
+      const discordId = contractDiscordIdInput?.value.trim() || null;
+      const seasonsTotal = parseInt(document.getElementById("contract-seasons")?.value, 10);
+      const price = parseFloat(document.getElementById("contract-price")?.value);
+      const clubId = contractClubSelect?.value;
+      const submitBtn = contractForm.querySelector('button[type="submit"]');
 
-        const discordEl =
-          document.getElementById(
-            "contract-discord"
-          );
+      if (!discordUser || !robloxUser || !clubId || !seasonsTotal || seasonsTotal < 1 || isNaN(price)) {
+        alert("Rellena todos los campos del contrato correctamente.");
+        return;
+      }
 
-        const robloxEl =
-          document.getElementById(
-            "contract-roblox"
-          );
+      withBusy(submitBtn, async () => {
+        const player = selectedPlayer
+          ? selectedPlayer
+          : await db.findOrCreatePlayer({ discordId, discordUsername: discordUser, robloxUsername: robloxUser });
 
-        const seasonsEl =
-          document.getElementById(
-            "contract-seasons"
-          );
-
-        const priceEl =
-          document.getElementById(
-            "contract-price"
-          );
-
-        const discordUser =
-          discordEl
-            ? discordEl.value.trim()
-            : "";
-
-        const robloxUser =
-          robloxEl
-            ? robloxEl.value.trim()
-            : "";
-
-        const seasonsTotal =
-          seasonsEl
-            ? parseInt(seasonsEl.value, 10)
-            : 0;
-
-        const price =
-          priceEl
-            ? parseFloat(priceEl.value)
-            : NaN;
-
-        const clubCode =
-          contractClubSelect
-            ? contractClubSelect.value
-            : "";
-
-        if (
-          !discordUser ||
-          !robloxUser ||
-          !clubCode ||
-          !seasonsTotal ||
-          seasonsTotal < 1 ||
-          isNaN(price)
-        ) {
-          alert(
-            "Rellena todos los campos del contrato correctamente."
-          );
-
-          return;
-        }
-
-        const team =
-          findTeam(clubCode);
-
-        const contracts =
-          loadContracts();
-
-        const season =
-          loadSeason();
-
-        contracts.push({
-          id: Date.now(),
-          discordUser: discordUser,
-          robloxUser: robloxUser,
-          clubCode: clubCode,
-          clubName:
-            team
-              ? team.name
-              : clubCode,
-          price: price,
-          seasonsTotal: seasonsTotal,
-          seasonsLeft: seasonsTotal,
-          signedSeason: season,
-          status: "ACTIVO",
-          endedAt: null,
-          endedSeason: null
+        await db.addContract({
+          playerId: player.id,
+          teamId: clubId,
+          price,
+          seasonsTotal,
+          signedSeason: state.season,
         });
 
-        saveContracts(contracts);
-
         contractForm.reset();
-
-        const seasonInput =
-          document.getElementById(
-            "contract-seasons"
-          );
-
-        if (seasonInput) {
-          seasonInput.value = 1;
-        }
-
-        renderContractsView();
-        renderOverview();
-      }
-    );
+        selectedPlayer = null;
+        await reloadAll();
+        renderAll();
+        toast("Contrato añadido.");
+      });
+    });
   }
 
   if (contractsTableBody) {
-    contractsTableBody.addEventListener(
-      "click",
-      function (e) {
-        const btn =
-          e.target.closest(
-            "[data-delete-contract]"
-          );
-
-        if (!btn) return;
-
-        const id =
-          Number(
-            btn.getAttribute(
-              "data-delete-contract"
-            )
-          );
-
-        if (
-          !confirm(
-            "¿Eliminar este contrato?"
-          )
-        ) {
-          return;
-        }
-
-        saveContracts(
-          loadContracts().filter(
-            function (c) {
-              return c.id !== id;
-            }
-          )
-        );
-
-        renderContractsView();
-        renderOverview();
-      }
-    );
+    contractsTableBody.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-delete-contract]");
+      if (!btn) return;
+      if (!confirm("¿Eliminar este contrato?")) return;
+      withBusy(btn, async () => {
+        await db.deleteContract(btn.getAttribute("data-delete-contract"));
+        await reloadAll();
+        renderAll();
+        toast("Contrato eliminado.");
+      });
+    });
   }
 
   if (advanceSeasonBtn) {
-    advanceSeasonBtn.addEventListener(
-      "click",
-      function () {
-        const current =
-          loadSeason();
-
-        if (
-          !confirm(
-            "¿Avanzar de la temporada " +
-            current +
-            " a la " +
-            (current + 1) +
-            "? Todos los contratos activos restarán una temporada."
-          )
-        ) {
-          return;
-        }
-
-        const nextSeason =
-          current + 1;
-
-        const contracts =
-          loadContracts();
-
-        contracts.forEach(function (c) {
-          if (c.status !== "ACTIVO") return;
-
-          c.seasonsLeft -= 1;
-
-          if (c.seasonsLeft <= 0) {
-            c.status = "INACTIVO";
-            c.endedAt =
-              new Date().toISOString();
-            c.endedSeason =
-              nextSeason;
-          }
-        });
-
-        saveContracts(contracts);
-        saveSeason(nextSeason);
-
-        renderContractsView();
-        renderOverview();
-      }
-    );
+    advanceSeasonBtn.addEventListener("click", () => {
+      if (!confirm(`¿Avanzar de la temporada ${state.season} a la ${state.season + 1}? Todos los contratos activos restarán una temporada.`)) return;
+      withBusy(advanceSeasonBtn, async () => {
+        const next = await db.advanceSeason(state.season);
+        state.season = next;
+        await reloadAll();
+        renderAll();
+        toast("Temporada avanzada.");
+      });
+    });
   }
 
-  /* =====================================
-     8. DIVISIONES
-  ===================================== */
+  // =====================================
+  // PARTIDOS (programar)
+  // =====================================
 
-  function renderDivisionsView() {
-    const teams = allTeams();
+  const matchForm = document.getElementById("match-form");
+  const matchHomeSelect = document.getElementById("match-home");
+  const matchAwaySelect = document.getElementById("match-away");
+  const matchStadiumSelect = document.getElementById("match-stadium");
+  const matchesTableBody = document.getElementById("matches-table-body");
 
-    const groups = {
-      null: [],
-      primera: [],
-      segunda: []
+  function populateMatchSelects() {
+    const teamOptions = '<option value="" disabled selected>— Selecciona —</option>' +
+      state.teams.map((t) => `<option value="${t.id}">${escapeHTML(t.name)}</option>`).join("");
+    if (matchHomeSelect) matchHomeSelect.innerHTML = teamOptions;
+    if (matchAwaySelect) matchAwaySelect.innerHTML = teamOptions;
+    if (matchStadiumSelect) {
+      matchStadiumSelect.innerHTML = '<option value="">— Sin definir —</option>' +
+        state.stadiums.map((s) => `<option value="${s.id}">${escapeHTML(s.name)}</option>`).join("");
+    }
+  }
+
+  function renderMatchesView() {
+    populateMatchSelects();
+    if (!matchesTableBody) return;
+
+    if (!state.matches.length) {
+      matchesTableBody.innerHTML = '<tr><td colspan="6" class="admin-table-empty">Todavía no hay partidos programados.</td></tr>';
+      return;
+    }
+
+    matchesTableBody.innerHTML = state.matches.map((m) => `
+      <tr>
+        <td class="is-muted">J${m.matchday}</td>
+        <td>${m.home_team ? escapeHTML(m.home_team.name) : "—"} vs ${m.away_team ? escapeHTML(m.away_team.name) : "—"}</td>
+        <td>${m.stadium ? escapeHTML(m.stadium.name) : "—"}</td>
+        <td class="is-muted">${formatDateTime(m.scheduled_at)}</td>
+        <td>${m.status === "jugado" ? `<span class="badge-state badge-state--active">${m.home_goals}-${m.away_goals}</span>` : '<span class="badge-state badge-state--neutral">Programado</span>'}</td>
+        <td class="admin-table__actions">
+          <button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-delete-match="${m.id}">Eliminar</button>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  if (matchForm) {
+    matchForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const homeId = matchHomeSelect?.value;
+      const awayId = matchAwaySelect?.value;
+      const stadiumId = matchStadiumSelect?.value || null;
+      const matchday = parseInt(document.getElementById("match-matchday")?.value, 10) || 1;
+      const dateVal = document.getElementById("match-datetime")?.value;
+      const submitBtn = matchForm.querySelector('button[type="submit"]');
+
+      if (!homeId || !awayId || homeId === awayId) {
+        alert("Selecciona dos equipos distintos.");
+        return;
+      }
+
+      withBusy(submitBtn, async () => {
+        await db.addMatch({
+          season: state.season,
+          matchday,
+          home_team_id: homeId,
+          away_team_id: awayId,
+          stadium_id: stadiumId,
+          scheduled_at: dateVal ? new Date(dateVal).toISOString() : null,
+          status: "programado",
+        });
+        matchForm.reset();
+        await reloadAll();
+        renderAll();
+        toast("Partido programado.");
+      });
+    });
+  }
+
+  if (matchesTableBody) {
+    matchesTableBody.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-delete-match]");
+      if (!btn) return;
+      if (!confirm("¿Eliminar este partido?")) return;
+      withBusy(btn, async () => {
+        await db.deleteMatch(btn.getAttribute("data-delete-match"));
+        await reloadAll();
+        renderAll();
+        toast("Partido eliminado.");
+      });
+    });
+  }
+
+  // =====================================
+  // RESULTADOS
+  // =====================================
+
+  const resultsPendingList = document.getElementById("results-pending-list");
+  const resultsPlayedList = document.getElementById("results-played-list");
+  const resultFormBox = document.getElementById("result-form-box");
+
+  function renderResultsView() {
+    if (!resultsPendingList || !resultsPlayedList) return;
+
+    const pending = state.matches.filter((m) => m.status === "programado");
+    const played = state.matches.filter((m) => m.status === "jugado");
+
+    resultsPendingList.innerHTML = pending.map((m) => `
+      <div class="admin-row">
+        <div class="admin-row__body">
+          <div class="admin-row__name">${m.home_team ? escapeHTML(m.home_team.name) : "?"} vs ${m.away_team ? escapeHTML(m.away_team.name) : "?"}</div>
+          <div class="admin-row__meta">J${m.matchday} · ${formatDateTime(m.scheduled_at)}</div>
+        </div>
+        <button type="button" class="btn-admin btn-admin--small btn-admin--solid" data-enter-result="${m.id}">Poner resultado</button>
+      </div>
+    `).join("") || '<div class="admin-panel__empty">No hay partidos pendientes.</div>';
+
+    resultsPlayedList.innerHTML = played.map((m) => `
+      <div class="admin-row">
+        <div class="admin-row__body">
+          <div class="admin-row__name">${m.home_team ? escapeHTML(m.home_team.name) : "?"} ${m.home_goals}-${m.away_goals} ${m.away_team ? escapeHTML(m.away_team.name) : "?"}</div>
+          <div class="admin-row__meta">J${m.matchday}</div>
+        </div>
+        <button type="button" class="btn-admin btn-admin--small" data-enter-result="${m.id}">Editar resultado</button>
+      </div>
+    `).join("") || '<div class="admin-panel__empty">Todavía no hay partidos jugados.</div>';
+  }
+
+  async function openResultForm(matchId) {
+    const match = state.matches.find((m) => m.id === matchId);
+    if (!match || !resultFormBox) return;
+
+    const [homeRoster, awayRoster, existingEvents] = await Promise.all([
+      db.getContractsByTeam(match.home_team_id),
+      db.getContractsByTeam(match.away_team_id),
+      db.getMatchEvents(matchId),
+    ]);
+
+    function playerOptions(roster) {
+      return roster.map((c) => `<option value="${c.player.id}">${escapeHTML(c.player.roblox_username)}</option>`).join("");
+    }
+
+    resultFormBox.hidden = false;
+    resultFormBox.innerHTML = `
+      <div class="admin-form__title">Resultado: ${match.home_team ? escapeHTML(match.home_team.name) : "?"} vs ${match.away_team ? escapeHTML(match.away_team.name) : "?"}</div>
+      <div class="admin-form" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="admin-field">
+          <label>Goles ${match.home_team ? escapeHTML(match.home_team.name) : "Local"}</label>
+          <input class="admin-input" type="number" min="0" id="result-home-goals" value="${match.home_goals ?? 0}">
+        </div>
+        <div class="admin-field">
+          <label>Goles ${match.away_team ? escapeHTML(match.away_team.name) : "Visitante"}</label>
+          <input class="admin-input" type="number" min="0" id="result-away-goals" value="${match.away_goals ?? 0}">
+        </div>
+      </div>
+
+      <div class="result-events" id="result-events-list"></div>
+
+      <div class="admin-form__actions" style="padding:0 0 20px;">
+        <button type="button" class="btn-admin" id="result-add-event">+ Añadir evento (gol / tarjeta / asistencia / MVP)</button>
+      </div>
+
+      <div class="admin-form__actions">
+        <button type="button" class="btn-admin btn-admin--solid" id="result-save-btn">Guardar resultado</button>
+        <button type="button" class="btn-admin" id="result-cancel-btn">Cancelar</button>
+      </div>
+    `;
+
+    const eventsList = document.getElementById("result-events-list");
+    const eventTypeLabels = {
+      gol: "Gol", tarjeta_amarilla: "Tarjeta amarilla", tarjeta_roja: "Tarjeta roja",
+      asistencia: "Asistencia", mvp: "MVP",
     };
 
-    teams.forEach(function (t) {
-      const key =
-        t.division || "null";
+    function addEventRow(prefill) {
+      const row = document.createElement("div");
+      row.className = "result-event-row";
+      row.innerHTML = `
+        <select class="admin-select" data-ev="team">
+          <option value="home" ${prefill?.side === "home" ? "selected" : ""}>${match.home_team ? escapeHTML(match.home_team.name) : "Local"} (Local)</option>
+          <option value="away" ${prefill?.side === "away" ? "selected" : ""}>${match.away_team ? escapeHTML(match.away_team.name) : "Visitante"} (Visitante)</option>
+        </select>
+        <select class="admin-select" data-ev="player"></select>
+        <select class="admin-select" data-ev="type">
+          ${Object.keys(eventTypeLabels).map((k) => `<option value="${k}" ${prefill?.type === k ? "selected" : ""}>${eventTypeLabels[k]}</option>`).join("")}
+        </select>
+        <button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-ev-remove="1">Quitar</button>
+      `;
 
-      (groups[key] || groups.null)
-        .push(t);
+      const teamSelect = row.querySelector('[data-ev="team"]');
+      const playerSelect = row.querySelector('[data-ev="player"]');
+
+      function refreshPlayers() {
+        playerSelect.innerHTML = teamSelect.value === "home" ? playerOptions(homeRoster) : playerOptions(awayRoster);
+        if (prefill?.playerId) playerSelect.value = prefill.playerId;
+      }
+      teamSelect.addEventListener("change", refreshPlayers);
+      refreshPlayers();
+
+      row.querySelector("[data-ev-remove]").addEventListener("click", () => row.remove());
+      eventsList.appendChild(row);
+    }
+
+    existingEvents.forEach((ev) => {
+      addEventRow({
+        side: ev.team_id === match.home_team_id ? "home" : "away",
+        playerId: ev.player_id,
+        type: ev.type,
+      });
     });
 
-    Object.keys(groups).forEach(
-      function (key) {
-        const listEl =
-          document.getElementById(
-            "division-list-" + key
-          );
+    document.getElementById("result-add-event").addEventListener("click", () => addEventRow());
 
-        const countEl =
-          document.getElementById(
-            "division-count-" + key
-          );
+    document.getElementById("result-cancel-btn").addEventListener("click", () => {
+      resultFormBox.hidden = true;
+      resultFormBox.innerHTML = "";
+    });
 
-        if (!listEl) return;
+    document.getElementById("result-save-btn").addEventListener("click", (evt) => {
+      const homeGoals = parseInt(document.getElementById("result-home-goals").value, 10) || 0;
+      const awayGoals = parseInt(document.getElementById("result-away-goals").value, 10) || 0;
 
-        if (countEl) {
-          countEl.textContent =
-            groups[key].length;
-        }
+      const events = Array.from(eventsList.querySelectorAll(".result-event-row")).map((row) => {
+        const side = row.querySelector('[data-ev="team"]').value;
+        const playerId = row.querySelector('[data-ev="player"]').value;
+        const type = row.querySelector('[data-ev="type"]').value;
+        return {
+          playerId,
+          type,
+          teamId: side === "home" ? match.home_team_id : match.away_team_id,
+        };
+      });
 
-        listEl.innerHTML = "";
-
-        if (!groups[key].length) {
-          listEl.innerHTML =
-            '<div class="division-column__empty">' +
-            "Vacío." +
-            "</div>";
-
-          return;
-        }
-
-        groups[key].forEach(
-          function (t) {
-            const row =
-              document.createElement(
-                "div"
-              );
-
-            row.className =
-              "division-row";
-
-            let actions = "";
-
-            if (key !== "primera") {
-              actions +=
-                '<button type="button" class="btn-admin btn-admin--small" data-assign="' +
-                escapeHTML(t.code) +
-                '::primera">→ Primera</button>';
-            }
-
-            if (key !== "segunda") {
-              actions +=
-                '<button type="button" class="btn-admin btn-admin--small" data-assign="' +
-                escapeHTML(t.code) +
-                '::segunda">→ Segunda</button>';
-            }
-
-            if (key !== "null") {
-              actions +=
-                '<button type="button" class="btn-admin btn-admin--small" data-assign="' +
-                escapeHTML(t.code) +
-                '::null">Quitar</button>';
-            }
-
-            row.innerHTML =
-              '<span class="division-row__name">' +
-              escapeHTML(t.name) +
-              "</span>" +
-
-              '<div class="division-row__actions">' +
-              actions +
-              "</div>";
-
-            listEl.appendChild(row);
-          }
-        );
-      }
-    );
-  }
-
-  /* =====================================
-     9. NAVEGACIÓN
-  ===================================== */
-
-  const adminApp =
-    document.getElementById(
-      "admin-app"
-    );
-
-  if (adminApp) {
-    adminApp.addEventListener(
-      "click",
-      function (e) {
-        const btn =
-          e.target.closest(
-            "[data-assign]"
-          );
-
-        if (!btn) return;
-
-        const parts =
-          btn.getAttribute(
-            "data-assign"
-          ).split("::");
-
-        const code =
-          parts[0];
-
-        const division =
-          parts[1] === "null"
-            ? null
-            : parts[1];
-
-        setTeamDivision(
-          code,
-          division
-        );
-
+      withBusy(evt.target, async () => {
+        await db.setMatchResult(matchId, { homeGoals, awayGoals, events });
+        resultFormBox.hidden = true;
+        resultFormBox.innerHTML = "";
+        await reloadAll();
         renderAll();
-      }
-    );
+        toast("Resultado guardado.");
+      });
+    });
   }
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-enter-result]");
+    if (!btn) return;
+    openResultForm(btn.getAttribute("data-enter-result"));
+  });
+
+  // =====================================
+  // DIVISIONES
+  // =====================================
+
+  function renderDivisionsView() {
+    const groups = { null: [], primera: [], segunda: [] };
+    state.teams.forEach((t) => {
+      const key = t.division || "null";
+      (groups[key] || groups.null).push(t);
+    });
+
+    Object.keys(groups).forEach((key) => {
+      const listEl = document.getElementById("division-list-" + key);
+      const countEl = document.getElementById("division-count-" + key);
+      if (!listEl) return;
+      if (countEl) countEl.textContent = groups[key].length;
+
+      if (!groups[key].length) {
+        listEl.innerHTML = '<div class="division-column__empty">Vacío.</div>';
+        return;
+      }
+
+      listEl.innerHTML = groups[key].map((t) => {
+        let actions = "";
+        if (key !== "primera") actions += `<button type="button" class="btn-admin btn-admin--small" data-assign="${t.id}::primera">→ Primera</button>`;
+        if (key !== "segunda") actions += `<button type="button" class="btn-admin btn-admin--small" data-assign="${t.id}::segunda">→ Segunda</button>`;
+        if (key !== "null") actions += `<button type="button" class="btn-admin btn-admin--small" data-assign="${t.id}::null">Quitar</button>`;
+        return `
+          <div class="division-row">
+            <span class="division-row__name">${escapeHTML(t.name)}</span>
+            <div class="division-row__actions">${actions}</div>
+          </div>
+        `;
+      }).join("");
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-assign]");
+    if (!btn) return;
+    const [teamId, division] = btn.getAttribute("data-assign").split("::");
+    withBusy(btn, async () => {
+      await db.updateTeam(teamId, { division: division === "null" ? null : division });
+      await reloadAll();
+      renderAll();
+    });
+  });
+
+  // =====================================
+  // ADMINS (solo super-admin)
+  // =====================================
+
+  const adminsForm = document.getElementById("admins-form");
+  const adminsListEl = document.getElementById("admins-list");
+
+  function renderAdminsView() {
+    if (!adminsListEl) return;
+    if (!state.admins.length) {
+      adminsListEl.innerHTML = '<div class="admin-panel__empty">Todavía no has añadido ningún admin.</div>';
+      return;
+    }
+    adminsListEl.innerHTML = state.admins.map((a) => `
+      <div class="admin-row">
+        <div class="admin-row__body">
+          <div class="admin-row__name">${escapeHTML(a.discord_username || "Sin nombre")}</div>
+          <div class="admin-row__meta">ID: ${escapeHTML(a.discord_id)} · añadido ${formatDate(a.created_at)}</div>
+        </div>
+        <button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-remove-admin="${a.id}">Quitar</button>
+      </div>
+    `).join("");
+  }
+
+  if (adminsForm) {
+    adminsForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const discordId = document.getElementById("admin-add-discord-id")?.value.trim();
+      const discordUsername = document.getElementById("admin-add-discord-username")?.value.trim();
+      const submitBtn = adminsForm.querySelector('button[type="submit"]');
+      if (!discordId) return;
+
+      withBusy(submitBtn, async () => {
+        await db.addAdmin({ discordId, discordUsername, addedByDiscordId: state.currentDiscordId });
+        adminsForm.reset();
+        state.admins = await db.getAdmins();
+        renderAdminsView();
+        toast("Admin añadido.");
+      });
+    });
+  }
+
+  if (adminsListEl) {
+    adminsListEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-remove-admin]");
+      if (!btn) return;
+      if (!confirm("¿Quitar a este admin?")) return;
+      withBusy(btn, async () => {
+        await db.removeAdmin(btn.getAttribute("data-remove-admin"));
+        state.admins = await db.getAdmins();
+        renderAdminsView();
+        toast("Admin eliminado.");
+      });
+    });
+  }
+
+  // =====================================
+  // HISTORIAL (solo super-admin)
+  // =====================================
+
+  const historyListEl = document.getElementById("history-list");
+
+  const TABLE_LABELS = {
+    teams: "Equipo", contracts: "Contrato", matches: "Partido",
+    match_events: "Evento de partido", stadiums: "Estadio", players: "Jugador",
+  };
+  const ACTION_LABELS = { INSERT: "creó", UPDATE: "editó", DELETE: "eliminó" };
+
+  async function renderHistoryView() {
+    if (!historyListEl) return;
+    let entries = [];
+    try { entries = await db.getAuditLog(150); } catch (e) { console.error(e); }
+
+    if (!entries.length) {
+      historyListEl.innerHTML = '<div class="admin-panel__empty">Todavía no hay cambios registrados.</div>';
+      return;
+    }
+
+    historyListEl.innerHTML = entries.map((entry) => `
+      <div class="admin-row">
+        <div class="admin-row__body">
+          <div class="admin-row__name">${escapeHTML(entry.actor_discord_id || "Desconocido")} ${ACTION_LABELS[entry.action] || entry.action} un ${TABLE_LABELS[entry.table_name] || entry.table_name}</div>
+          <div class="admin-row__meta">${formatDateTime(entry.created_at)}</div>
+        </div>
+        <button type="button" class="btn-admin btn-admin--small" data-revert="${entry.id}">Revertir</button>
+      </div>
+    `).join("");
+
+    historyListEl.querySelectorAll("[data-revert]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-revert");
+        const entry = entries.find((x) => x.id === id);
+        if (!entry) return;
+        if (!confirm("¿Revertir este cambio?")) return;
+        withBusy(btn, async () => {
+          await db.revertAuditEntry(entry);
+          await reloadAll();
+          renderAll();
+          await renderHistoryView();
+          toast("Cambio revertido.");
+        });
+      });
+    });
+  }
+
+  // =====================================
+  // NAVEGACIÓN DEL PANEL
+  // =====================================
 
   const CRUMBS = {
-    overview: "Overview",
-    teams: "Equipos",
-    contracts: "Contratos",
-    divisions: "Divisiones"
+    overview: "Overview", teams: "Equipos", contracts: "Contratos", divisions: "Divisiones",
+    stadiums: "Estadios", matches: "Partidos", results: "Resultados", admins: "Admins", history: "Historial",
   };
 
   function showAdminView(name) {
-    document
-      .querySelectorAll(
-        ".admin-view"
-      )
-      .forEach(
-        function (section) {
-          section.hidden =
-            section.dataset.adminView !==
-            name;
-        }
-      );
+    document.querySelectorAll(".admin-view").forEach((section) => {
+      section.hidden = section.dataset.adminView !== name;
+    });
+    document.querySelectorAll(".admin-nav__link").forEach((link) => {
+      link.classList.toggle("is-active", link.dataset.adminView === name);
+    });
+    const crumb = document.getElementById("admin-crumb");
+    if (crumb) crumb.textContent = CRUMBS[name] || "Overview";
 
-    document
-      .querySelectorAll(
-        ".admin-nav__link"
-      )
-      .forEach(
-        function (link) {
-          link.classList.toggle(
-            "is-active",
-            link.dataset.adminView ===
-              name
-          );
-        }
-      );
-
-    const crumb =
-      document.getElementById(
-        "admin-crumb"
-      );
-
-    if (crumb) {
-      crumb.textContent =
-        CRUMBS[name] ||
-        "Overview";
-    }
+    if (name === "results") renderResultsView();
+    if (name === "history") renderHistoryView();
   }
+  window.IFLAdminShowView = showAdminView;
 
-  const adminNav =
-    document.getElementById(
-      "admin-nav"
-    );
-
+  const adminNav = document.getElementById("admin-nav");
   if (adminNav) {
-    adminNav.addEventListener(
-      "click",
-      function (e) {
-        const link =
-          e.target.closest(
-            ".admin-nav__link"
-          );
-
-        if (!link) return;
-
-        showAdminView(
-          link.dataset.adminView
-        );
-      }
-    );
+    adminNav.addEventListener("click", (e) => {
+      const link = e.target.closest(".admin-nav__link");
+      if (!link) return;
+      showAdminView(link.dataset.adminView);
+    });
   }
 
-  const refreshBtn =
-    document.getElementById(
-      "admin-refresh"
-    );
-
+  const refreshBtn = document.getElementById("admin-refresh");
   if (refreshBtn) {
-    refreshBtn.addEventListener(
-      "click",
-      renderAll
-    );
+    refreshBtn.addEventListener("click", () => withBusy(refreshBtn, async () => { await reloadAll(); renderAll(); toast("Actualizado."); }));
   }
 
-  /* =====================================
-     10. RENDER GENERAL
-  ===================================== */
+  function applyRoleVisibility() {
+    document.querySelectorAll('[data-admin-view="admins"], [data-admin-view="history"]').forEach((el) => {
+      el.hidden = !state.isSuperAdmin;
+      el.style.display = state.isSuperAdmin ? "" : "none";
+    });
+  }
+
+  // =====================================
+  // RENDER GENERAL
+  // =====================================
 
   function renderAll() {
-    renderSideClubs(
-      activeDivision,
-      activeStatus,
-      searchInput
-        ? searchInput.value.trim().toLowerCase()
-        : ""
-    );
-
+    renderSideClubs(activeDivision, activeStatus, (searchInput?.value || "").trim().toLowerCase());
     renderOverview();
     renderTeamsView();
+    renderStadiumsView();
     renderContractsView();
+    renderMatchesView();
     renderDivisionsView();
+    if (state.isSuperAdmin) renderAdminsView();
+    applyRoleVisibility();
   }
 
-  /* =====================================
-     11. SUPABASE / DISCORD
-  ===================================== */
+  // =====================================
+  // ACCESO: DISCORD + PUERTA INTERNA + CAPTCHA
+  // =====================================
 
-  const SUPABASE_URL =
-    "https://boazhychmpxeuplyxzsi.supabase.co";
-
-  const SUPABASE_PUBLISHABLE_KEY =
-    "sb_publishable_C_iRhldD-coePRVqcNDCGA_oGIA1u3d";
-
-  const deniedEl =
-    document.getElementById(
-      "admin-denied"
-    );
-
-  const gateEl =
-    document.getElementById(
-      "admin-gate"
-    );
-
-  const appEl =
-    document.getElementById(
-      "admin-app"
-    );
+  const deniedEl = document.getElementById("admin-denied");
+  const gateEl = document.getElementById("admin-gate");
+  const appEl = document.getElementById("admin-app");
 
   function hideAllScreens() {
-    if (deniedEl) {
-      deniedEl.hidden = true;
-      deniedEl.style.display = "none";
-    }
-
-    if (gateEl) {
-      gateEl.hidden = true;
-      gateEl.style.display = "none";
-    }
-
-    if (appEl) {
-      appEl.hidden = true;
-      appEl.style.display = "none";
-    }
+    [deniedEl, gateEl, appEl].forEach((el) => { if (el) { el.hidden = true; el.style.display = "none"; } });
   }
-
-  function showDenied() {
-    hideAllScreens();
-
-    if (deniedEl) {
-      deniedEl.hidden = false;
-      deniedEl.style.display = "";
-    }
-  }
-
+  function showDenied() { hideAllScreens(); if (deniedEl) { deniedEl.hidden = false; deniedEl.style.display = ""; } }
   function showGate() {
     hideAllScreens();
-
-    if (gateEl) {
-      gateEl.hidden = false;
-      gateEl.style.display = "";
-    }
-
-    const userInput =
-      document.getElementById(
-        "gate-user"
-      );
-
-    if (userInput) {
-      setTimeout(function () {
-        userInput.focus();
-      }, 50);
-    }
+    if (gateEl) { gateEl.hidden = false; gateEl.style.display = ""; }
+    renderCaptchaIfNeeded();
+    const userInput = document.getElementById("gate-user");
+    if (userInput) setTimeout(() => userInput.focus(), 50);
   }
 
-     /* =====================================
-     11.0 BIENVENIDA DEL ADMIN
-  ===================================== */
+  function getFailCount() {
+    return parseInt(sessionStorage.getItem(GATE_FAILS_KEY) || "0", 10);
+  }
+  function setFailCount(n) {
+    sessionStorage.setItem(GATE_FAILS_KEY, String(n));
+  }
+
+  let currentCaptcha = null;
+
+  function renderCaptchaIfNeeded() {
+    const box = document.getElementById("gate-captcha-box");
+    if (!box) return;
+    const fails = getFailCount();
+    if (fails < CAPTCHA_THRESHOLD) {
+      box.hidden = true;
+      currentCaptcha = null;
+      return;
+    }
+    const a = Math.floor(Math.random() * 9) + 1;
+    const b = Math.floor(Math.random() * 9) + 1;
+    currentCaptcha = a + b;
+    box.hidden = false;
+    box.innerHTML = `
+      <label for="gate-captcha-input">Demasiados intentos. Resuelve: ¿cuánto es ${a} + ${b}?</label>
+      <input class="admin-input" id="gate-captcha-input" type="number" required>
+    `;
+  }
 
   function showAdminWelcome() {
-    const welcome =
-      document.getElementById("admin-welcome");
-
-    const closeButton =
-      document.getElementById("admin-welcome-close");
-
-    if (!welcome || !closeButton) {
-      return;
+    if (window.IFLOnboarding) {
+      window.IFLOnboarding.openAdminWelcome();
     }
-
-    const alreadySeen =
-      localStorage.getItem(
-        "ifl-admin-welcome-seen"
-      ) === "1";
-
-    if (alreadySeen) {
-      return;
-    }
-
-    welcome.hidden = false;
-
-    closeButton.addEventListener(
-      "click",
-      function () {
-        localStorage.setItem(
-          "ifl-admin-welcome-seen",
-          "1"
-        );
-
-        welcome.hidden = true;
-      },
-      { once: true }
-    );
   }
-   
+
   function showPanel() {
-    console.log(
-      "[IFL Admin] Mostrando panel de administración."
-    );
-
-    if (!appEl) {
-      console.error(
-        "[IFL Admin] ERROR: no existe #admin-app en admin.html."
-      );
-
-      return;
-    }
-
-    if (deniedEl) {
-      deniedEl.hidden = true;
-      deniedEl.style.display = "none";
-    }
-
-    if (gateEl) {
-      gateEl.hidden = true;
-      gateEl.style.display = "none";
-    }
-
+    if (!appEl) return;
+    hideAllScreens();
     appEl.hidden = false;
     appEl.style.display = "";
-    appEl.style.visibility = "visible";
-    appEl.style.opacity = "1";
 
-    console.log(
-      "[IFL Admin] #admin-app visible."
-    );
-
-    try {
-      renderAll();
-
-      console.log(
-        "[IFL Admin] Panel renderizado correctamente."
-      );
-    } catch (error) {
-      console.error(
-        "[IFL Admin] Error renderizando el panel:",
-        error
-      );
-    }
+    (async () => {
+      try {
+        await reloadAll();
+        renderAll();
+        showAdminWelcome();
+      } catch (err) {
+        console.error("[IFL Admin] Error cargando el panel:", err);
+        toast("Error cargando los datos del panel.", true);
+      }
+    })();
   }
 
-  /* =====================================
-     11.1 DETECCIÓN ROBUSTA DEL DISCORD ID
-  ===================================== */
-
   function addCandidate(list, value) {
-    if (
-      value === null ||
-      value === undefined ||
-      value === ""
-    ) {
-      return;
-    }
-
-    const normalized =
-      String(value).trim();
-
-    if (!normalized) return;
-
-    if (!list.includes(normalized)) {
-      list.push(normalized);
-    }
+    if (value === null || value === undefined || value === "") return;
+    const n = String(value).trim();
+    if (n && !list.includes(n)) list.push(n);
   }
 
   function getDiscordIdCandidates(user) {
     const candidates = [];
+    if (!user) return candidates;
+    const metadata = user.user_metadata || {};
+    const appMetadata = user.app_metadata || {};
+    const identities = Array.isArray(user.identities) ? user.identities : [];
 
-    if (!user) {
-      return candidates;
-    }
+    addCandidate(candidates, user.discord_id);
+    addCandidate(candidates, user.discord_user_id);
+    addCandidate(candidates, user.provider_id);
+    addCandidate(candidates, metadata.discord_id);
+    addCandidate(candidates, metadata.discord_user_id);
+    addCandidate(candidates, metadata.provider_id);
+    addCandidate(candidates, metadata.sub);
+    addCandidate(candidates, appMetadata.discord_id);
+    addCandidate(candidates, appMetadata.discord_user_id);
 
-    const metadata =
-      user.user_metadata || {};
-
-    const appMetadata =
-      user.app_metadata || {};
-
-    const identities =
-      Array.isArray(user.identities)
-        ? user.identities
-        : [];
-
-    /*
-      Algunos proyectos reciben el ID directamente
-      en distintos campos del usuario.
-    */
-
-    addCandidate(
-      candidates,
-      user.discord_id
-    );
-
-    addCandidate(
-      candidates,
-      user.discord_user_id
-    );
-
-    addCandidate(
-      candidates,
-      user.provider_id
-    );
-
-    addCandidate(
-      candidates,
-      metadata.discord_id
-    );
-
-    addCandidate(
-      candidates,
-      metadata.discord_user_id
-    );
-
-    addCandidate(
-      candidates,
-      metadata.provider_id
-    );
-
-    addCandidate(
-      candidates,
-      metadata.sub
-    );
-
-    addCandidate(
-      candidates,
-      appMetadata.discord_id
-    );
-
-    addCandidate(
-      candidates,
-      appMetadata.discord_user_id
-    );
-
-    /*
-      Identidades OAuth de Supabase.
-    */
-
-    identities.forEach(function (identity) {
+    identities.forEach((identity) => {
       if (!identity) return;
-
-      addCandidate(
-        candidates,
-        identity.provider_id
-      );
-
-      const identityData =
-        identity.identity_data || {};
-
-      addCandidate(
-        candidates,
-        identityData.id
-      );
-
-      addCandidate(
-        candidates,
-        identityData.user_id
-      );
-
-      addCandidate(
-        candidates,
-        identityData.discord_id
-      );
-
-      addCandidate(
-        candidates,
-        identityData.discord_user_id
-      );
-
-      addCandidate(
-        candidates,
-        identityData.provider_id
-      );
-
-      addCandidate(
-        candidates,
-        identityData.sub
-      );
+      addCandidate(candidates, identity.provider_id);
+      const d = identity.identity_data || {};
+      addCandidate(candidates, d.id);
+      addCandidate(candidates, d.user_id);
+      addCandidate(candidates, d.discord_id);
+      addCandidate(candidates, d.discord_user_id);
+      addCandidate(candidates, d.provider_id);
+      addCandidate(candidates, d.sub);
     });
 
     return candidates;
   }
 
-  function isAdminUser(user) {
-    const candidates =
-      getDiscordIdCandidates(user);
-
-    console.log(
-      "[IFL Admin] Discord IDs detectados:",
-      candidates
-    );
-
-    console.log(
-      "[IFL Admin] Discord ID autorizado:",
-      ADMIN_DISCORD_ID
-    );
-
-    const authorized =
-      candidates.includes(
-        String(ADMIN_DISCORD_ID)
-      );
-
-    console.log(
-      "[IFL Admin] ¿Discord autorizado?:",
-      authorized
-    );
-
-    return authorized;
+  function isAdminUserLocal(user) {
+    return getDiscordIdCandidates(user).includes(ADMIN_DISCORD_ID);
   }
 
   function paintSidebarUser(user) {
-    const nameEl =
-      document.getElementById(
-        "admin-name"
-      );
-
-    const avatarEl =
-      document.getElementById(
-        "admin-avatar"
-      );
-
-    const fallbackEl =
-      document.getElementById(
-        "admin-avatar-fallback"
-      );
-
+    const nameEl = document.getElementById("admin-name");
+    const avatarEl = document.getElementById("admin-avatar");
+    const fallbackEl = document.getElementById("admin-avatar-fallback");
     if (!nameEl) return;
 
     const discordName =
-      (
-        user.user_metadata &&
-        (
-          user.user_metadata.full_name ||
-          user.user_metadata.name ||
-          user.user_metadata.preferred_username ||
-          user.user_metadata.user_name ||
-          user.user_metadata.custom_claims?.global_name ||
-          user.user_metadata.custom_claims?.username
-        )
-      ) ||
-      "Administrador";
+      (user.user_metadata && (
+        user.user_metadata.full_name || user.user_metadata.name ||
+        user.user_metadata.preferred_username || user.user_metadata.user_name ||
+        user.user_metadata.custom_claims?.global_name
+      )) || "Administrador";
 
-    nameEl.textContent =
-      discordName;
+    nameEl.textContent = discordName;
+    state.currentDiscordName = discordName;
 
-    const avatarUrl =
-      user.user_metadata &&
-      (
-        user.user_metadata.avatar_url ||
-        user.user_metadata.picture
-      );
-
-    if (
-      avatarUrl &&
-      avatarEl &&
-      fallbackEl
-    ) {
-      avatarEl.src =
-        avatarUrl;
-
-      avatarEl.alt =
-        discordName;
-
-      avatarEl.hidden =
-        false;
-
-      fallbackEl.hidden =
-        true;
-
-      avatarEl.onerror =
-        function () {
-          avatarEl.hidden =
-            true;
-
-          fallbackEl.hidden =
-            false;
-
-          fallbackEl.textContent =
-            discordName
-              .charAt(0)
-              .toUpperCase();
-        };
-    } else if (
-      fallbackEl
-    ) {
-      fallbackEl.textContent =
-        discordName
-          .charAt(0)
-          .toUpperCase();
-
-      fallbackEl.hidden =
-        false;
-
-      if (avatarEl) {
-        avatarEl.hidden =
-          true;
-      }
+    const avatarUrl = user.user_metadata && (user.user_metadata.avatar_url || user.user_metadata.picture);
+    if (avatarUrl && avatarEl && fallbackEl) {
+      avatarEl.src = avatarUrl;
+      avatarEl.alt = discordName;
+      avatarEl.hidden = false;
+      fallbackEl.hidden = true;
+      avatarEl.onerror = () => { avatarEl.hidden = true; fallbackEl.hidden = false; fallbackEl.textContent = discordName.charAt(0).toUpperCase(); };
+    } else if (fallbackEl) {
+      fallbackEl.textContent = discordName.charAt(0).toUpperCase();
+      fallbackEl.hidden = false;
+      if (avatarEl) avatarEl.hidden = true;
     }
   }
 
-  /* =====================================
-     12. INICIALIZACIÓN SUPABASE
-  ===================================== */
+  if (window.supabase && typeof window.supabase.createClient === "function" && db) {
+    db.client.auth.getSession().then(async (res) => {
+      const session = res.data && res.data.session;
+      if (!session) { window.location.href = "index.html"; return; }
 
-  let supabaseClient = null;
+      const candidates = getDiscordIdCandidates(session.user);
+      state.currentDiscordId = candidates[0] || null;
 
-  if (
-    window.supabase &&
-    typeof window.supabase.createClient ===
-      "function"
-  ) {
-    console.log(
-      "[IFL Admin] Cliente Supabase inicializado."
-    );
+      if (!isAdminUserLocal(session.user)) { showDenied(); return; }
 
-    supabaseClient =
-      window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_PUBLISHABLE_KEY
-      );
+      paintSidebarUser(session.user);
+      state.isSuperAdmin = await db.isSuperAdmin();
 
-    supabaseClient.auth
-      .getSession()
-      .then(function (res) {
-        const session =
-          res.data &&
-          res.data.session;
+      let gateOk = false;
+      try { gateOk = sessionStorage.getItem(GATE_SESSION_KEY) === "1"; } catch (e) {}
 
-        console.log(
-          "[IFL Admin] Sesión de Discord encontrada:",
-          session
-        );
+      if (gateOk) showPanel();
+      else showGate();
+    }).catch((error) => {
+      console.error("[IFL Admin] Error obteniendo la sesión:", error);
+      showDenied();
+    });
 
-        if (!session) {
-          console.warn(
-            "[IFL Admin] No hay sesión de Discord. Redirigiendo."
-          );
-
-          window.location.href =
-            "index.html";
-
-          return;
-        }
-
-        console.log(
-          "[IFL Admin] Usuario Supabase:",
-          session.user
-        );
-
-        const candidates =
-          getDiscordIdCandidates(
-            session.user
-          );
-
-        console.log(
-          "[IFL Admin] Candidatos finales de Discord:",
-          candidates
-        );
-
-        if (
-          !isAdminUser(
-            session.user
-          )
-        ) {
-          console.warn(
-            "[IFL Admin] El usuario de Discord no tiene acceso."
-          );
-
-          showDenied();
-
-          return;
-        }
-
-        console.log(
-          "[IFL Admin] Discord verificado correctamente."
-        );
-
-        paintSidebarUser(
-          session.user
-        );
-
-        let gateOk = false;
-
-        try {
-          gateOk =
-            sessionStorage.getItem(
-              GATE_SESSION_KEY
-            ) === "1";
-        } catch (e) {
-          gateOk = false;
-        }
-
-        if (gateOk) {
-          console.log(
-            "[IFL Admin] Puerta ya validada en esta sesión."
-          );
-
-          showPanel();
-        } else {
-          console.log(
-            "[IFL Admin] Esperando usuario y contraseña del panel."
-          );
-
-          showGate();
-        }
-      })
-      .catch(function (error) {
-        console.error(
-          "[IFL Admin] Error obteniendo la sesión:",
-          error
-        );
-
-        showDenied();
-      });
-
-    /*
-      También comprobamos cambios de sesión.
-      Esto evita que el panel se quede en un estado
-      antiguo si Supabase cambia la sesión.
-    */
-
-    supabaseClient.auth.onAuthStateChange(
-      function (event, session) {
-        console.log(
-          "[IFL Admin] Cambio de sesión:",
-          event
-        );
-
-        if (
-          event === "SIGNED_OUT"
-        ) {
-          try {
-            sessionStorage.removeItem(
-              GATE_SESSION_KEY
-            );
-          } catch (e) {}
-
-          window.location.href =
-            "index.html";
-
-          return;
-        }
-
-        if (
-          event === "SIGNED_IN" &&
-          session &&
-          isAdminUser(session.user)
-        ) {
-          paintSidebarUser(
-            session.user
-          );
-        }
+    db.client.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        try { sessionStorage.removeItem(GATE_SESSION_KEY); } catch (e) {}
+        window.location.href = "index.html";
       }
-    );
+    });
 
-    const signoutBtn =
-      document.getElementById(
-        "admin-signout"
-      );
-
+    const signoutBtn = document.getElementById("admin-signout");
     if (signoutBtn) {
-      signoutBtn.addEventListener(
-        "click",
-        function () {
-          try {
-            sessionStorage.removeItem(
-              GATE_SESSION_KEY
-            );
-          } catch (e) {}
-
-          supabaseClient.auth
-            .signOut()
-            .then(function () {
-              window.location.href =
-                "index.html";
-            })
-            .catch(function (error) {
-              console.error(
-                "[IFL Admin] Error cerrando sesión:",
-                error
-              );
-
-              window.location.href =
-                "index.html";
-            });
-        }
-      );
+      signoutBtn.addEventListener("click", () => {
+        try { sessionStorage.removeItem(GATE_SESSION_KEY); } catch (e) {}
+        db.client.auth.signOut().finally(() => { window.location.href = "index.html"; });
+      });
     }
   } else {
-    console.error(
-      "[IFL Admin] Supabase no se ha cargado."
-    );
-
+    console.error("[IFL Admin] Supabase no se ha cargado.");
     showDenied();
   }
 
-  /* =====================================
-     13. PUERTA INTERNA
-  ===================================== */
-
-  const gateForm =
-    document.getElementById(
-      "admin-gate-form"
-    );
-
-  const gateError =
-    document.getElementById(
-      "gate-error"
-    );
+  const gateForm = document.getElementById("admin-gate-form");
+  const gateError = document.getElementById("gate-error");
 
   if (gateForm) {
-    gateForm.addEventListener(
-      "submit",
-      function (e) {
-        e.preventDefault();
+    gateForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const user = document.getElementById("gate-user")?.value.trim();
+      const pass = document.getElementById("gate-pass")?.value;
 
-        console.log(
-          "[IFL Admin] Intento de acceso a la puerta."
-        );
-
-        const userInput =
-          document.getElementById(
-            "gate-user"
-          );
-
-        const passInput =
-          document.getElementById(
-            "gate-pass"
-          );
-
-        const user =
-          userInput
-            ? userInput.value.trim()
-            : "";
-
-        const pass =
-          passInput
-            ? passInput.value
-            : "";
-
-        if (
-          user === GATE_USER &&
-          pass === GATE_PASS
-        ) {
-          console.log(
-            "[IFL Admin] Usuario y contraseña correctos."
-          );
-
-          try {
-            sessionStorage.setItem(
-              GATE_SESSION_KEY,
-              "1"
-            );
-          } catch (err) {
-            console.warn(
-              "[IFL Admin] No se pudo guardar la sesión de la puerta.",
-              err
-            );
-          }
-
-          if (gateError) {
-            gateError.hidden = true;
-          }
-
-          showPanel();
-
+      if (currentCaptcha !== null) {
+        const captchaVal = parseInt(document.getElementById("gate-captcha-input")?.value, 10);
+        if (captchaVal !== currentCaptcha) {
+          if (gateError) { gateError.hidden = false; gateError.textContent = "Captcha incorrecto. Inténtalo de nuevo."; }
+          renderCaptchaIfNeeded();
           return;
         }
-
-        console.warn(
-          "[IFL Admin] Usuario o contraseña incorrectos."
-        );
-
-        if (gateError) {
-          gateError.hidden = false;
-        }
-
-        if (passInput) {
-          passInput.value = "";
-          passInput.focus();
-        }
       }
-    );
-  } else {
-    console.error(
-      "[IFL Admin] No existe #admin-gate-form en admin.html."
-    );
-  }
 
+      if (user === GATE_USER && pass === GATE_PASS) {
+        try { sessionStorage.setItem(GATE_SESSION_KEY, "1"); } catch (err) {}
+        setFailCount(0);
+        if (gateError) gateError.hidden = true;
+        showPanel();
+        return;
+      }
+
+      setFailCount(getFailCount() + 1);
+      if (gateError) { gateError.hidden = false; gateError.textContent = "Usuario o contraseña incorrectos."; }
+      renderCaptchaIfNeeded();
+
+      const passInput = document.getElementById("gate-pass");
+      if (passInput) { passInput.value = ""; passInput.focus(); }
+    });
+  }
 })();
