@@ -1,6 +1,6 @@
 /* =====================================
    IFL — PANEL DE ADMINISTRACIÓN
-   - Acceso: solo el Discord "aitor_lorente"
+   - Acceso: solo el Discord ID autorizado
    - Puerta interna: usuario/contraseña "AdminPanel"
    - Equipos, Contratos (con temporadas) y Divisiones
      se guardan en localStorage porque todavía no hay
@@ -14,7 +14,7 @@
      0. CONFIGURACIÓN DE ACCESO
   ===================================== */
 
-  const ADMIN_DISCORD_USERNAME = "aitor_lorente";
+  const ADMIN_DISCORD_ID = "1149380955316957266";
 
   const GATE_USER = "AdminPanel";
   const GATE_PASS = "ifl.oficial.admins";
@@ -33,7 +33,6 @@
     { code: "P6", name: "Club P6", division: "primera", players: 20, status: "pending", manager: false },
     { code: "P7", name: "Club P7", division: "primera", players: 24, status: "up", updated: "2 h" },
     { code: "P8", name: "Club P8", division: "primera", players: 22, status: "pending", manager: true },
-
     { code: "S1", name: "Club S1", division: "segunda", players: 24, status: "up", updated: "3 h" },
     { code: "S2", name: "Club S2", division: "segunda", players: 23, status: "up", updated: "3 h" },
     { code: "S3", name: "Club S3", division: "segunda", players: 25, status: "pending", manager: false },
@@ -354,7 +353,9 @@
       renderSideClubs(
         activeDivision,
         activeStatus,
-        (searchInput.value || "").trim().toLowerCase()
+        searchInput
+          ? (searchInput.value || "").trim().toLowerCase()
+          : ""
       );
     }
   );
@@ -368,7 +369,9 @@
       renderSideClubs(
         activeDivision,
         activeStatus,
-        (searchInput.value || "").trim().toLowerCase()
+        searchInput
+          ? (searchInput.value || "").trim().toLowerCase()
+          : ""
       );
     }
   );
@@ -1433,11 +1436,9 @@
     renderSideClubs(
       activeDivision,
       activeStatus,
-      (
-        searchInput
-          ? searchInput.value
-          : ""
-      ).trim().toLowerCase()
+      searchInput
+        ? searchInput.value.trim().toLowerCase()
+        : ""
     );
 
     renderOverview();
@@ -1510,13 +1511,6 @@
     }
   }
 
-  /*
-     ESTA ES LA FUNCIÓN IMPORTANTE.
-     Después de introducir correctamente
-     AdminPanel + contraseña, el panel
-     se hace visible y se renderiza.
-  */
-
   function showPanel() {
     console.log(
       "[IFL Admin] Mostrando panel de administración."
@@ -1552,66 +1546,56 @@
     }
   }
 
-  function getDiscordUsernameCandidates(user) {
-    const m =
+  function getDiscordIdCandidates(user) {
+    const metadata =
       user.user_metadata || {};
 
     const identities =
       user.identities || [];
 
     const discordIdentity =
-      identities.filter(
-        function (i) {
-          return i.provider === "discord";
+      identities.find(
+        function (identity) {
+          return identity.provider === "discord";
         }
-      )[0];
+      );
 
-    const idData =
+    const identityData =
       (
         discordIdentity &&
         discordIdentity.identity_data
       ) || {};
 
     return [
-      m.user_name,
-      m.preferred_username,
-      m.name,
-      m.full_name,
-      m.custom_claims &&
-        m.custom_claims.global_name,
-
-      idData.user_name,
-      idData.username,
-      idData.global_name,
-      idData.name,
-      idData.full_name
+      identityData.id,
+      identityData.user_id,
+      identityData.discord_id,
+      metadata.provider_id,
+      metadata.discord_id,
+      metadata.discord_user_id
     ]
       .filter(Boolean)
-      .map(
-        function (c) {
-          return c
-            .toString()
-            .trim()
-            .toLowerCase();
-        }
-      );
+      .map(function (id) {
+        return String(id).trim();
+      });
   }
 
   function isAdminUser(user) {
     const candidates =
-      getDiscordUsernameCandidates(
-        user
-      );
+      getDiscordIdCandidates(user);
 
     console.log(
-      "[IFL Admin] Usuarios/candidatos de Discord detectados:",
+      "[IFL Admin] Discord IDs detectados:",
       candidates
     );
 
-    return (
-      candidates.indexOf(
-        ADMIN_DISCORD_USERNAME
-      ) !== -1
+    console.log(
+      "[IFL Admin] Discord ID autorizado:",
+      ADMIN_DISCORD_ID
+    );
+
+    return candidates.includes(
+      String(ADMIN_DISCORD_ID)
     );
   }
 
@@ -1639,7 +1623,8 @@
         (
           user.user_metadata.full_name ||
           user.user_metadata.name ||
-          user.user_metadata.preferred_username
+          user.user_metadata.preferred_username ||
+          user.user_metadata.user_name
         )
       ) ||
       "Administrador";
@@ -1901,12 +1886,6 @@
           if (gateError) {
             gateError.hidden = true;
           }
-
-          /*
-             IMPORTANTE:
-             No redirigimos.
-             Mostramos directamente #admin-app.
-          */
 
           showPanel();
 
