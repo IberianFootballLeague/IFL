@@ -6,12 +6,14 @@
      se guardan en localStorage porque todavía no hay
      tablas para esto en Supabase.
 ===================================== */
+
 (function () {
   "use strict";
 
   /* =====================================
      0. CONFIGURACIÓN DE ACCESO
   ===================================== */
+
   const ADMIN_DISCORD_USERNAME = "aitor_lorente";
 
   const GATE_USER = "AdminPanel";
@@ -21,6 +23,7 @@
   /* =====================================
      1. DATOS DE EJEMPLO
   ===================================== */
+
   const SAMPLE_CLUBS = [
     { code: "P1", name: "Club P1", division: "primera", players: 24, status: "up", updated: "4 m" },
     { code: "P2", name: "Club P2", division: "primera", players: 22, status: "up", updated: "1 h" },
@@ -30,6 +33,7 @@
     { code: "P6", name: "Club P6", division: "primera", players: 20, status: "pending", manager: false },
     { code: "P7", name: "Club P7", division: "primera", players: 24, status: "up", updated: "2 h" },
     { code: "P8", name: "Club P8", division: "primera", players: 22, status: "pending", manager: true },
+
     { code: "S1", name: "Club S1", division: "segunda", players: 24, status: "up", updated: "3 h" },
     { code: "S2", name: "Club S2", division: "segunda", players: 23, status: "up", updated: "3 h" },
     { code: "S3", name: "Club S3", division: "segunda", players: 25, status: "pending", manager: false },
@@ -56,7 +60,6 @@
       const raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : fallback;
     } catch (e) {
-      console.error("[IFL Admin] Error leyendo localStorage:", e);
       return fallback;
     }
   }
@@ -65,7 +68,7 @@
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch (e) {
-      console.error("[IFL Admin] Error guardando localStorage:", e);
+      console.warn("[IFL Admin] No se pudo guardar:", key, e);
     }
   }
 
@@ -106,6 +109,7 @@
 
     const base = SAMPLE_CLUBS.map(function (c) {
       const ov = overrides[c.code];
+
       return ov
         ? Object.assign({}, c, ov)
         : Object.assign({}, c);
@@ -169,6 +173,7 @@
   function divisionLabel(div) {
     if (div === "primera") return "Primera";
     if (div === "segunda") return "Segunda";
+
     return "Sin asignar";
   }
 
@@ -220,7 +225,7 @@
   const seasonBadgeEl = document.getElementById("contracts-season-badge");
 
   /* =====================================
-     4. BARRA LATERAL DE CLUBES
+     4. CLUBES
   ===================================== */
 
   function renderSideClubs(filterDivision, filterStatus, query) {
@@ -294,15 +299,19 @@
           '<span class="admin-club-row__bar admin-club-row__bar--' +
           (c.status === "up" ? "up" : "pending") +
           '"></span>' +
+
           '<div style="min-width:0;">' +
+
           '<div class="admin-club-row__name">' +
           escapeHTML(c.name) +
           "</div>" +
+
           '<div class="admin-club-row__meta">' +
           escapeHTML(c.code) +
           " · " +
           (c.players || 0) +
           " jugadores</div>" +
+
           "</div>";
 
         clubsEl.appendChild(row);
@@ -388,7 +397,7 @@
   });
 
   /* =====================================
-     5. VISTA RESUMEN
+     5. OVERVIEW
   ===================================== */
 
   function renderOverview() {
@@ -421,24 +430,60 @@
       return c.status === "ACTIVO";
     });
 
-    document.getElementById(
+    const subtitle = document.getElementById(
       "admin-overview-subtitle"
-    ).textContent =
-      "Temporada " +
-      loadSeason() +
-      " · " +
-      teams.length +
-      " clubes · " +
-      contracts.length +
-      " contratos registrados";
+    );
 
-    document.getElementById(
+    if (subtitle) {
+      subtitle.textContent =
+        "Temporada " +
+        loadSeason() +
+        " · " +
+        teams.length +
+        " clubes · " +
+        contracts.length +
+        " contratos registrados";
+    }
+
+    const teamsCurrent = document.getElementById(
       "stat-teamsheets-current"
-    ).textContent = updatedTeams.length;
+    );
 
-    document.getElementById(
+    const teamsTotal = document.getElementById(
       "stat-teamsheets-total"
-    ).textContent = "/" + teams.length;
+    );
+
+    const teamsBar = document.getElementById(
+      "stat-teamsheets-bar"
+    );
+
+    const players = document.getElementById(
+      "stat-players"
+    );
+
+    const playersFoot = document.getElementById(
+      "stat-players-foot"
+    );
+
+    const squads = document.getElementById(
+      "stat-squads"
+    );
+
+    const contractsActive = document.getElementById(
+      "stat-contracts-active"
+    );
+
+    const contractsFoot = document.getElementById(
+      "stat-contracts-foot"
+    );
+
+    if (teamsCurrent) {
+      teamsCurrent.textContent = updatedTeams.length;
+    }
+
+    if (teamsTotal) {
+      teamsTotal.textContent = "/" + teams.length;
+    }
 
     const pct = teams.length
       ? Math.round(
@@ -446,148 +491,196 @@
         )
       : 0;
 
-    document.getElementById(
-      "stat-teamsheets-bar"
-    ).style.width = pct + "%";
-
-    updatedPct.textContent = pct + "% done";
-
-    document.getElementById(
-      "stat-players"
-    ).textContent = totalPlayers;
-
-    document.getElementById(
-      "stat-players-foot"
-    ).textContent =
-      totalPlayers + " jugadores registrados";
-
-    document.getElementById(
-      "stat-squads"
-    ).textContent = teams.length;
-
-    document.getElementById(
-      "stat-contracts-active"
-    ).textContent = activeContracts.length;
-
-    document.getElementById(
-      "stat-contracts-foot"
-    ).textContent =
-      contracts.length -
-      activeContracts.length +
-      " inactivos";
-
-    updatedList.innerHTML = "";
-
-    updatedTeams.forEach(function (c) {
-      const row = document.createElement("div");
-
-      row.className = "admin-row";
-
-      row.innerHTML =
-        '<div class="admin-row__body">' +
-        '<div class="admin-row__name">' +
-        escapeHTML(c.name) +
-        "</div>" +
-        '<div class="admin-row__meta">' +
-        escapeHTML(c.code) +
-        "</div>" +
-        "</div>" +
-        '<span class="admin-row__time">' +
-        (c.updated
-          ? "hace " + escapeHTML(c.updated)
-          : "") +
-        "</span>" +
-        '<span class="admin-mini-toggle" aria-hidden="true"></span>';
-
-      updatedList.appendChild(row);
-    });
-
-    if (!updatedTeams.length) {
-      updatedList.innerHTML =
-        '<div class="admin-panel__empty">Nada actualizado todavía.</div>';
+    if (teamsBar) {
+      teamsBar.style.width = pct + "%";
     }
 
-    attentionList.innerHTML = "";
-
-    noManagerTeams.forEach(function (c) {
-      const row = document.createElement("div");
-
-      row.className = "admin-row";
-
-      row.innerHTML =
-        '<span class="admin-row__dot admin-row__dot--warn"></span>' +
-        '<div class="admin-row__body">' +
-        '<div class="admin-row__name">' +
-        escapeHTML(c.name) +
-        "</div>" +
-        '<div class="admin-row__meta">' +
-        escapeHTML(c.code) +
-        "</div>" +
-        "</div>" +
-        '<span class="admin-tag admin-tag--down">Sin entrenador</span>';
-
-      attentionList.appendChild(row);
-    });
-
-    if (!noManagerTeams.length) {
-      attentionList.innerHTML =
-        '<div class="admin-panel__empty">Todo en orden.</div>';
+    if (updatedPct) {
+      updatedPct.textContent = pct + "% done";
     }
 
-    attentionCount.textContent =
-      noManagerTeams.length;
+    if (players) {
+      players.textContent = totalPlayers;
+    }
 
-    pendingGrid.innerHTML = "";
+    if (playersFoot) {
+      playersFoot.textContent =
+        totalPlayers +
+        " jugadores registrados";
+    }
 
-    pendingTeams.forEach(function (c) {
-      const card = document.createElement("div");
+    if (squads) {
+      squads.textContent = teams.length;
+    }
 
-      card.className = "admin-card";
+    if (contractsActive) {
+      contractsActive.textContent =
+        activeContracts.length;
+    }
 
-      card.innerHTML =
-        '<span class="admin-card__badge">' +
-        escapeHTML(c.code) +
-        "</span>" +
-        '<div class="admin-card__body">' +
-        '<div class="admin-card__name">' +
-        escapeHTML(c.name) +
-        "</div>" +
-        '<div class="admin-card__meta">' +
-        escapeHTML(c.code) +
-        " · " +
-        (c.players || 0) +
-        " jugadores</div>" +
-        "</div>" +
-        '<span class="admin-card__tag">Pendiente</span>';
+    if (contractsFoot) {
+      contractsFoot.textContent =
+        (contracts.length -
+          activeContracts.length) +
+        " inactivos";
+    }
 
-      pendingGrid.appendChild(card);
-    });
+    if (updatedList) {
+      updatedList.innerHTML = "";
 
-    pendingCount.textContent =
-      pendingTeams.length;
+      updatedTeams.forEach(function (c) {
+        const row = document.createElement("div");
+
+        row.className = "admin-row";
+
+        row.innerHTML =
+          '<div class="admin-row__body">' +
+          '<div class="admin-row__name">' +
+          escapeHTML(c.name) +
+          "</div>" +
+          '<div class="admin-row__meta">' +
+          escapeHTML(c.code) +
+          "</div>" +
+          "</div>" +
+
+          '<span class="admin-row__time">' +
+          (
+            c.updated
+              ? "hace " + escapeHTML(c.updated)
+              : ""
+          ) +
+          "</span>" +
+
+          '<span class="admin-mini-toggle" aria-hidden="true"></span>';
+
+        updatedList.appendChild(row);
+      });
+
+      if (!updatedTeams.length) {
+        updatedList.innerHTML =
+          '<div class="admin-panel__empty">' +
+          "Nada actualizado todavía." +
+          "</div>";
+      }
+    }
+
+    if (attentionList) {
+      attentionList.innerHTML = "";
+
+      noManagerTeams.forEach(function (c) {
+        const row = document.createElement("div");
+
+        row.className = "admin-row";
+
+        row.innerHTML =
+          '<span class="admin-row__dot admin-row__dot--warn"></span>' +
+
+          '<div class="admin-row__body">' +
+
+          '<div class="admin-row__name">' +
+          escapeHTML(c.name) +
+          "</div>" +
+
+          '<div class="admin-row__meta">' +
+          escapeHTML(c.code) +
+          "</div>" +
+
+          "</div>" +
+
+          '<span class="admin-tag admin-tag--down">' +
+          "Sin entrenador" +
+          "</span>";
+
+        attentionList.appendChild(row);
+      });
+
+      if (!noManagerTeams.length) {
+        attentionList.innerHTML =
+          '<div class="admin-panel__empty">' +
+          "Todo en orden." +
+          "</div>";
+      }
+    }
+
+    if (attentionCount) {
+      attentionCount.textContent =
+        noManagerTeams.length;
+    }
+
+    if (pendingGrid) {
+      pendingGrid.innerHTML = "";
+
+      pendingTeams.forEach(function (c) {
+        const card = document.createElement("div");
+
+        card.className = "admin-card";
+
+        card.innerHTML =
+          '<span class="admin-card__badge">' +
+          escapeHTML(c.code) +
+          "</span>" +
+
+          '<div class="admin-card__body">' +
+
+          '<div class="admin-card__name">' +
+          escapeHTML(c.name) +
+          "</div>" +
+
+          '<div class="admin-card__meta">' +
+          escapeHTML(c.code) +
+          " · " +
+          (c.players || 0) +
+          " jugadores</div>" +
+
+          "</div>" +
+
+          '<span class="admin-card__tag">' +
+          "Pendiente" +
+          "</span>";
+
+        pendingGrid.appendChild(card);
+      });
+    }
+
+    if (pendingCount) {
+      pendingCount.textContent =
+        pendingTeams.length;
+    }
   }
 
   /* =====================================
-     6. VISTA EQUIPOS
+     6. EQUIPOS
   ===================================== */
 
-  const teamForm = document.getElementById("team-form");
+  const teamForm =
+    document.getElementById("team-form");
+
   const teamsTableBody =
     document.getElementById("teams-table-body");
 
   function renderTeamsView() {
+    if (!teamsTableBody) return;
+
     const teams = allTeams();
 
-    document.getElementById(
-      "admin-teams-subtitle"
-    ).textContent =
-      teams.length + " clubes en total";
+    const subtitle =
+      document.getElementById(
+        "admin-teams-subtitle"
+      );
+
+    if (subtitle) {
+      subtitle.textContent =
+        teams.length +
+        " clubes en total";
+    }
 
     teamsTableBody.innerHTML = "";
 
     if (!teams.length) {
       teamsTableBody.innerHTML =
-        '<tr><td colspan="5" class="admin-table-empty">Todavía no hay equipos.</td></tr>';
+        '<tr><td colspan="5" class="admin-table-empty">' +
+        "Todavía no hay equipos." +
+        "</td></tr>";
 
       return;
     }
@@ -595,27 +688,36 @@
     teams.forEach(function (c) {
       const custom = isCustomTeam(c.code);
 
-      const tr = document.createElement("tr");
+      const tr =
+        document.createElement("tr");
 
       tr.innerHTML =
         '<td class="standings__club">' +
         escapeHTML(c.name) +
         "</td>" +
+
         "<td>" +
         escapeHTML(c.code) +
         "</td>" +
+
         "<td>" +
         divisionLabel(c.division) +
         "</td>" +
+
         '<td class="is-num">' +
         (c.players || 0) +
         "</td>" +
+
         '<td class="admin-table__actions">' +
-        (custom
-          ? '<button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-delete-team="' +
-            escapeHTML(c.code) +
-            '">Eliminar</button>'
-          : '<span class="badge-state badge-state--neutral">Ejemplo</span>') +
+
+        (
+          custom
+            ? '<button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-delete-team="' +
+              escapeHTML(c.code) +
+              '">Eliminar</button>'
+            : '<span class="badge-state badge-state--neutral">Ejemplo</span>'
+        ) +
+
         "</td>";
 
       teamsTableBody.appendChild(tr);
@@ -629,16 +731,14 @@
         e.preventDefault();
 
         const name =
-          document
-            .getElementById("team-name")
-            .value.trim();
+          document.getElementById(
+            "team-name"
+          ).value.trim();
 
         const code =
-          document
-            .getElementById("team-code")
-            .value
-            .trim()
-            .toUpperCase();
+          document.getElementById(
+            "team-code"
+          ).value.trim().toUpperCase();
 
         const division =
           document.getElementById(
@@ -658,14 +758,15 @@
         if (findTeam(code)) {
           alert(
             'Ya existe un equipo con el código "' +
-              code +
-              '". Usa otro código.'
+            code +
+            '". Usa otro código.'
           );
 
           return;
         }
 
-        const custom = loadCustomTeams();
+        const custom =
+          loadCustomTeams();
 
         custom.push({
           code: code,
@@ -681,9 +782,14 @@
 
         teamForm.reset();
 
-        document.getElementById(
-          "team-players"
-        ).value = 0;
+        const playersInput =
+          document.getElementById(
+            "team-players"
+          );
+
+        if (playersInput) {
+          playersInput.value = 0;
+        }
 
         renderAll();
       }
@@ -695,18 +801,22 @@
       "click",
       function (e) {
         const btn =
-          e.target.closest("[data-delete-team]");
+          e.target.closest(
+            "[data-delete-team]"
+          );
 
         if (!btn) return;
 
         const code =
-          btn.getAttribute("data-delete-team");
+          btn.getAttribute(
+            "data-delete-team"
+          );
 
         if (
           !confirm(
             '¿Eliminar el equipo "' +
-              code +
-              '"? Esta acción no se puede deshacer.'
+            code +
+            '"? Esta acción no se puede deshacer.'
           )
         ) {
           return;
@@ -720,14 +830,18 @@
   }
 
   /* =====================================
-     7. VISTA CONTRATOS
+     7. CONTRATOS
   ===================================== */
 
   const contractForm =
-    document.getElementById("contract-form");
+    document.getElementById(
+      "contract-form"
+    );
 
   const contractClubSelect =
-    document.getElementById("contract-club");
+    document.getElementById(
+      "contract-club"
+    );
 
   const contractsTableBody =
     document.getElementById(
@@ -771,7 +885,8 @@
         return t.code === current;
       })
     ) {
-      contractClubSelect.value = current;
+      contractClubSelect.value =
+        current;
     } else {
       contractClubSelect.selectedIndex = 0;
     }
@@ -792,13 +907,18 @@
 
     populateContractClubSelect();
 
-    const contracts = loadContracts();
+    if (!contractsTableBody) return;
+
+    const contracts =
+      loadContracts();
 
     contractsTableBody.innerHTML = "";
 
     if (!contracts.length) {
       contractsTableBody.innerHTML =
-        '<tr><td colspan="9" class="admin-table-empty">Todavía no hay contratos.</td></tr>';
+        '<tr><td colspan="9" class="admin-table-empty">' +
+        "Todavía no hay contratos." +
+        "</td></tr>";
 
       return;
     }
@@ -809,11 +929,13 @@
         return b.id - a.id;
       })
       .forEach(function (c) {
-        const team = findTeam(c.clubCode);
+        const team =
+          findTeam(c.clubCode);
 
-        const clubName = team
-          ? team.name
-          : c.clubName || c.clubCode;
+        const clubName =
+          team
+            ? team.name
+            : (c.clubName || c.clubCode);
 
         const isActive =
           c.status === "ACTIVO";
@@ -825,43 +947,69 @@
           "<td>" +
           escapeHTML(c.discordUser) +
           "</td>" +
+
           "<td>" +
           escapeHTML(c.robloxUser) +
           "</td>" +
+
           "<td>" +
           escapeHTML(clubName) +
           "</td>" +
+
           '<td class="is-num">' +
           Number(c.price).toFixed(2) +
           "</td>" +
+
           '<td class="is-muted">T' +
           c.signedSeason +
           "</td>" +
+
           '<td class="is-num">' +
-          (isActive
-            ? c.seasonsLeft
-            : "—") +
+          (
+            isActive
+              ? c.seasonsLeft
+              : "—"
+          ) +
           "</td>" +
+
           "<td>" +
+
           '<span class="badge-state ' +
-          (isActive
-            ? "badge-state--active"
-            : "badge-state--inactive") +
+          (
+            isActive
+              ? "badge-state--active"
+              : "badge-state--inactive"
+          ) +
           '">' +
-          (isActive
-            ? "ACTIVO"
-            : "INACTIVO") +
+
+          (
+            isActive
+              ? "ACTIVO"
+              : "INACTIVO"
+          ) +
+
           "</span>" +
+
           "</td>" +
+
           '<td class="is-muted">' +
-          (isActive
-            ? "—"
-            : formatDate(c.endedAt)) +
+          (
+            isActive
+              ? "—"
+              : formatDate(c.endedAt)
+          ) +
           "</td>" +
+
           '<td class="admin-table__actions">' +
+
           '<button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-delete-contract="' +
           c.id +
-          '">Eliminar</button>' +
+          '">' +
+
+          "Eliminar" +
+
+          "</button>" +
+
           "</td>";
 
         contractsTableBody.appendChild(tr);
@@ -875,18 +1023,14 @@
         e.preventDefault();
 
         const discordUser =
-          document
-            .getElementById(
-              "contract-discord"
-            )
-            .value.trim();
+          document.getElementById(
+            "contract-discord"
+          ).value.trim();
 
         const robloxUser =
-          document
-            .getElementById(
-              "contract-roblox"
-            )
-            .value.trim();
+          document.getElementById(
+            "contract-roblox"
+          ).value.trim();
 
         const seasonsTotal =
           parseInt(
@@ -904,7 +1048,9 @@
           );
 
         const clubCode =
-          contractClubSelect.value;
+          contractClubSelect
+            ? contractClubSelect.value
+            : "";
 
         if (
           !discordUser ||
@@ -952,9 +1098,14 @@
 
         contractForm.reset();
 
-        document.getElementById(
-          "contract-seasons"
-        ).value = 1;
+        const seasonInput =
+          document.getElementById(
+            "contract-seasons"
+          );
+
+        if (seasonInput) {
+          seasonInput.value = 1;
+        }
 
         renderContractsView();
         renderOverview();
@@ -980,7 +1131,11 @@
             )
           );
 
-        if (!confirm("¿Eliminar este contrato?")) {
+        if (
+          !confirm(
+            "¿Eliminar este contrato?"
+          )
+        ) {
           return;
         }
 
@@ -1002,15 +1157,16 @@
     advanceSeasonBtn.addEventListener(
       "click",
       function () {
-        const current = loadSeason();
+        const current =
+          loadSeason();
 
         if (
           !confirm(
             "¿Avanzar de la temporada " +
-              current +
-              " a la " +
-              (current + 1) +
-              "? Todos los contratos activos restarán una temporada."
+            current +
+            " a la " +
+            (current + 1) +
+            "? Todos los contratos activos restarán una temporada."
           )
         ) {
           return;
@@ -1046,7 +1202,7 @@
   }
 
   /* =====================================
-     8. VISTA DIVISIONES
+     8. DIVISIONES
   ===================================== */
 
   function renderDivisionsView() {
@@ -1062,36 +1218,36 @@
       const key =
         t.division || "null";
 
-      (
-        groups[key] ||
-        groups.null
-      ).push(t);
+      (groups[key] || groups.null)
+        .push(t);
     });
 
     Object.keys(groups).forEach(
       function (key) {
         const listEl =
           document.getElementById(
-            "division-list-" +
-              key
+            "division-list-" + key
           );
 
         const countEl =
           document.getElementById(
-            "division-count-" +
-              key
+            "division-count-" + key
           );
 
         if (!listEl) return;
 
-        countEl.textContent =
-          groups[key].length;
+        if (countEl) {
+          countEl.textContent =
+            groups[key].length;
+        }
 
         listEl.innerHTML = "";
 
         if (!groups[key].length) {
           listEl.innerHTML =
-            '<div class="division-column__empty">Vacío.</div>';
+            '<div class="division-column__empty">' +
+            "Vacío." +
+            "</div>";
 
           return;
         }
@@ -1108,18 +1264,14 @@
 
             let actions = "";
 
-            if (
-              key !== "primera"
-            ) {
+            if (key !== "primera") {
               actions +=
                 '<button type="button" class="btn-admin btn-admin--small" data-assign="' +
                 t.code +
                 '::primera">→ Primera</button>';
             }
 
-            if (
-              key !== "segunda"
-            ) {
+            if (key !== "segunda") {
               actions +=
                 '<button type="button" class="btn-admin btn-admin--small" data-assign="' +
                 t.code +
@@ -1137,6 +1289,7 @@
               '<span class="division-row__name">' +
               escapeHTML(t.name) +
               "</span>" +
+
               '<div class="division-row__actions">' +
               actions +
               "</div>";
@@ -1147,6 +1300,10 @@
       }
     );
   }
+
+  /* =====================================
+     9. NAVEGACIÓN
+  ===================================== */
 
   const adminApp =
     document.getElementById(
@@ -1165,13 +1322,12 @@
         if (!btn) return;
 
         const parts =
-          btn
-            .getAttribute(
-              "data-assign"
-            )
-            .split("::");
+          btn.getAttribute(
+            "data-assign"
+          ).split("::");
 
-        const code = parts[0];
+        const code =
+          parts[0];
 
         const division =
           parts[1] === "null"
@@ -1188,10 +1344,6 @@
     );
   }
 
-  /* =====================================
-     9. NAVEGACIÓN
-  ===================================== */
-
   const CRUMBS = {
     overview: "Overview",
     teams: "Equipos",
@@ -1201,7 +1353,9 @@
 
   function showAdminView(name) {
     document
-      .querySelectorAll(".admin-view")
+      .querySelectorAll(
+        ".admin-view"
+      )
       .forEach(
         function (section) {
           section.hidden =
@@ -1279,9 +1433,11 @@
     renderSideClubs(
       activeDivision,
       activeStatus,
-      (searchInput.value || "")
-        .trim()
-        .toLowerCase()
+      (
+        searchInput
+          ? searchInput.value
+          : ""
+      ).trim().toLowerCase()
     );
 
     renderOverview();
@@ -1291,7 +1447,7 @@
   }
 
   /* =====================================
-     11. AUTENTICACIÓN
+     11. SUPABASE / DISCORD
   ===================================== */
 
   const SUPABASE_URL =
@@ -1315,44 +1471,18 @@
       "admin-app"
     );
 
-  const gateForm =
-    document.getElementById(
-      "admin-gate-form"
-    );
-
-  const gateError =
-    document.getElementById(
-      "gate-error"
-    );
-
-  const gateUserInput =
-    document.getElementById(
-      "gate-user"
-    );
-
-  const gatePassInput =
-    document.getElementById(
-      "gate-pass"
-    );
-
-  /*
-   * Estado de autenticación.
-   *
-   * Antes había dos procesos independientes:
-   *
-   * 1. Supabase comprobaba Discord.
-   * 2. El formulario comprobaba usuario/contraseña.
-   *
-   * Ahora esperamos a que Supabase termine de comprobar
-   * la sesión antes de permitir que la puerta abra el panel.
-   */
-  let discordSessionReady = false;
-  let discordAdminVerified = false;
-
   function hideAllScreens() {
-    if (deniedEl) deniedEl.hidden = true;
-    if (gateEl) gateEl.hidden = true;
-    if (appEl) appEl.hidden = true;
+    if (deniedEl) {
+      deniedEl.hidden = true;
+    }
+
+    if (gateEl) {
+      gateEl.hidden = true;
+    }
+
+    if (appEl) {
+      appEl.hidden = true;
+    }
   }
 
   function showDenied() {
@@ -1370,21 +1500,56 @@
       gateEl.hidden = false;
     }
 
-    if (gateUserInput) {
-      setTimeout(function () {
-        gateUserInput.focus();
-      }, 50);
+    const userInput =
+      document.getElementById(
+        "gate-user"
+      );
+
+    if (userInput) {
+      userInput.focus();
     }
   }
 
+  /*
+     ESTA ES LA FUNCIÓN IMPORTANTE.
+     Después de introducir correctamente
+     AdminPanel + contraseña, el panel
+     se hace visible y se renderiza.
+  */
+
   function showPanel() {
+    console.log(
+      "[IFL Admin] Mostrando panel de administración."
+    );
+
     hideAllScreens();
 
-    if (appEl) {
-      appEl.hidden = false;
+    if (!appEl) {
+      console.error(
+        "[IFL Admin] ERROR: no existe #admin-app en admin.html."
+      );
+
+      return;
     }
 
-    renderAll();
+    appEl.hidden = false;
+
+    console.log(
+      "[IFL Admin] #admin-app visible."
+    );
+
+    try {
+      renderAll();
+
+      console.log(
+        "[IFL Admin] Panel renderizado correctamente."
+      );
+    } catch (error) {
+      console.error(
+        "[IFL Admin] Error renderizando el panel:",
+        error
+      );
+    }
   }
 
   function getDiscordUsernameCandidates(user) {
@@ -1397,10 +1562,7 @@
     const discordIdentity =
       identities.filter(
         function (i) {
-          return (
-            i.provider ===
-            "discord"
-          );
+          return i.provider === "discord";
         }
       )[0];
 
@@ -1417,6 +1579,7 @@
       m.full_name,
       m.custom_claims &&
         m.custom_claims.global_name,
+
       idData.user_name,
       idData.username,
       idData.global_name,
@@ -1424,12 +1587,14 @@
       idData.full_name
     ]
       .filter(Boolean)
-      .map(function (c) {
-        return c
-          .toString()
-          .trim()
-          .toLowerCase();
-      });
+      .map(
+        function (c) {
+          return c
+            .toString()
+            .trim()
+            .toLowerCase();
+        }
+      );
   }
 
   function isAdminUser(user) {
@@ -1466,6 +1631,8 @@
         "admin-avatar-fallback"
       );
 
+    if (!nameEl) return;
+
     const discordName =
       (
         user.user_metadata &&
@@ -1477,10 +1644,8 @@
       ) ||
       "Administrador";
 
-    if (nameEl) {
-      nameEl.textContent =
-        discordName;
-    }
+    nameEl.textContent =
+      discordName;
 
     const avatarUrl =
       user.user_metadata &&
@@ -1520,8 +1685,7 @@
               .toUpperCase();
         };
     } else if (
-      fallbackEl &&
-      avatarEl
+      fallbackEl
     ) {
       fallbackEl.textContent =
         discordName
@@ -1531,31 +1695,15 @@
       fallbackEl.hidden =
         false;
 
-      avatarEl.hidden =
-        true;
+      if (avatarEl) {
+        avatarEl.hidden =
+          true;
+      }
     }
-  }
-
-  /*
-   * Solo se llama después de comprobar Discord.
-   */
-  function tryOpenPanelAfterGate() {
-    if (
-      !discordSessionReady ||
-      !discordAdminVerified
-    ) {
-      console.warn(
-        "[IFL Admin] La sesión de Discord todavía no está verificada."
-      );
-
-      return;
-    }
-
-    showPanel();
   }
 
   /* =====================================
-     SUPABASE
+     12. INICIALIZACIÓN SUPABASE
   ===================================== */
 
   let supabaseClient = null;
@@ -1565,15 +1713,15 @@
     typeof window.supabase.createClient ===
       "function"
   ) {
+    console.log(
+      "[IFL Admin] Cliente Supabase inicializado."
+    );
+
     supabaseClient =
       window.supabase.createClient(
         SUPABASE_URL,
         SUPABASE_PUBLISHABLE_KEY
       );
-
-    console.log(
-      "[IFL Admin] Cliente Supabase inicializado."
-    );
 
     supabaseClient.auth
       .getSession()
@@ -1582,9 +1730,14 @@
           res.data &&
           res.data.session;
 
+        console.log(
+          "[IFL Admin] Sesión de Discord encontrada:",
+          session
+        );
+
         if (!session) {
           console.warn(
-            "[IFL Admin] No hay sesión de Discord. Redirigiendo..."
+            "[IFL Admin] No hay sesión de Discord. Redirigiendo."
           );
 
           window.location.href =
@@ -1593,36 +1746,19 @@
           return;
         }
 
-        console.log(
-          "[IFL Admin] Sesión de Discord encontrada:",
-          session.user
-        );
-
         if (
           !isAdminUser(
             session.user
           )
         ) {
           console.warn(
-            "[IFL Admin] La cuenta de Discord no tiene acceso."
+            "[IFL Admin] El usuario de Discord no tiene acceso."
           );
-
-          discordSessionReady =
-            true;
-
-          discordAdminVerified =
-            false;
 
           showDenied();
 
           return;
         }
-
-        discordSessionReady =
-          true;
-
-        discordAdminVerified =
-          true;
 
         console.log(
           "[IFL Admin] Discord verificado correctamente."
@@ -1640,14 +1776,12 @@
               GATE_SESSION_KEY
             ) === "1";
         } catch (e) {
-          console.warn(
-            "[IFL Admin] No se pudo leer sessionStorage."
-          );
+          gateOk = false;
         }
 
         if (gateOk) {
           console.log(
-            "[IFL Admin] Puerta interna ya validada."
+            "[IFL Admin] Puerta ya validada en esta sesión."
           );
 
           showPanel();
@@ -1661,15 +1795,9 @@
       })
       .catch(function (error) {
         console.error(
-          "[IFL Admin] Error comprobando la sesión:",
+          "[IFL Admin] Error obteniendo la sesión:",
           error
         );
-
-        discordSessionReady =
-          false;
-
-        discordAdminVerified =
-          false;
 
         showDenied();
       });
@@ -1687,22 +1815,11 @@
             sessionStorage.removeItem(
               GATE_SESSION_KEY
             );
-          } catch (e) {
-            /* no-op */
-          }
+          } catch (e) {}
 
           supabaseClient.auth
             .signOut()
             .then(function () {
-              window.location.href =
-                "index.html";
-            })
-            .catch(function (error) {
-              console.error(
-                "[IFL Admin] Error cerrando sesión:",
-                error
-              );
-
               window.location.href =
                 "index.html";
             });
@@ -1714,15 +1831,22 @@
       "[IFL Admin] Supabase no se ha cargado."
     );
 
-    if (gateEl) {
-      hideAllScreens();
-      gateEl.hidden = false;
-    }
+    showDenied();
   }
 
   /* =====================================
-     12. PUERTA INTERNA
+     13. PUERTA INTERNA
   ===================================== */
+
+  const gateForm =
+    document.getElementById(
+      "admin-gate-form"
+    );
+
+  const gateError =
+    document.getElementById(
+      "gate-error"
+    );
 
   if (gateForm) {
     gateForm.addEventListener(
@@ -1730,44 +1854,29 @@
       function (e) {
         e.preventDefault();
 
-        const user =
-          gateUserInput
-            ? gateUserInput.value.trim()
-            : "";
-
-        const pass =
-          gatePassInput
-            ? gatePassInput.value
-            : "";
-
         console.log(
           "[IFL Admin] Intento de acceso a la puerta."
         );
 
-        /*
-         * IMPORTANTE:
-         * No intentamos abrir el panel hasta que
-         * Supabase haya confirmado que eres el
-         * administrador.
-         */
-        if (
-          !discordSessionReady ||
-          !discordAdminVerified
-        ) {
-          console.warn(
-            "[IFL Admin] Discord todavía no está verificado."
+        const userInput =
+          document.getElementById(
+            "gate-user"
           );
 
-          if (gateError) {
-            gateError.textContent =
-              "Espera un momento mientras se verifica tu cuenta de Discord.";
+        const passInput =
+          document.getElementById(
+            "gate-pass"
+          );
 
-            gateError.hidden =
-              false;
-          }
+        const user =
+          userInput
+            ? userInput.value.trim()
+            : "";
 
-          return;
-        }
+        const pass =
+          passInput
+            ? passInput.value
+            : "";
 
         if (
           user === GATE_USER &&
@@ -1784,25 +1893,22 @@
             );
           } catch (err) {
             console.warn(
-              "[IFL Admin] No se pudo guardar la sesión del panel.",
+              "[IFL Admin] No se pudo guardar la sesión de la puerta.",
               err
             );
           }
 
           if (gateError) {
-            gateError.hidden =
-              true;
-
-            gateError.textContent =
-              "Usuario o contraseña incorrectos.";
+            gateError.hidden = true;
           }
 
-          if (gatePassInput) {
-            gatePassInput.value =
-              "";
-          }
+          /*
+             IMPORTANTE:
+             No redirigimos.
+             Mostramos directamente #admin-app.
+          */
 
-          tryOpenPanelAfterGate();
+          showPanel();
 
           return;
         }
@@ -1812,20 +1918,18 @@
         );
 
         if (gateError) {
-          gateError.textContent =
-            "Usuario o contraseña incorrectos.";
-
-          gateError.hidden =
-            false;
+          gateError.hidden = false;
         }
 
-        if (gatePassInput) {
-          gatePassInput.value =
-            "";
-
-          gatePassInput.focus();
+        if (passInput) {
+          passInput.value = "";
+          passInput.focus();
         }
       }
+    );
+  } else {
+    console.error(
+      "[IFL Admin] No existe #admin-gate-form en admin.html."
     );
   }
 
