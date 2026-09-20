@@ -8,12 +8,7 @@
 
   const db = window.IFLDB;
   const ADMIN_DISCORD_ID = "1149380955316957266";
-
-  const GATE_USER = "AdminPanel";
-  const GATE_PASS = "ifl.oficial.admins";
-  const GATE_SESSION_KEY = "ifl-admin-gate-ok";
-  const GATE_FAILS_KEY = "ifl-admin-gate-fails";
-  const CAPTCHA_THRESHOLD = 3;
+  const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos de inactividad → cierre de sesión automático
 
   const CURRENT_SEASON_FALLBACK = 1;
 
@@ -1331,53 +1326,31 @@
   // =====================================
 
   const deniedEl = document.getElementById("admin-denied");
-  const gateEl = document.getElementById("admin-gate");
   const appEl = document.getElementById("admin-app");
 
   function hideAllScreens() {
-    [deniedEl, gateEl, appEl].forEach((el) => { if (el) { el.hidden = true; el.style.display = "none"; } });
+    [deniedEl, appEl].forEach((el) => { if (el) { el.hidden = true; el.style.display = "none"; } });
   }
   function showDenied() { hideAllScreens(); if (deniedEl) { deniedEl.hidden = false; deniedEl.style.display = ""; } }
-  function showGate() {
-    hideAllScreens();
-    if (gateEl) { gateEl.hidden = false; gateEl.style.display = ""; }
-    renderCaptchaIfNeeded();
-    const userInput = document.getElementById("gate-user");
-    if (userInput) setTimeout(() => userInput.focus(), 50);
-  }
-
-  function getFailCount() {
-    return parseInt(sessionStorage.getItem(GATE_FAILS_KEY) || "0", 10);
-  }
-  function setFailCount(n) {
-    sessionStorage.setItem(GATE_FAILS_KEY, String(n));
-  }
-
-  let currentCaptcha = null;
-
-  function renderCaptchaIfNeeded() {
-    const box = document.getElementById("gate-captcha-box");
-    if (!box) return;
-    const fails = getFailCount();
-    if (fails < CAPTCHA_THRESHOLD) {
-      box.hidden = true;
-      currentCaptcha = null;
-      return;
-    }
-    const a = Math.floor(Math.random() * 9) + 1;
-    const b = Math.floor(Math.random() * 9) + 1;
-    currentCaptcha = a + b;
-    box.hidden = false;
-    box.innerHTML = `
-      <label for="gate-captcha-input">Demasiados intentos. Resuelve: ¿cuánto es ${a} + ${b}?</label>
-      <input class="admin-input" id="gate-captcha-input" type="number" required>
-    `;
-  }
 
   function showAdminWelcome() {
-    if (window.IFLOnboarding) {
-      window.IFLOnboarding.openAdminWelcome();
-    }
+    if (window.IFLOnboarding) window.IFLOnboarding.openAdminWelcome();
+  }
+
+  let idleTimer = null;
+  function resetIdleTimer() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      alert("Se ha cerrado tu sesión de administrador por inactividad (30 minutos). Vuelve a entrar con Discord.");
+      db.client.auth.signOut().finally(() => { window.location.href = "index.html"; });
+    }, IDLE_TIMEOUT_MS);
+  }
+
+  function armIdleTimer() {
+    ["click", "keydown", "mousemove", "scroll"].forEach((evt) => {
+      document.addEventListener(evt, resetIdleTimer, { passive: true });
+    });
+    resetIdleTimer();
   }
 
   function showPanel() {
@@ -1385,6 +1358,7 @@
     hideAllScreens();
     appEl.hidden = false;
     appEl.style.display = "";
+    armIdleTimer();
 
     (async () => {
       try {
@@ -1482,12 +1456,7 @@
 
       paintSidebarUser(session.user);
       state.isSuperAdmin = await db.isSuperAdmin();
-
-      let gateOk = false;
-      try { gateOk = sessionStorage.getItem(GATE_SESSION_KEY) === "1"; } catch (e) {}
-
-      if (gateOk) showPanel();
-      else showGate();
+      showPanel();
     }).catch((error) => {
       console.error("[IFL Admin] Error obteniendo la sesión:", error);
       showDenied();
@@ -1495,7 +1464,6 @@
 
     db.client.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
-        try { sessionStorage.removeItem(GATE_SESSION_KEY); } catch (e) {}
         window.location.href = "index.html";
       }
     });
@@ -1503,47 +1471,11 @@
     const signoutBtn = document.getElementById("admin-signout");
     if (signoutBtn) {
       signoutBtn.addEventListener("click", () => {
-        try { sessionStorage.removeItem(GATE_SESSION_KEY); } catch (e) {}
         db.client.auth.signOut().finally(() => { window.location.href = "index.html"; });
       });
     }
   } else {
     console.error("[IFL Admin] Supabase no se ha cargado.");
     showDenied();
-  }
-
-  const gateForm = document.getElementById("admin-gate-form");
-  const gateError = document.getElementById("gate-error");
-
-  if (gateForm) {
-    gateForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const user = document.getElementById("gate-user")?.value.trim();
-      const pass = document.getElementById("gate-pass")?.value;
-
-      if (currentCaptcha !== null) {
-        const captchaVal = parseInt(document.getElementById("gate-captcha-input")?.value, 10);
-        if (captchaVal !== currentCaptcha) {
-          if (gateError) { gateError.hidden = false; gateError.textContent = "Captcha incorrecto. Inténtalo de nuevo."; }
-          renderCaptchaIfNeeded();
-          return;
-        }
-      }
-
-      if (user === GATE_USER && pass === GATE_PASS) {
-        try { sessionStorage.setItem(GATE_SESSION_KEY, "1"); } catch (err) {}
-        setFailCount(0);
-        if (gateError) gateError.hidden = true;
-        showPanel();
-        return;
-      }
-
-      setFailCount(getFailCount() + 1);
-      if (gateError) { gateError.hidden = false; gateError.textContent = "Usuario o contraseña incorrectos."; }
-      renderCaptchaIfNeeded();
-
-      const passInput = document.getElementById("gate-pass");
-      if (passInput) { passInput.value = ""; passInput.focus(); }
-    });
   }
 })();
