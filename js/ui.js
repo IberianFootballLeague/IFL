@@ -29,10 +29,18 @@
 
   if (loader) {
     const tipText = loader.querySelector(".loader__tip-text");
+    const progressFill = document.getElementById("loader-progress-fill");
     const start = Date.now();
     let tipIndex = Math.floor(Math.random() * TIPS.length);
     let tipTimer = null;
     let dismissed = false;
+
+    if (progressFill) {
+      progressFill.style.transitionDuration = MIN_LOADER_MS + "ms";
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => { progressFill.style.width = "100%"; });
+      });
+    }
 
     const paintTip = function () {
       if (tipText) tipText.textContent = TIPS[tipIndex % TIPS.length];
