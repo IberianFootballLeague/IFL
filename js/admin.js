@@ -82,6 +82,22 @@
     el._timer = setTimeout(() => el.classList.remove("is-visible"), 3200);
   }
 
+  const MAX_LOGO_BYTES = 300 * 1024; // ~300 KB, para no disparar el tamaño de la base de datos
+
+  function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) { resolve(null); return; }
+      if (file.size > MAX_LOGO_BYTES) {
+        reject(new Error("La imagen pesa demasiado. Usa un archivo de menos de 300 KB (recomendado: PNG cuadrado, 256×256)."));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function withBusy(button, fn) {
     const original = button ? button.textContent : null;
     if (button) { button.disabled = true; button.textContent = "Guardando…"; }
@@ -119,16 +135,18 @@
   // =====================================
 
   async function reloadAll() {
-    const [teams, stadiums, contracts, matches] = await Promise.all([
+    const [teams, stadiums, contracts, matches, season] = await Promise.all([
       db.getTeams(),
       db.getStadiums(),
       db.getContracts(),
       db.getMatches(null),
+      db.getSetting("current_season", CURRENT_SEASON_FALLBACK).catch(() => CURRENT_SEASON_FALLBACK),
     ]);
     state.teams = teams;
     state.stadiums = stadiums;
     state.contracts = contracts;
     state.matches = matches;
+    state.season = season;
 
     if (state.isSuperAdmin) {
       try { state.admins = await db.getAdmins(); } catch (e) { state.admins = []; }
@@ -300,6 +318,9 @@
       subtitle.textContent = `Temporada ${state.season} · ${teams.length} clubes · ${state.contracts.length} contratos registrados`;
     }
 
+    const seasonInput = document.getElementById("season-edit-input");
+    if (seasonInput && document.activeElement !== seasonInput) seasonInput.value = state.season;
+
     const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
 
     set("stat-teamsheets-current", updatedTeams.length);
@@ -356,6 +377,68 @@
     if (pendingCount) pendingCount.textContent = pendingTeams.length;
   }
 
+  const seasonEditInput = document.getElementById("season-edit-input");
+  const seasonEditSave = document.getElementById("season-edit-save");
+  const exportDataBtn = document.getElementById("export-data-btn");
+
+  if (seasonEditSave) {
+    seasonEditSave.addEventListener("click", () => {
+      const value = parseInt(seasonEditInput.value, 10);
+      if (!value || value < 1) { alert("Introduce un número de temporada válido."); return; }
+      withBusy(seasonEditSave, async () => {
+        await db.setSetting("current_season", value);
+        state.season = value;
+        await reloadAll();
+        renderAll();
+        toast("Temporada actualizada.");
+      });
+    });
+  }
+
+  function csvEscape(value) {
+    const s = String(value == null ? "" : value);
+    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function downloadCSV(filename, rows) {
+    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  if (exportDataBtn) {
+    exportDataBtn.addEventListener("click", () => {
+      const teamsRows = [["Código", "Nombre", "División", "Jugadores"]].concat(
+        state.teams.map((t) => [t.code, t.name, divisionLabel(t.division), teamPlayerCount(t.id)])
+      );
+      const contractsRows = [["Discord", "Roblox", "Club", "Precio", "Temporada firmado", "Temporadas restantes", "Estado"]].concat(
+        state.contracts.map((c) => [
+          c.player?.discord_username || "", c.player?.roblox_username || "", c.team?.name || "",
+          c.price, c.signed_season, c.seasons_left, c.status,
+        ])
+      );
+      const matchesRows = [["Jornada", "Local", "Visitante", "Estadio", "Fecha", "Estado", "Goles local", "Goles visitante", "Playoff"]].concat(
+        state.matches.map((m) => [
+          m.matchday, m.home_team?.name || "", m.away_team?.name || "", m.stadium?.name || "",
+          formatDateTime(m.scheduled_at), m.status, m.home_goals ?? "", m.away_goals ?? "", m.is_playoff ? "Sí" : "No",
+        ])
+      );
+
+      downloadCSV("ifl_equipos.csv", teamsRows);
+      setTimeout(() => downloadCSV("ifl_contratos.csv", contractsRows), 300);
+      setTimeout(() => downloadCSV("ifl_partidos.csv", matchesRows), 600);
+      toast("Exportando 3 archivos CSV…");
+    });
+  }
+
   // =====================================
   // EQUIPOS (con edición inline + Guardar)
   // =====================================
@@ -375,9 +458,14 @@
     }
 
     teamsTableBody.innerHTML = state.teams.map((t) => {
+      const crest = t.logo_url
+        ? `<img src="${t.logo_url}" alt="" class="team-crest">`
+        : `<span class="team-crest team-crest--empty"></span>`;
+
       if (editingTeamId === t.id) {
         return `
           <tr data-team-row="${t.id}">
+            <td>${crest}<input class="admin-input" data-edit="logo" type="file" accept="image/*" style="margin-top:6px;max-width:160px;"></td>
             <td><input class="admin-input" data-edit="name" value="${escapeHTML(t.name)}"></td>
             <td><input class="admin-input" data-edit="code" maxlength="4" value="${escapeHTML(t.code)}"></td>
             <td>
@@ -397,6 +485,7 @@
       }
       return `
         <tr>
+          <td>${crest}</td>
           <td class="standings__club">${escapeHTML(t.name)}</td>
           <td>${escapeHTML(t.code)}</td>
           <td>${divisionLabel(t.division)}</td>
@@ -425,7 +514,11 @@
       }
 
       withBusy(submitBtn, async () => {
-        await db.addTeam({ code, name, division });
+        const fileInput = document.getElementById("team-logo");
+        const file = fileInput && fileInput.files && fileInput.files[0];
+        const logoUrl = await readFileAsDataURL(file);
+
+        await db.addTeam({ code, name, division, logo_url: logoUrl });
         teamForm.reset();
         await reloadAll();
         renderAll();
@@ -460,6 +553,11 @@
           division: row.querySelector('[data-edit="division"]').value || null,
         };
         withBusy(saveBtn, async () => {
+          const logoInput = row.querySelector('[data-edit="logo"]');
+          const file = logoInput && logoInput.files && logoInput.files[0];
+          if (file) {
+            patch.logo_url = await readFileAsDataURL(file);
+          }
           await db.updateTeam(id, patch);
           editingTeamId = null;
           await reloadAll();
@@ -637,8 +735,15 @@
 
     contractsTableBody.innerHTML = state.contracts.map((c) => {
       const isActive = c.status === "ACTIVO";
+      const avatar = c.player?.avatar_url
+        ? `<img src="${c.player.avatar_url}" alt="" class="team-crest" style="border-radius:50%;">`
+        : `<span class="team-crest team-crest--empty" style="border-radius:50%;"></span>`;
       return `
         <tr>
+          <td>
+            ${avatar}
+            <button type="button" class="btn-admin btn-admin--small" data-upload-avatar="${c.player?.id}" style="margin-left:6px;">Subir foto</button>
+          </td>
           <td>${escapeHTML(c.player ? c.player.discord_username : "—")}</td>
           <td>${escapeHTML(c.player ? c.player.roblox_username : "—")}</td>
           <td>${escapeHTML(c.team ? c.team.name : "—")}</td>
@@ -695,6 +800,28 @@
 
   if (contractsTableBody) {
     contractsTableBody.addEventListener("click", (e) => {
+      const avatarBtn = e.target.closest("[data-upload-avatar]");
+      if (avatarBtn) {
+        const playerId = avatarBtn.getAttribute("data-upload-avatar");
+        if (!playerId) return;
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.addEventListener("change", () => {
+          const file = input.files && input.files[0];
+          if (!file) return;
+          withBusy(avatarBtn, async () => {
+            const dataUrl = await readFileAsDataURL(file);
+            await db.updatePlayerAvatar(playerId, dataUrl);
+            await reloadAll();
+            renderAll();
+            toast("Foto actualizada.");
+          });
+        });
+        input.click();
+        return;
+      }
+
       const btn = e.target.closest("[data-delete-contract]");
       if (!btn) return;
       if (!confirm("¿Eliminar este contrato?")) return;
@@ -712,6 +839,7 @@
       if (!confirm(`¿Avanzar de la temporada ${state.season} a la ${state.season + 1}? Todos los contratos activos restarán una temporada.`)) return;
       withBusy(advanceSeasonBtn, async () => {
         const next = await db.advanceSeason(state.season);
+        await db.setSetting("current_season", next);
         state.season = next;
         await reloadAll();
         renderAll();
@@ -752,7 +880,7 @@
 
     matchesTableBody.innerHTML = state.matches.map((m) => `
       <tr>
-        <td class="is-muted">J${m.matchday}</td>
+        <td class="is-muted">J${m.matchday}${m.is_playoff ? ' <span class="badge-state badge-state--neutral">Playoff</span>' : ""}</td>
         <td>${m.home_team ? escapeHTML(m.home_team.name) : "—"} vs ${m.away_team ? escapeHTML(m.away_team.name) : "—"}</td>
         <td>${m.stadium ? escapeHTML(m.stadium.name) : "—"}</td>
         <td class="is-muted">${formatDateTime(m.scheduled_at)}</td>
@@ -772,6 +900,7 @@
       const stadiumId = matchStadiumSelect?.value || null;
       const matchday = parseInt(document.getElementById("match-matchday")?.value, 10) || 1;
       const dateVal = document.getElementById("match-datetime")?.value;
+      const isPlayoff = document.getElementById("match-playoff")?.checked || false;
       const submitBtn = matchForm.querySelector('button[type="submit"]');
 
       if (!homeId || !awayId || homeId === awayId) {
@@ -788,6 +917,7 @@
           stadium_id: stadiumId,
           scheduled_at: dateVal ? new Date(dateVal).toISOString() : null,
           status: "programado",
+          is_playoff: isPlayoff,
         });
         matchForm.reset();
         await reloadAll();
@@ -1131,6 +1261,9 @@
   };
 
   function showAdminView(name) {
+    if ((name === "admins" || name === "history") && !state.isSuperAdmin) {
+      name = "overview";
+    }
     document.querySelectorAll(".admin-view").forEach((section) => {
       section.hidden = section.dataset.adminView !== name;
     });
@@ -1160,10 +1293,21 @@
   }
 
   function applyRoleVisibility() {
-    document.querySelectorAll('[data-admin-view="admins"], [data-admin-view="history"]').forEach((el) => {
+    // OJO: esto solo debe tocar los BOTONES del menú, nunca las secciones
+    // (.admin-view) — si tocamos las secciones aquí, cada vez que se
+    // renderiza el panel (p. ej. al añadir un equipo) se vuelve a mostrar
+    // "Admins"/"Historial" encima de la vista que tuvieras abierta.
+    document.querySelectorAll('.admin-nav__link[data-admin-view="admins"], .admin-nav__link[data-admin-view="history"]').forEach((el) => {
       el.hidden = !state.isSuperAdmin;
-      el.style.display = state.isSuperAdmin ? "" : "none";
     });
+
+    // Si un no-super-admin estuviera de algún modo en esas vistas, lo mandamos a Overview.
+    if (!state.isSuperAdmin) {
+      const adminsSection = document.querySelector('.admin-view[data-admin-view="admins"]');
+      const historySection = document.querySelector('.admin-view[data-admin-view="history"]');
+      const isOnRestricted = (adminsSection && !adminsSection.hidden) || (historySection && !historySection.hidden);
+      if (isOnRestricted) showAdminView("overview");
+    }
   }
 
   // =====================================
