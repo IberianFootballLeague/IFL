@@ -165,7 +165,9 @@
       <div class="hub-hero" id="hub-hero">
         <div class="hub-hero__overlay"></div>
         <div class="hub-hero__content">
-          <img class="hub-hero__logo" src="images/IFL_Logo.png" alt="" onerror="this.style.display='none'">
+          <div class="hub-hero__logo-wrap">
+            <img class="hub-hero__logo" src="images/IFL_Logo.png" alt="" onerror="this.closest('.hub-hero__logo-wrap').style.display='none'">
+          </div>
           <p class="hub-hero__eyebrow" id="hero-season-badge">Iberian Football League · Temporada 1</p>
           <h1 class="hub-hero__title hub-hero__shine">IFL Hub</h1>
           <p class="hub-hero__lead">
@@ -339,13 +341,20 @@
 
     <!-- ============ BUSCAR JUGADOR ============ -->
     <section class="view" id="view-buscar" data-view-panel="buscar" hidden>
-      <h2 class="dashboard__title">Buscar jugador</h2>
-      <p class="view-lead">Busca por nombre de Roblox o de Discord para ver sus estadísticas.</p>
-      <div class="admin-field" style="position:relative;max-width:420px;">
-        <input class="admin-input" id="player-search-input" placeholder="Escribe un nombre…" autocomplete="off">
-        <div id="player-search-results" class="admin-search-results" style="position:static;margin-top:10px;"></div>
+      <div class="league-page-head">
+        <img class="league-page-head__logo" src="images/IFL_Logo.png" alt="" onerror="this.style.display='none'">
+        <div>
+          <h2 class="league-page-head__title">Buscar jugador</h2>
+          <p class="league-page-head__subtitle">Busca por nombre de Roblox o de Discord para ver sus estadísticas.</p>
+        </div>
       </div>
-      <div id="player-profile-box" style="margin-top:24px;max-width:420px;"></div>
+
+      <div class="player-search-box">
+        <svg class="player-search-box__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="player-search-input" placeholder="Escribe un nombre de Roblox o Discord…" autocomplete="off">
+      </div>
+      <div id="player-search-results" class="player-search-results"></div>
+      <div id="player-profile-box" style="margin-top:24px;max-width:460px;"></div>
     </section>
 
     <section class="view" id="view-premios" data-view-panel="premios" hidden>
@@ -370,7 +379,11 @@
         </div>
         <div class="admin-field" style="padding-bottom:18px;">
           <label for="settings-avatar-upload">Foto de perfil (se usa en "Mi carrera" y en el buscador)</label>
-          <input class="admin-input" id="settings-avatar-upload" type="file" accept="image/*" disabled>
+          <label class="file-upload">
+            <input class="file-upload__input" id="settings-avatar-upload" type="file" accept="image/*" disabled>
+            <span class="file-upload__button">Subir foto</span>
+            <span class="file-upload__name">Ningún archivo</span>
+          </label>
           <p id="avatar-upload-status" class="setting-row__desc" hidden></p>
         </div>
       </div>
