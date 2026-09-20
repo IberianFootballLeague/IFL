@@ -424,3 +424,266 @@
   color: var(--gray-3, #56585f);
   font-size: 13px;
 }
+
+/* ---- Pantalla de carga (rediseño) ---- */
+
+.loader__center {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  margin: auto;
+}
+
+.loader__progress {
+  width: min(70vw, 260px);
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.loader__progress-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: #fff;
+  transition: width 2000ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.loader__tip-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 34px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.loader__tip-bottom .loader__tip-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--cyan, #3bd6ff);
+}
+
+.loader__tip-bottom .loader__tip-text {
+  max-width: 520px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--gray-2, #8b8d96);
+  transition: opacity 0.35s ease;
+}
+
+.loader__tip-bottom .loader__tip-text.is-fading { opacity: 0; }
+
+/* ---- Portada (Hub hero) ---- */
+
+.hub-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--border, #23232b);
+  background: #0a0a0d center/cover no-repeat;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: background-image 0.4s ease;
+}
+
+.hub-hero__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(5,5,7,.55) 0%, rgba(5,5,7,.75) 55%, rgba(5,5,7,.96) 100%),
+    linear-gradient(90deg, rgba(5,5,7,.55) 0%, rgba(5,5,7,.15) 55%, rgba(5,5,7,.55) 100%);
+}
+
+.hub-hero__content {
+  position: relative;
+  z-index: 1;
+  padding: 56px 40px 90px;
+  max-width: 640px;
+}
+
+.hub-hero__title {
+  margin: 16px 0 14px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(40px, 6vw, 64px);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--white, #fff);
+  text-shadow: 0 0 40px rgba(88, 101, 242, 0.45);
+}
+
+.hub-hero__lead {
+  margin: 0 0 26px;
+  max-width: 480px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--gray-1, #d7d7dd);
+}
+
+.hub-hero__actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.btn-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 12px 22px;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  text-transform: none;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btn-hero--solid { background: #fff; color: #0a0a0d; }
+.btn-hero--solid:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,255,255,.18); }
+
+.btn-hero--ghost {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--white, #fff);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.btn-hero--ghost:hover { background: rgba(255, 255, 255, 0.12); transform: translateY(-1px); }
+
+/* Brillo que "pasa" de vez en cuando por encima del título y los botones */
+.hub-hero__shine { position: relative; overflow: hidden; display: inline-block; }
+
+.hub-hero__shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  animation: hero-shine 5s ease-in-out infinite;
+}
+
+h1.hub-hero__title.hub-hero__shine::after { animation-delay: 0.3s; }
+.hub-hero__actions .hub-hero__shine:nth-child(2)::after { animation-delay: 1.6s; }
+
+@keyframes hero-shine {
+  0%   { left: -60%; }
+  18%  { left: 130%; }
+  100% { left: 130%; }
+}
+
+.hub-hero__stats {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hub-hero__stat {
+  padding: 18px 20px;
+  text-align: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hub-hero__stat:last-child { border-right: none; }
+
+.hub-hero__stat span {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 30px;
+  color: var(--white, #fff);
+}
+
+.hub-hero__stat small {
+  font-size: 11.5px;
+  color: var(--gray-3, #56585f);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 640px) {
+  .hub-hero__content { padding: 40px 22px 70px; }
+  .hub-hero__stats { grid-template-columns: repeat(2, 1fr); }
+  .hub-hero__stat:nth-child(2) { border-right: none; }
+}
+
+/* ---- Tarjetas de división (Clasificación) ---- */
+
+.division-board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.division-card {
+  padding: 22px;
+  border-radius: 12px;
+  background: var(--surface, #0e0e12);
+  border: 1px solid var(--border, #23232b);
+  --div-color: var(--accent, #5865f2);
+}
+
+.division-card--primera { --div-color: #5865f2; }
+.division-card--segunda { --div-color: #eab308; }
+
+.division-card {
+  animation: division-glow 3.2s ease-in-out infinite;
+}
+
+@keyframes division-glow {
+  0%, 100% { box-shadow: 0 0 0 1px var(--div-color), 0 0 18px -4px var(--div-color); }
+  50%      { box-shadow: 0 0 0 1px var(--div-color), 0 0 34px 2px var(--div-color); }
+}
+
+.division-card__head { margin-bottom: 14px; }
+
+.division-card__title {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--white, #fff);
+}
+
+.division-card__subtitle { margin: 0; font-size: 12.5px; color: var(--gray-2, #8b8d96); }
+
+.division-card .table-wrap { border-color: var(--border-soft, rgba(255,255,255,.08)); }
+
+/* ---- Chips de forma (W/D/L) ---- */
+
+.form-cell { display: flex; gap: 3px; }
+
+.form-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.form-chip--w { background: var(--up, #22c55e); }
+.form-chip--l { background: var(--down, #ef4444); }
+.form-chip--d { background: var(--gray-3, #56585f); }
