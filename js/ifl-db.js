@@ -451,6 +451,93 @@ window.IFLDB = (function () {
     }
   }
 
+  // =====================================
+  // SETTINGS (temporada editable, etc.)
+  // =====================================
+
+  async function getSetting(key, fallback) {
+    const { data, error } = await client.from("settings").select("value").eq("key", key).maybeSingle();
+    if (error) throw error;
+    return data ? data.value : fallback;
+  }
+
+  async function setSetting(key, value) {
+    const { error } = await client
+      .from("settings")
+      .upsert({ key, value, updated_at: new Date().toISOString() });
+    if (error) throw error;
+  }
+
+  // =====================================
+  // NOTIFICACIONES
+  // =====================================
+
+  async function getNotifications(limit) {
+    const { data, error } = await client
+      .from("notifications")
+      .select("*, home_team:teams!notifications_home_team_id_fkey(*), away_team:teams!notifications_away_team_id_fkey(*)")
+      .order("created_at", { ascending: false })
+      .limit(limit || 30);
+    if (error) throw error;
+    return data || [];
+  }
+
+  // =====================================
+  // FOTO DE JUGADOR
+  // =====================================
+
+  async function updatePlayerAvatar(playerId, avatarUrl) {
+    const { error } = await client.from("players").update({ avatar_url: avatarUrl }).eq("id", playerId);
+    if (error) throw error;
+  }
+
+  // =====================================
+  // TABLA DE GOLEADORES / ASISTENTES
+  // =====================================
+
+  async function getLeaderboard(season, type, limit) {
+    // type: "gol" | "asistencia" | "mvp" | "tarjeta_amarilla" | "tarjeta_roja"
+    const matches = await getMatches(season);
+    const matchIds = matches.filter((m) => m.status === "jugado").map((m) => m.id);
+    if (!matchIds.length) return [];
+
+    const { data, error } = await client
+      .from("match_events")
+      .select("*, player:players!match_events_player_id_fkey(*), team:teams!match_events_team_id_fkey(*)")
+      .eq("type", type)
+      .in("match_id", matchIds);
+    if (error) throw error;
+
+    const counts = {};
+    (data || []).forEach((ev) => {
+      if (!ev.player) return;
+      const key = ev.player.id;
+      if (!counts[key]) counts[key] = { player: ev.player, team: ev.team, count: 0 };
+      counts[key].count++;
+    });
+
+    return Object.values(counts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit || 10);
+  }
+
+  // =====================================
+  // PLAYOFF
+  // =====================================
+
+  async function getPlayoffMatch(season) {
+    const { data, error } = await client
+      .from("matches")
+      .select(
+        "*, home_team:teams!matches_home_team_id_fkey(*), away_team:teams!matches_away_team_id_fkey(*), stadium:stadiums!matches_stadium_id_fkey(*)"
+      )
+      .eq("season", season)
+      .eq("is_playoff", true)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
   return {
     client,
     isAdmin,
@@ -466,6 +553,7 @@ window.IFLDB = (function () {
     searchPlayers,
     findOrCreatePlayer,
     getPlayerCareer,
+    updatePlayerAvatar,
     getContracts,
     getContractsByTeam,
     addContract,
@@ -482,5 +570,10 @@ window.IFLDB = (function () {
     removeAdmin,
     getAuditLog,
     revertAuditEntry,
+    getSetting,
+    setSetting,
+    getNotifications,
+    getLeaderboard,
+    getPlayoffMatch,
   };
 })();
