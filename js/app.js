@@ -654,12 +654,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!entries.length) return `<div class="admin-panel__empty">Todavía no hay datos.</div>`;
     return entries.map((e, i) => `
       <div class="admin-row">
-        <span class="admin-row__dot admin-row__dot--up" style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:var(--accent);">${i + 1}</span>
+        <span class="admin-row__dot admin-row__dot--up" style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:var(--div-color);">${i + 1}</span>
         <div class="admin-row__body">
           <div class="admin-row__name">${e.player.roblox_username}</div>
           <div class="admin-row__meta">${e.team ? e.team.name : ""}</div>
         </div>
-        <span class="admin-tag" style="background:rgba(88,101,242,.15);color:var(--accent);border:1px solid rgba(88,101,242,.35);">${e.count} ${label}</span>
+        <span class="admin-tag" style="background:rgba(255,255,255,.08);color:var(--white);border:1px solid rgba(255,255,255,.18);">${e.count} ${label}</span>
       </div>
     `).join("");
   }
@@ -668,7 +668,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const section = document.getElementById("view-premios");
     if (!section) return;
 
-    section.innerHTML = `<h2 class="dashboard__title">Premios</h2>`;
+    section.innerHTML = `
+      <div class="league-page-head">
+        <img class="league-page-head__logo" src="images/IFL_Logo.png" alt="" onerror="this.style.display='none'">
+        <div>
+          <h2 class="league-page-head__title">Premios</h2>
+          <p class="league-page-head__subtitle">Máximos goleadores, asistentes y el playoff de ascenso, actualizados solos.</p>
+        </div>
+      </div>
+    `;
 
     let scorers = [], assists = [], playoffMatch = null;
     try {
@@ -682,16 +690,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const board = document.createElement("div");
-    board.className = "admin-panels";
-    board.style.gridTemplateColumns = "1fr 1fr";
+    board.className = "division-board-grid";
+    board.style.marginTop = "24px";
     board.innerHTML = `
-      <div class="admin-panel">
-        <div class="admin-panel__head"><div class="admin-panel__head-title">Máximos goleadores</div></div>
-        <div class="admin-panel__body">${leaderboardRows(scorers, "goles")}</div>
+      <div class="division-card division-card--primera">
+        <div class="division-card__glow"></div>
+        <div class="division-card__head">
+          <span class="division-card__badge">⚽</span>
+          <div>
+            <h3 class="division-card__title">Máximos goleadores</h3>
+            <p class="division-card__subtitle">Temporada ${CURRENT_SEASON}</p>
+          </div>
+        </div>
+        <div style="position:relative;z-index:1;">${leaderboardRows(scorers, "goles")}</div>
       </div>
-      <div class="admin-panel">
-        <div class="admin-panel__head"><div class="admin-panel__head-title">Máximos asistentes</div></div>
-        <div class="admin-panel__body">${leaderboardRows(assists, "asist.")}</div>
+      <div class="division-card division-card--segunda">
+        <div class="division-card__glow"></div>
+        <div class="division-card__head">
+          <span class="division-card__badge">🎯</span>
+          <div>
+            <h3 class="division-card__title">Máximos asistentes</h3>
+            <p class="division-card__subtitle">Temporada ${CURRENT_SEASON}</p>
+          </div>
+        </div>
+        <div style="position:relative;z-index:1;">${leaderboardRows(assists, "asist.")}</div>
       </div>
     `;
     section.appendChild(board);
@@ -700,25 +722,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       const home = playoffMatch.home_team;
       const away = playoffMatch.away_team;
       const bracket = document.createElement("div");
-      bracket.style.marginTop = "28px";
+      bracket.className = "division-card";
+      bracket.style.cssText = "margin-top:22px;--div-color:#3bd6ff;text-align:center;padding:28px 22px;";
       bracket.innerHTML = `
-        <h3 class="table-heading">Playoff de ascenso (Segunda División)</h3>
-        <div class="admin-panel" style="padding:24px;text-align:center;">
-          <div style="display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;">
-            <div style="text-align:center;">
-              ${home?.logo_url ? `<img src="${home.logo_url}" class="ifl-modal__crest" style="width:48px;height:48px;">` : ""}
-              <div style="font-family:var(--font-display);font-weight:700;margin-top:6px;">${home ? home.name : "?"}</div>
-            </div>
-            <div style="font-family:var(--font-display);font-weight:800;font-size:28px;">
-              ${playoffMatch.status === "jugado" ? `${playoffMatch.home_goals} - ${playoffMatch.away_goals}` : "VS"}
-            </div>
-            <div style="text-align:center;">
-              ${away?.logo_url ? `<img src="${away.logo_url}" class="ifl-modal__crest" style="width:48px;height:48px;">` : ""}
-              <div style="font-family:var(--font-display);font-weight:700;margin-top:6px;">${away ? away.name : "?"}</div>
-            </div>
+        <div class="division-card__glow"></div>
+        <h3 class="table-heading" style="margin-top:0;position:relative;z-index:1;">Playoff de ascenso (Segunda División)</h3>
+        <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;margin-top:10px;">
+          <div style="text-align:center;">
+            ${home?.logo_url ? `<img src="${home.logo_url}" class="ifl-modal__crest" style="width:52px;height:52px;">` : ""}
+            <div style="font-family:var(--font-hub);font-weight:800;margin-top:8px;color:var(--white);">${home ? home.name : "?"}</div>
           </div>
-          <p class="ifl-modal__meta" style="margin-top:14px;">${playoffMatch.status === "jugado" ? "Playoff finalizado" : "Partido único · pendiente de jugarse"}</p>
+          <div style="font-family:var(--font-hub);font-weight:800;font-size:30px;color:var(--white);">
+            ${playoffMatch.status === "jugado" ? `${playoffMatch.home_goals} - ${playoffMatch.away_goals}` : "VS"}
+          </div>
+          <div style="text-align:center;">
+            ${away?.logo_url ? `<img src="${away.logo_url}" class="ifl-modal__crest" style="width:52px;height:52px;">` : ""}
+            <div style="font-family:var(--font-hub);font-weight:800;margin-top:8px;color:var(--white);">${away ? away.name : "?"}</div>
+          </div>
         </div>
+        <p class="ifl-modal__meta" style="margin-top:14px;position:relative;z-index:1;">${playoffMatch.status === "jugado" ? "Playoff finalizado" : "Partido único · pendiente de jugarse"}</p>
       `;
       section.appendChild(bracket);
     }
@@ -1006,11 +1028,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         let results = [];
         try { results = await db.searchPlayers(q); } catch (e) { console.error(e); }
         playerSearchResults.innerHTML = results.map((p) => `
-          <div class="admin-row" style="cursor:pointer;" data-player-id="${p.id}">
-            <div class="admin-row__body">
-              <div class="admin-row__name">${p.roblox_username}</div>
-              <div class="admin-row__meta">${p.discord_username}</div>
+          <div class="player-result-row" data-player-id="${p.id}">
+            ${p.avatar_url
+              ? `<img src="${p.avatar_url}" class="player-result-row__avatar" alt="">`
+              : `<span class="player-result-row__avatar player-result-row__avatar--fallback">${p.roblox_username.charAt(0).toUpperCase()}</span>`}
+            <div class="player-result-row__body">
+              <div class="player-result-row__name">${p.roblox_username}</div>
+              <div class="player-result-row__meta">${p.discord_username}</div>
             </div>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
         `).join("") || '<div class="admin-panel__empty">Sin resultados.</div>';
       }, 250);
