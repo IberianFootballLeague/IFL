@@ -173,6 +173,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     renderCareerLockState();
     setupNotifications();
+    setupProfileControls();
+    setupOnlinePresence();
   }
 
   // =================================
@@ -664,8 +666,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   // NOTIFICACIONES
   // =================================
 
+  const NOTIF_ICONS = { partido_programado: "📅", partido_resultado: "⚽" };
+
   function readSiteSettings() {
     try { return JSON.parse(localStorage.getItem("ifl-settings") || "{}"); } catch (e) { return {}; }
+  }
+
+  function timeAgo(iso) {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "ahora mismo";
+    if (mins < 60) return `hace ${mins} min`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `hace ${hours} h`;
+    const days = Math.floor(hours / 24);
+    return `hace ${days} d`;
   }
 
   async function setupNotifications() {
@@ -675,21 +690,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.id = "notif-button";
-    btn.className = "app-header__profile";
-    btn.style.marginRight = "-6px";
+    btn.className = "app-header__profile notif-bell";
+    btn.title = "Notificaciones";
     btn.innerHTML = `
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke-linecap="round"/></svg>
-      <span id="notif-dot" style="display:none;width:7px;height:7px;border-radius:50%;background:var(--down);margin-left:-4px;"></span>
+      <span class="notif-bell__icon">📬</span>
+      <span id="notif-badge" class="notif-badge" hidden>0</span>
     `;
 
     const panel = document.createElement("div");
     panel.id = "notif-panel";
-    panel.className = "profile-menu";
+    panel.className = "notif-panel";
     panel.hidden = true;
-    panel.innerHTML = `<div class="profile-menu__head"><span class="profile-menu__name">Notificaciones</span></div><div id="notif-list" style="max-height:340px;overflow-y:auto;"></div>`;
+    panel.innerHTML = `
+      <div class="notif-panel__head">📬 <span>Notificaciones</span></div>
+      <div id="notif-list" class="notif-panel__list"></div>
+    `;
 
     accountBox.insertBefore(btn, accountBox.firstChild);
-    accountBox.style.position = "relative";
     accountBox.appendChild(panel);
 
     btn.addEventListener("click", async (e) => {
@@ -699,8 +716,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (willOpen) {
         await loadNotifications();
         try { localStorage.setItem("ifl-notif-read-at", new Date().toISOString()); } catch (err) {}
-        const dot = document.getElementById("notif-dot");
-        if (dot) dot.style.display = "none";
+        updateNotifBadge(0);
       }
     });
 
@@ -711,21 +727,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     await checkUnreadNotifications();
   }
 
+  function updateNotifBadge(count) {
+    const badge = document.getElementById("notif-badge");
+    if (!badge) return;
+    if (count > 0) {
+      badge.hidden = false;
+      badge.textContent = count > 9 ? "9+" : String(count);
+    } else {
+      badge.hidden = true;
+    }
+  }
+
   async function loadNotifications() {
     const list = document.getElementById("notif-list");
     if (!list) return;
+    list.innerHTML = `<div class="notif-empty">Cargando…</div>`;
+
     let items = [];
     try { items = await db.getNotifications(20); } catch (e) { console.error(e); }
 
     if (!items.length) {
-      list.innerHTML = '<div class="admin-panel__empty">Sin notificaciones todavía.</div>';
+      list.innerHTML = `<div class="notif-empty">📭 Aún no hay notificaciones.</div>`;
       return;
     }
 
     list.innerHTML = items.map((n) => `
-      <div class="profile-menu__item" style="cursor:default;flex-direction:column;align-items:flex-start;gap:2px;">
-        <strong style="color:var(--white);">${n.title}</strong>
-        <span style="font-size:12px;color:var(--gray-3);">${n.body || ""}</span>
+      <div class="notif-item">
+        <span class="notif-item__icon">${NOTIF_ICONS[n.type] || "🔔"}</span>
+        <div class="notif-item__body">
+          <div class="notif-item__title">${n.title}</div>
+          <div class="notif-item__meta">${n.body || ""} · ${timeAgo(n.created_at)}</div>
+        </div>
       </div>
     `).join("");
   }
@@ -735,14 +767,240 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (settings.notifPartidos === false) return;
 
     let items = [];
-    try { items = await db.getNotifications(5); } catch (e) { return; }
+    try { items = await db.getNotifications(20); } catch (e) { return; }
     if (!items.length) return;
 
     let lastRead = null;
     try { lastRead = localStorage.getItem("ifl-notif-read-at"); } catch (e) {}
 
-    const hasUnread = !lastRead || new Date(items[0].created_at) > new Date(lastRead);
-    const dot = document.getElementById("notif-dot");
-    if (dot) dot.style.display = hasUnread ? "inline-block" : "none";
+    const unreadCount = lastRead
+      ? items.filter((n) => new Date(n.created_at) > new Date(lastRead)).length
+      : items.length;
+
+    updateNotifBadge(unreadCount);
+  }
+
+  // =================================
+  // PERSONAS CONECTADAS AHORA MISMO
+  // =================================
+
+  function setupOnlinePresence() {
+    const key = currentDiscordId || ("anon-" + Math.random().toString(36).slice(2));
+    db.trackOnlinePresence(key, (count) => {
+      const el = document.getElementById("online-now-count");
+      if (el) el.textContent = count;
+    });
+  }
+
+  // =================================
+  // MI PERFIL: foto y visibilidad reales
+  // =================================
+
+  async function setupProfileControls() {
+    const avatarInput = document.getElementById("settings-avatar-upload");
+    const visibilityToggle = document.getElementById("setting-public-profile");
+    const visibilityNote = document.getElementById("profile-visibility-note");
+
+    let myPlayer = null;
+    try { myPlayer = await db.getPlayerByDiscordId(currentDiscordId); } catch (e) { console.error(e); }
+
+    if (!myPlayer) {
+      if (visibilityNote) {
+        visibilityNote.hidden = false;
+        visibilityNote.textContent = "Todavía no tienes ficha de jugador (hace falta un contrato para tenerla), así que esta opción no aplica aún.";
+      }
+      if (visibilityToggle) visibilityToggle.disabled = true;
+      if (avatarInput) avatarInput.disabled = true;
+      return;
+    }
+
+    if (visibilityToggle) {
+      visibilityToggle.disabled = false;
+      visibilityToggle.checked = myPlayer.is_public !== false;
+      visibilityToggle.addEventListener("change", async () => {
+        try {
+          await db.updatePlayerVisibility(myPlayer.id, visibilityToggle.checked);
+        } catch (e) {
+          console.error(e);
+          alert("No se pudo guardar el cambio de visibilidad.");
+        }
+      });
+    }
+
+    if (avatarInput) {
+      avatarInput.disabled = false;
+      avatarInput.addEventListener("change", async () => {
+        const file = avatarInput.files && avatarInput.files[0];
+        if (!file) return;
+
+        const statusEl = document.getElementById("avatar-upload-status");
+        if (statusEl) { statusEl.hidden = false; statusEl.textContent = "Comprobando la imagen…"; }
+
+        try {
+          const dataUrl = await readImageAsSafeDataURL(file, (msg) => {
+            if (statusEl) statusEl.textContent = msg;
+          });
+          await db.updateMyAvatar(currentDiscordId, dataUrl);
+
+          const headerAvatar = document.getElementById("user-avatar");
+          const headerFallback = document.getElementById("user-avatar-fallback");
+          if (headerAvatar) { headerAvatar.src = dataUrl; headerAvatar.hidden = false; }
+          if (headerFallback) headerFallback.hidden = true;
+
+          if (statusEl) { statusEl.textContent = "Foto actualizada ✅"; setTimeout(() => (statusEl.hidden = true), 2500); }
+        } catch (e) {
+          console.error(e);
+          if (statusEl) statusEl.textContent = "❌ " + (e.message || "No se pudo subir la imagen.");
+          avatarInput.value = "";
+        }
+      });
+    }
+  }
+
+  const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
+  const NSFW_THRESHOLD = 0.7;
+  let nsfwModelPromise = null;
+
+  function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("No se pudo cargar " + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function getNsfwModel() {
+    if (nsfwModelPromise) return nsfwModelPromise;
+    nsfwModelPromise = (async () => {
+      await loadScriptOnce("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.15.0/dist/tf.min.js");
+      await loadScriptOnce("https://cdn.jsdelivr.net/npm/nsfwjs@2.4.2/dist/nsfwjs.min.js");
+      return window.nsfwjs.load();
+    })();
+    return nsfwModelPromise;
+  }
+
+  // Valida que sea una imagen real, de tamaño razonable, y pasa un
+  // control automático de contenido (mejor esfuerzo: si el modelo no
+  // carga por lo que sea, se deja subir igualmente para no bloquear
+  // al usuario, pero se avisa por consola).
+  function readImageAsSafeDataURL(file, onProgress) {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith("image/")) {
+        reject(new Error("El archivo tiene que ser una imagen."));
+        return;
+      }
+      if (file.size > MAX_AVATAR_BYTES) {
+        reject(new Error("La imagen pesa demasiado (máximo 2 MB)."));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("No se pudo leer el archivo."));
+      reader.onload = async () => {
+        const dataUrl = reader.result;
+        const img = new Image();
+        img.onerror = () => reject(new Error("El archivo no es una imagen válida."));
+        img.onload = async () => {
+          try {
+            onProgress && onProgress("Pasando el control de seguridad…");
+            const model = await getNsfwModel();
+            const predictions = await model.classify(img);
+            const risky = predictions.find(
+              (p) => ["Porn", "Hentai", "Sexy"].includes(p.className) && p.probability > NSFW_THRESHOLD
+            );
+            if (risky) {
+              reject(new Error("Esta imagen no ha pasado el control de seguridad. Prueba con otra foto."));
+              return;
+            }
+          } catch (e) {
+            console.warn("[IFL] No se pudo ejecutar el control automático de imagen, se deja pasar igualmente:", e);
+          }
+          resolve(dataUrl);
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // =================================
+  // BUSCADOR PÚBLICO DE JUGADORES
+  // =================================
+
+  const playerSearchInput = document.getElementById("player-search-input");
+  const playerSearchResults = document.getElementById("player-search-results");
+  const playerProfileBox = document.getElementById("player-profile-box");
+
+  if (playerSearchInput) {
+    let debounceTimer = null;
+    playerSearchInput.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      const q = playerSearchInput.value.trim();
+      if (!q) { playerSearchResults.innerHTML = ""; return; }
+      debounceTimer = setTimeout(async () => {
+        let results = [];
+        try { results = await db.searchPlayers(q); } catch (e) { console.error(e); }
+        playerSearchResults.innerHTML = results.map((p) => `
+          <div class="admin-row" style="cursor:pointer;" data-player-id="${p.id}">
+            <div class="admin-row__body">
+              <div class="admin-row__name">${p.roblox_username}</div>
+              <div class="admin-row__meta">${p.discord_username}</div>
+            </div>
+          </div>
+        `).join("") || '<div class="admin-panel__empty">Sin resultados.</div>';
+      }, 250);
+    });
+
+    playerSearchResults.addEventListener("click", async (e) => {
+      const row = e.target.closest("[data-player-id]");
+      if (!row) return;
+      await showPlayerProfile(row.getAttribute("data-player-id"));
+    });
+  }
+
+  async function showPlayerProfile(playerId) {
+    if (!playerProfileBox) return;
+    playerProfileBox.innerHTML = `<div class="admin-panel__empty">Cargando…</div>`;
+
+    let profile = null;
+    try { profile = await db.getPlayerPublicProfile(playerId); } catch (e) { console.error(e); }
+    if (!profile) { playerProfileBox.innerHTML = `<div class="admin-panel__empty">No se encontró ese jugador.</div>`; return; }
+
+    const { player, isPublic, stats, contracts } = profile;
+    const avatarHTML = player.avatar_url
+      ? `<img src="${player.avatar_url}" class="career-avatar" alt="">`
+      : `<div class="career-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--accent);font-family:var(--font-display);font-weight:700;font-size:32px;">${player.roblox_username.charAt(0).toUpperCase()}</div>`;
+
+    if (!isPublic) {
+      playerProfileBox.innerHTML = `
+        <div class="locked-card">
+          ${avatarHTML}
+          <h3 style="margin:6px 0 0;color:var(--white);">${player.roblox_username}</h3>
+          <p class="locked-card__text">Este usuario tiene desactivada la visualización del perfil.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const currentClub = contracts.find((c) => c.status === "ACTIVO");
+
+    playerProfileBox.innerHTML = `
+      <div class="locked-card" style="align-items:center;">
+        ${avatarHTML}
+        <h3 style="margin:6px 0 0;color:var(--white);">${player.roblox_username}</h3>
+        <p class="ifl-modal__meta">${currentClub ? "Actualmente en " + currentClub.team.name : "Sin club actualmente"}</p>
+      </div>
+      <div class="stat-grid" style="margin-top:20px;">
+        <div class="stat-tile"><span class="stat-tile__value">${stats.goles}</span><span class="stat-tile__label">Goles</span></div>
+        <div class="stat-tile"><span class="stat-tile__value">${stats.asistencias}</span><span class="stat-tile__label">Asistencias</span></div>
+        <div class="stat-tile"><span class="stat-tile__value">${stats.partidos_jugados}</span><span class="stat-tile__label">Partidos jugados</span></div>
+        <div class="stat-tile"><span class="stat-tile__value">${stats.tarjetas_amarillas}</span><span class="stat-tile__label">Tarjetas amarillas</span></div>
+        <div class="stat-tile"><span class="stat-tile__value">${stats.tarjetas_rojas}</span><span class="stat-tile__label">Tarjetas rojas</span></div>
+        <div class="stat-tile"><span class="stat-tile__value">${stats.mvps}</span><span class="stat-tile__label">MVPs</span></div>
+      </div>
+    `;
   }
 });
