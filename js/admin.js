@@ -603,6 +603,7 @@
 
     stadiumsTableBody.innerHTML = state.stadiums.map((s) => `
       <tr>
+        <td>${s.image_url ? `<img src="${s.image_url}" alt="" class="team-crest" style="width:40px;height:26px;border-radius:4px;object-fit:cover;">` : `<span class="team-crest team-crest--empty" style="width:40px;height:26px;"></span>`}</td>
         <td class="standings__club">${escapeHTML(s.name)}</td>
         <td>${s.team ? escapeHTML(s.team.name) : "—"}</td>
         <td>${escapeHTML(s.city || "—")}</td>
@@ -627,7 +628,11 @@
       if (!name) return;
 
       withBusy(submitBtn, async () => {
-        await db.addStadium({ name, team_id: teamId, city, capacity, description });
+        const fileInput = document.getElementById("stadium-image");
+        const file = fileInput && fileInput.files && fileInput.files[0];
+        const imageUrl = await readFileAsDataURL(file);
+
+        await db.addStadium({ name, team_id: teamId, city, capacity, description, image_url: imageUrl });
         stadiumForm.reset();
         await reloadAll();
         renderAll();
