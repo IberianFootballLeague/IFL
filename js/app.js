@@ -4,7 +4,7 @@
 // =====================================
 
 const ADMIN_DISCORD_ID = "1149380955316957266";
-const CURRENT_SEASON = 1; // Ajusta si cambias de temporada activa
+let CURRENT_SEASON = 1; // se sobreescribe con el valor real de la base de datos al cargar
 
 document.addEventListener("DOMContentLoaded", async () => {
   const db = window.IFLDB;
@@ -172,11 +172,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (window.IFLOnboarding) window.IFLOnboarding.maybeAutoOpen();
 
     renderCareerLockState();
+    setupNotifications();
   }
 
   // =================================
   // SESIÓN
   // =================================
+
+  try {
+    CURRENT_SEASON = await db.getSetting("current_season", 1);
+  } catch (e) {
+    console.warn("[IFL] No se pudo leer la temporada activa, usando 1 por defecto.", e);
+  }
 
   const {
     data: { session },
@@ -244,6 +251,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (name === "clasificacion") renderStandings();
     if (name === "estadios") renderStadiums();
     if (name === "carrera") renderCareer();
+    if (name === "premios") renderPremios();
   }
 
   navLinks.forEach((link) => {
@@ -330,10 +338,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           chip.className = "match-chip";
           const homeCode = m.home_team ? m.home_team.code : "?";
           const awayCode = m.away_team ? m.away_team.code : "?";
-          chip.textContent =
-            m.status === "jugado"
-              ? `${homeCode} ${m.home_goals}-${m.away_goals} ${awayCode}`
-              : `${homeCode} vs ${awayCode}`;
+          const homeCrest = m.home_team && m.home_team.logo_url ? `<img src="${m.home_team.logo_url}" alt="" class="match-chip__crest">` : "";
+          const awayCrest = m.away_team && m.away_team.logo_url ? `<img src="${m.away_team.logo_url}" alt="" class="match-chip__crest">` : "";
+          const scoreText =
+            m.status === "jugado" ? `${m.home_goals}-${m.away_goals}` : "vs";
+          chip.innerHTML = `${homeCrest}<span>${homeCode} ${scoreText} ${awayCode}</span>${awayCrest}`;
           chip.addEventListener("click", () => openMatchModal(m));
           slot.appendChild(chip);
         });
@@ -364,6 +373,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const box = document.getElementById("match-modal-box");
     const home = match.home_team ? match.home_team.name : "Por confirmar";
     const away = match.away_team ? match.away_team.name : "Por confirmar";
+    const homeCrest = match.home_team && match.home_team.logo_url ? `<img src="${match.home_team.logo_url}" alt="" class="ifl-modal__crest">` : "";
+    const awayCrest = match.away_team && match.away_team.logo_url ? `<img src="${match.away_team.logo_url}" alt="" class="ifl-modal__crest">` : "";
     const stadium = match.stadium;
     const dateText = match.scheduled_at
       ? new Date(match.scheduled_at).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" })
@@ -372,7 +383,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     box.innerHTML = `
       <button type="button" class="ifl-modal__close" id="match-modal-close">&times;</button>
       <div class="badge badge--season">Jornada ${match.matchday}</div>
-      <h2 class="ifl-modal__title">${home} vs ${away}</h2>
+      <h2 class="ifl-modal__title">${homeCrest}${home} vs ${away}${awayCrest}</h2>
       <p class="ifl-modal__meta">${dateText}</p>
       ${
         match.status === "jugado"
@@ -408,10 +419,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!tableEl) return;
     let body = "";
     rows.forEach((r, i) => {
+      const crest = r.team.logo_url ? `<img src="${r.team.logo_url}" alt="" class="team-crest team-crest--small">` : "";
       body += `
         <tr>
           <td class="standings__pos">${i + 1}</td>
-          <td class="standings__club">${r.team.name}</td>
+          <td class="standings__club">${crest}${r.team.name}</td>
           <td>${r.pts}</td>
           <td>${r.pg}</td>
           <td>${r.pp}</td>
@@ -556,6 +568,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     section.innerHTML = `
       <h2 class="dashboard__title">Mi carrera</h2>
+      ${career.player.avatar_url ? `<img src="${career.player.avatar_url}" alt="" class="career-avatar">` : ""}
       <div class="stat-grid" style="margin-bottom:28px;">
         <div class="stat-tile"><span class="stat-tile__value">${stats.goles}</span><span class="stat-tile__label">Goles</span></div>
         <div class="stat-tile"><span class="stat-tile__value">${stats.asistencias}</span><span class="stat-tile__label">Asistencias</span></div>
@@ -567,5 +580,169 @@ document.addEventListener("DOMContentLoaded", async () => {
       <h3 class="table-heading">Trayectoria</h3>
       <div class="admin-panel"><div class="admin-panel__body">${contractsHTML || '<div class="admin-panel__empty">Sin contratos todavía.</div>'}</div></div>
     `;
+  }
+
+  // =================================
+  // PREMIOS (goleadores, asistentes, playoff)
+  // =================================
+
+  function leaderboardRows(entries, label) {
+    if (!entries.length) return `<div class="admin-panel__empty">Todavía no hay datos.</div>`;
+    return entries.map((e, i) => `
+      <div class="admin-row">
+        <span class="admin-row__dot admin-row__dot--up" style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:var(--accent);">${i + 1}</span>
+        <div class="admin-row__body">
+          <div class="admin-row__name">${e.player.roblox_username}</div>
+          <div class="admin-row__meta">${e.team ? e.team.name : ""}</div>
+        </div>
+        <span class="admin-tag" style="background:rgba(88,101,242,.15);color:var(--accent);border:1px solid rgba(88,101,242,.35);">${e.count} ${label}</span>
+      </div>
+    `).join("");
+  }
+
+  async function renderPremios() {
+    const section = document.getElementById("view-premios");
+    if (!section) return;
+
+    section.innerHTML = `<h2 class="dashboard__title">Premios</h2>`;
+
+    let scorers = [], assists = [], playoffMatch = null;
+    try {
+      [scorers, assists, playoffMatch] = await Promise.all([
+        db.getLeaderboard(CURRENT_SEASON, "gol", 10),
+        db.getLeaderboard(CURRENT_SEASON, "asistencia", 10),
+        db.getPlayoffMatch(CURRENT_SEASON),
+      ]);
+    } catch (e) {
+      console.error("[IFL] Error cargando premios:", e);
+    }
+
+    const board = document.createElement("div");
+    board.className = "admin-panels";
+    board.style.gridTemplateColumns = "1fr 1fr";
+    board.innerHTML = `
+      <div class="admin-panel">
+        <div class="admin-panel__head"><div class="admin-panel__head-title">Máximos goleadores</div></div>
+        <div class="admin-panel__body">${leaderboardRows(scorers, "goles")}</div>
+      </div>
+      <div class="admin-panel">
+        <div class="admin-panel__head"><div class="admin-panel__head-title">Máximos asistentes</div></div>
+        <div class="admin-panel__body">${leaderboardRows(assists, "asist.")}</div>
+      </div>
+    `;
+    section.appendChild(board);
+
+    if (playoffMatch) {
+      const home = playoffMatch.home_team;
+      const away = playoffMatch.away_team;
+      const bracket = document.createElement("div");
+      bracket.style.marginTop = "28px";
+      bracket.innerHTML = `
+        <h3 class="table-heading">Playoff de ascenso (Segunda División)</h3>
+        <div class="admin-panel" style="padding:24px;text-align:center;">
+          <div style="display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;">
+            <div style="text-align:center;">
+              ${home?.logo_url ? `<img src="${home.logo_url}" class="ifl-modal__crest" style="width:48px;height:48px;">` : ""}
+              <div style="font-family:var(--font-display);font-weight:700;margin-top:6px;">${home ? home.name : "?"}</div>
+            </div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:28px;">
+              ${playoffMatch.status === "jugado" ? `${playoffMatch.home_goals} - ${playoffMatch.away_goals}` : "VS"}
+            </div>
+            <div style="text-align:center;">
+              ${away?.logo_url ? `<img src="${away.logo_url}" class="ifl-modal__crest" style="width:48px;height:48px;">` : ""}
+              <div style="font-family:var(--font-display);font-weight:700;margin-top:6px;">${away ? away.name : "?"}</div>
+            </div>
+          </div>
+          <p class="ifl-modal__meta" style="margin-top:14px;">${playoffMatch.status === "jugado" ? "Playoff finalizado" : "Partido único · pendiente de jugarse"}</p>
+        </div>
+      `;
+      section.appendChild(bracket);
+    }
+  }
+
+  // =================================
+  // NOTIFICACIONES
+  // =================================
+
+  function readSiteSettings() {
+    try { return JSON.parse(localStorage.getItem("ifl-settings") || "{}"); } catch (e) { return {}; }
+  }
+
+  async function setupNotifications() {
+    const accountBox = document.querySelector(".app-header__account");
+    if (!accountBox || document.getElementById("notif-button")) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "notif-button";
+    btn.className = "app-header__profile";
+    btn.style.marginRight = "-6px";
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke-linecap="round"/></svg>
+      <span id="notif-dot" style="display:none;width:7px;height:7px;border-radius:50%;background:var(--down);margin-left:-4px;"></span>
+    `;
+
+    const panel = document.createElement("div");
+    panel.id = "notif-panel";
+    panel.className = "profile-menu";
+    panel.hidden = true;
+    panel.innerHTML = `<div class="profile-menu__head"><span class="profile-menu__name">Notificaciones</span></div><div id="notif-list" style="max-height:340px;overflow-y:auto;"></div>`;
+
+    accountBox.insertBefore(btn, accountBox.firstChild);
+    accountBox.style.position = "relative";
+    accountBox.appendChild(panel);
+
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const willOpen = panel.hidden;
+      panel.hidden = !panel.hidden;
+      if (willOpen) {
+        await loadNotifications();
+        try { localStorage.setItem("ifl-notif-read-at", new Date().toISOString()); } catch (err) {}
+        const dot = document.getElementById("notif-dot");
+        if (dot) dot.style.display = "none";
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!panel.hidden && !panel.contains(e.target) && !btn.contains(e.target)) panel.hidden = true;
+    });
+
+    await checkUnreadNotifications();
+  }
+
+  async function loadNotifications() {
+    const list = document.getElementById("notif-list");
+    if (!list) return;
+    let items = [];
+    try { items = await db.getNotifications(20); } catch (e) { console.error(e); }
+
+    if (!items.length) {
+      list.innerHTML = '<div class="admin-panel__empty">Sin notificaciones todavía.</div>';
+      return;
+    }
+
+    list.innerHTML = items.map((n) => `
+      <div class="profile-menu__item" style="cursor:default;flex-direction:column;align-items:flex-start;gap:2px;">
+        <strong style="color:var(--white);">${n.title}</strong>
+        <span style="font-size:12px;color:var(--gray-3);">${n.body || ""}</span>
+      </div>
+    `).join("");
+  }
+
+  async function checkUnreadNotifications() {
+    const settings = readSiteSettings();
+    if (settings.notifPartidos === false) return;
+
+    let items = [];
+    try { items = await db.getNotifications(5); } catch (e) { return; }
+    if (!items.length) return;
+
+    let lastRead = null;
+    try { lastRead = localStorage.getItem("ifl-notif-read-at"); } catch (e) {}
+
+    const hasUnread = !lastRead || new Date(items[0].created_at) > new Date(lastRead);
+    const dot = document.getElementById("notif-dot");
+    if (dot) dot.style.display = hasUnread ? "inline-block" : "none";
   }
 });
