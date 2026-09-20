@@ -538,6 +538,85 @@ window.IFLDB = (function () {
     return data;
   }
 
+  async function getPlayerByDiscordId(discordId) {
+    const { data, error } = await client.from("players").select("*").eq("discord_id", discordId).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  async function updatePlayerVisibility(playerId, isPublic) {
+    const { error } = await client.from("players").update({ is_public: isPublic }).eq("id", playerId);
+    if (error) throw error;
+  }
+
+  async function updateMyAvatar(discordId, avatarUrl) {
+    // El propio jugador solo puede editar su fila si discord_id coincide con su sesión (RLS lo exige).
+    const { error } = await client.from("players").update({ avatar_url: avatarUrl }).eq("discord_id", discordId);
+    if (error) throw error;
+  }
+
+  async function computeCareerStats(playerId) {
+    const { data: events, error } = await client
+      .from("match_events")
+      .select("*, match:matches!match_events_match_id_fkey(*)")
+      .eq("player_id", playerId);
+    if (error) throw error;
+
+    const stats = { goles: 0, asistencias: 0, tarjetas_amarillas: 0, tarjetas_rojas: 0, mvps: 0, partidos_jugados: 0 };
+    const matchesPlayed = new Set();
+    (events || []).forEach((ev) => {
+      if (ev.type === "gol") stats.goles++;
+      if (ev.type === "asistencia") stats.asistencias++;
+      if (ev.type === "tarjeta_amarilla") stats.tarjetas_amarillas++;
+      if (ev.type === "tarjeta_roja") stats.tarjetas_rojas++;
+      if (ev.type === "mvp") stats.mvps++;
+      if (ev.match_id) matchesPlayed.add(ev.match_id);
+    });
+    stats.partidos_jugados = matchesPlayed.size;
+    return stats;
+  }
+
+  async function getPlayerPublicProfile(playerId) {
+    const { data: player, error: playerError } = await client.from("players").select("*").eq("id", playerId).maybeSingle();
+    if (playerError) throw playerError;
+    if (!player) return null;
+
+    if (player.is_public === false) {
+      return { player, isPublic: false, stats: null, contracts: [] };
+    }
+
+    const stats = await computeCareerStats(player.id);
+    const { data: contracts, error: contractsError } = await client
+      .from("contracts")
+      .select("*, team:teams!contracts_team_id_fkey(*)")
+      .eq("player_id", player.id)
+      .order("signed_season", { ascending: false });
+    if (contractsError) throw contractsError;
+
+    return { player, isPublic: true, stats, contracts: contracts || [] };
+  }
+
+  // =====================================
+  // PRESENCIA (usuarios conectados ahora mismo)
+  // =====================================
+
+  function trackOnlinePresence(key, onCountChange) {
+    const channel = client.channel("ifl-online", { config: { presence: { key } } });
+
+    channel.on("presence", { event: "sync" }, () => {
+      const state = channel.presenceState();
+      onCountChange(Object.keys(state).length);
+    });
+
+    channel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await channel.track({ online_at: new Date().toISOString() });
+      }
+    });
+
+    return channel;
+  }
+
   return {
     client,
     isAdmin,
@@ -553,7 +632,12 @@ window.IFLDB = (function () {
     searchPlayers,
     findOrCreatePlayer,
     getPlayerCareer,
+    getPlayerByDiscordId,
     updatePlayerAvatar,
+    updatePlayerVisibility,
+    updateMyAvatar,
+    getPlayerPublicProfile,
+    trackOnlinePresence,
     getContracts,
     getContractsByTeam,
     addContract,
