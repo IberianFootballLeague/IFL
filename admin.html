@@ -258,6 +258,10 @@
             <label for="stadium-description">Descripción</label>
             <input class="admin-input" id="stadium-description" placeholder="Opcional">
           </div>
+          <div class="admin-field admin-field--full">
+            <label for="stadium-image">Imagen del estadio (opcional)</label>
+            <input class="admin-input" id="stadium-image" type="file" accept="image/*">
+          </div>
           <div class="admin-form__actions">
             <button type="submit" class="btn-admin btn-admin--solid">Añadir estadio</button>
           </div>
@@ -266,7 +270,7 @@
         <div class="table-wrap">
           <table class="standings" id="stadiums-table">
             <thead>
-              <tr><th>Estadio</th><th>Club</th><th>Ciudad</th><th>Aforo</th><th></th></tr>
+              <tr><th>Imagen</th><th>Estadio</th><th>Club</th><th>Ciudad</th><th>Aforo</th><th></th></tr>
             </thead>
             <tbody id="stadiums-table-body"></tbody>
           </table>
