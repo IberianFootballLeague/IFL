@@ -452,6 +452,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function renderStandings() {
+    const seasonEl = document.getElementById("clasificacion-season");
+    if (seasonEl) seasonEl.textContent = CURRENT_SEASON;
+
     try {
       const [primera, segunda] = await Promise.all([
         db.computeStandings(CURRENT_SEASON, "primera"),
