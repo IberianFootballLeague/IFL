@@ -65,8 +65,6 @@
       setTimeout(hideNow, remaining);
     };
 
-    // Preferimos esperar a que app.js haya decidido qué mostrar:
-    // en cuanto login o app dejan de estar ocultos, cerramos.
     const loginPage = document.getElementById("login-page");
     const appPage = document.getElementById("app");
 
@@ -88,7 +86,6 @@
     if (document.readyState === "complete") dismiss();
     else window.addEventListener("load", dismiss);
 
-    // Red de seguridad: nunca dejamos al usuario encerrado en la carga.
     setTimeout(hideNow, 9000);
   }
 
@@ -131,17 +128,10 @@
       }
     });
 
-    /* Los ítems con data-view (Mi perfil, Mi carrera, Configuración) ya
-       llevan la clase app-header__link, así que app.js los navega solo.
-       Aquí solo cerramos el menú tras cualquier clic dentro de él. */
     profileMenu.addEventListener("click", function (e) {
       if (e.target.closest(".profile-menu__item")) closeMenu();
     });
 
-    /* Nombre en la cabecera del menú.
-       app.js escribe "Sesión iniciada como X" en #user-info;
-       aquí nos quedamos solo con el nombre, y lo reflejamos también
-       en la tarjeta de Mi perfil. */
     const userInfo = document.getElementById("user-info");
     const menuName = document.getElementById("profile-menu-name");
     const settingsName = document.getElementById("settings-name");
@@ -162,7 +152,6 @@
       });
     }
 
-    /* Avatar en Mi perfil, reflejando el de la cabecera. */
     const headerAvatar = document.getElementById("user-avatar");
     const headerFallback = document.getElementById("user-avatar-fallback");
     const settingsAvatar = document.getElementById("settings-avatar");
@@ -199,11 +188,11 @@
   const loadSettings = function () {
     try {
       return Object.assign(
-        { reduceMotion: false, notifPartidos: true, notifClub: true, publicProfile: true },
+        { reduceMotion: false, notifPartidos: true, notifClub: true },
         JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")
       );
     } catch (e) {
-      return { reduceMotion: false, notifPartidos: true, notifClub: true, publicProfile: true };
+      return { reduceMotion: false, notifPartidos: true, notifClub: true };
     }
   };
 
@@ -234,7 +223,8 @@
   bindToggle("setting-reduce-motion", "reduceMotion");
   bindToggle("setting-notif-partidos", "notifPartidos");
   bindToggle("setting-notif-club", "notifClub");
-  bindToggle("setting-public-profile", "publicProfile");
+  // "setting-public-profile" ya NO se guarda en local: lo gestiona
+  // js/app.js de verdad, contra la base de datos (ver setupProfileControls).
 
   const accentRow = document.getElementById("accent-row");
 
@@ -276,8 +266,6 @@
 
   /* ---------------------------------
      4. ZONAS DE LA CLASIFICACIÓN
-     Primera: 3 últimos -> descenso (rojo)
-     Segunda: 1-2 ascenso (verde), 3-4 playoff (amarillo)
   --------------------------------- */
 
   const ZONES = {
@@ -298,7 +286,6 @@
     const rows = Array.prototype.filter.call(
       table.querySelectorAll("tr"),
       function (tr) {
-        // Solo filas de datos: las de cabecera llevan <th>.
         return tr.querySelector("td") && !tr.querySelector("th");
       }
     );
