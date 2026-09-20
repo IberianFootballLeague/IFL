@@ -36,34 +36,6 @@
 </div>
 
 <!-- =====================================
-     PUERTA INTERNA (usuario/contraseña AdminPanel)
-===================================== -->
-<div id="admin-gate" class="login-page" hidden>
-  <div class="login-page__field"></div>
-  <div class="login-page__shape login-page__shape--1" aria-hidden="true"></div>
-  <img class="login-page__watermark" src="images/IFL_Logo.png" alt="" aria-hidden="true"
-       onerror="this.closest('.login-page').classList.add('watermark-missing')">
-  <div class="login-card" style="position:relative;z-index:3;">
-    <img class="login-card__logo" src="images/IFL_Logo.png" alt="Escudo de la IFL" onerror="this.style.display='none'">
-    <h1 class="login-card__title">Admin Panel</h1>
-    <form id="admin-gate-form" class="gate-card__form" autocomplete="off">
-      <div class="admin-field">
-        <label for="gate-user">Usuario</label>
-        <input class="admin-input" id="gate-user" name="gate-user" type="text" autocomplete="username" required>
-      </div>
-      <div class="admin-field">
-        <label for="gate-pass">Contraseña</label>
-        <input class="admin-input" id="gate-pass" name="gate-pass" type="password" autocomplete="current-password" required>
-      </div>
-      <div class="admin-field" id="gate-captcha-box" hidden></div>
-      <p id="gate-error" class="gate-error" hidden>Usuario o contraseña incorrectos.</p>
-      <button type="submit" class="btn-admin btn-admin--solid">Entrar</button>
-    </form>
-    <p class="login-card__hint">Acceso restringido al staff de la IFL. Tu cuenta de Discord ya ha sido verificada.</p>
-  </div>
-</div>
-
-<!-- =====================================
      PANEL DE ADMINISTRACIÓN
 ===================================== -->
 <div id="admin-app" class="admin" hidden>
