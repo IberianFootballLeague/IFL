@@ -176,3 +176,14 @@ window.IFLOnboarding = (function () {
     openAdminWelcomeForced,
   };
 })();
+
+// Comportamiento compartido de los botones "Subir archivo" bonitos:
+// muestra el nombre del archivo elegido junto al botón.
+document.addEventListener("change", (e) => {
+  if (!e.target.matches(".file-upload__input")) return;
+  const wrap = e.target.closest(".file-upload");
+  const nameEl = wrap && wrap.querySelector(".file-upload__name");
+  if (!nameEl) return;
+  const file = e.target.files && e.target.files[0];
+  nameEl.textContent = file ? file.name : "Ningún archivo";
+});
