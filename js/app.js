@@ -175,6 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupNotifications();
     setupProfileControls();
     setupOnlinePresence();
+    renderHero();
   }
 
   // =================================
@@ -417,38 +418,56 @@ document.addEventListener("DOMContentLoaded", async () => {
   // CLASIFICACIÓN (calculada de verdad)
   // =================================
 
+  function formChips(form) {
+    if (!form || !form.length) return '<span class="is-muted">—</span>';
+    return form.map((r) => {
+      const cls = r === "W" ? "form-chip--w" : r === "L" ? "form-chip--l" : "form-chip--d";
+      return `<span class="form-chip ${cls}">${r}</span>`;
+    }).join("");
+  }
+
   function buildStandingsTable(tableEl, rows) {
     if (!tableEl) return;
     let body = "";
     rows.forEach((r, i) => {
       const crest = r.team.logo_url ? `<img src="${r.team.logo_url}" alt="" class="team-crest team-crest--small">` : "";
+      const diff = r.gf - r.gc;
       body += `
         <tr>
           <td class="standings__pos">${i + 1}</td>
           <td class="standings__club">${crest}${r.team.name}</td>
-          <td>${r.pts}</td>
-          <td>${r.pg}</td>
-          <td>${r.pp}</td>
-          <td>${r.pe}</td>
-          <td>${r.gf}</td>
-          <td>${r.gc}</td>
+          <td class="is-num">${r.pj}</td>
+          <td class="is-num">${diff > 0 ? "+" : ""}${diff}</td>
+          <td class="is-num" style="font-weight:800;">${r.pts}</td>
+          <td class="form-cell">${formChips(r.form)}</td>
         </tr>
       `;
     });
     tableEl.innerHTML = `
       <thead>
-        <tr><th>Pos</th><th>Club</th><th>Pts</th><th>G</th><th>P</th><th>E</th><th>GF</th><th>GC</th></tr>
+        <tr><th>#</th><th>Club</th><th>PJ</th><th>DG</th><th>Pts</th><th>Forma</th></tr>
       </thead>
-      <tbody>${body || '<tr><td colspan="8" class="admin-table-empty">Aún no hay equipos en esta división.</td></tr>'}</tbody>
+      <tbody>${body || '<tr><td colspan="6" class="admin-table-empty">Aún no hay equipos en esta división.</td></tr>'}</tbody>
     `;
   }
 
   async function renderStandings() {
     try {
-      const primera = await db.computeStandings(CURRENT_SEASON, "primera");
-      const segunda = await db.computeStandings(CURRENT_SEASON, "segunda");
+      const [primera, segunda] = await Promise.all([
+        db.computeStandings(CURRENT_SEASON, "primera"),
+        db.computeStandings(CURRENT_SEASON, "segunda"),
+      ]);
       buildStandingsTable(document.getElementById("standings-primera"), primera);
       buildStandingsTable(document.getElementById("standings-segunda"), segunda);
+
+      const setSubtitle = (id, rows) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const played = rows.reduce((sum, r) => sum + r.pj, 0) / 2;
+        el.textContent = `${rows.length} equipos · ${played} partido${played === 1 ? "" : "s"} jugados`;
+      };
+      setSubtitle("primera-subtitle", primera);
+      setSubtitle("segunda-subtitle", segunda);
     } catch (e) {
       console.error("[IFL] Error calculando clasificación:", e);
     }
@@ -582,6 +601,46 @@ document.addEventListener("DOMContentLoaded", async () => {
       <h3 class="table-heading">Trayectoria</h3>
       <div class="admin-panel"><div class="admin-panel__body">${contractsHTML || '<div class="admin-panel__empty">Sin contratos todavía.</div>'}</div></div>
     `;
+  }
+
+  // =================================
+  // PORTADA (hero de Inicio)
+  // =================================
+
+  async function renderHero() {
+    const hero = document.getElementById("hub-hero");
+    if (!hero) return;
+
+    const badge = document.getElementById("hero-season-badge");
+    if (badge) badge.textContent = "Iberian Football League · Temporada " + CURRENT_SEASON;
+
+    let stadiums = [], teams = [], contracts = [], matches = [];
+    try {
+      [stadiums, teams, contracts, matches] = await Promise.all([
+        db.getStadiums(),
+        db.getTeams(),
+        db.getContracts(),
+        db.getMatches(CURRENT_SEASON),
+      ]);
+    } catch (e) {
+      console.error("[IFL] Error cargando datos para la portada:", e);
+    }
+
+    const withImages = stadiums.filter((s) => s.image_url);
+    if (withImages.length) {
+      const pick = withImages[Math.floor(Math.random() * withImages.length)];
+      hero.style.backgroundImage = `url("${pick.image_url}")`;
+    }
+
+    const playedMatches = matches.filter((m) => m.status === "jugado");
+    const totalGoals = playedMatches.reduce((sum, m) => sum + (m.home_goals || 0) + (m.away_goals || 0), 0);
+    const activePlayers = contracts.filter((c) => c.status === "ACTIVO").length;
+
+    const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+    set("hero-stat-teams", teams.length);
+    set("hero-stat-players", activePlayers);
+    set("hero-stat-matches", playedMatches.length);
+    set("hero-stat-goals", totalGoals);
   }
 
   // =================================
