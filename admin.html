@@ -143,6 +143,14 @@
             <h1 class="admin-body__title">IFL club database</h1>
             <p class="admin-body__subtitle" id="admin-overview-subtitle"></p>
           </div>
+          <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;">
+            <div class="admin-field" style="min-width:140px;">
+              <label for="season-edit-input">Temporada activa</label>
+              <input class="admin-input" id="season-edit-input" type="number" min="1">
+            </div>
+            <button type="button" class="btn-admin" id="season-edit-save">Guardar temporada</button>
+            <button type="button" class="btn-admin" id="export-data-btn">Exportar datos (CSV)</button>
+          </div>
         </div>
 
         <div class="admin-stats">
@@ -220,15 +228,21 @@
               <option value="segunda">Segunda</option>
             </select>
           </div>
+          <div class="admin-field">
+            <label for="team-logo">Escudo (imagen, opcional)</label>
+            <input class="admin-input" id="team-logo" type="file" accept="image/*">
+          </div>
           <div class="admin-form__actions">
             <button type="submit" class="btn-admin btn-admin--solid">Añadir equipo</button>
           </div>
+          <p class="admin-form__note">Usa una imagen cuadrada y ligera (recomendado: PNG, 256×256 px, menos de 300 KB) para que cargue rápido en el calendario.</p>
         </form>
 
         <div class="table-wrap">
           <table class="standings" id="teams-table">
             <thead>
               <tr>
+                <th>Escudo</th>
                 <th>Club</th>
                 <th>Código</th>
                 <th>División</th>
@@ -338,6 +352,7 @@
           <table class="standings" id="contracts-table">
             <thead>
               <tr>
+                <th>Foto</th>
                 <th>Discord</th>
                 <th>Roblox</th>
                 <th>Club</th>
@@ -384,6 +399,12 @@
           <div class="admin-field">
             <label for="match-datetime">Fecha y hora</label>
             <input class="admin-input" id="match-datetime" type="datetime-local">
+          </div>
+          <div class="admin-field">
+            <label for="match-playoff" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="match-playoff" style="width:auto;">
+              Es el playoff de ascenso (Segunda)
+            </label>
           </div>
           <div class="admin-form__actions">
             <button type="submit" class="btn-admin btn-admin--solid">Programar partido</button>
