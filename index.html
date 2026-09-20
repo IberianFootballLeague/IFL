@@ -24,25 +24,15 @@
   <div class="loader__bg" aria-hidden="true"></div>
   <div class="loader__glow" aria-hidden="true"></div>
 
-  <div class="loader__stage">
+  <div class="loader__center">
     <img class="loader__logo" src="images/IFL_Logo.png" alt="" aria-hidden="true"
          onerror="this.style.display='none'" />
-    <h1 class="loader__name">Iberian Football League</h1>
-    <p class="loader__sub">Temporada 1</p>
+    <div class="loader__progress"><span id="loader-progress-fill" class="loader__progress-fill"></span></div>
   </div>
 
-  <div class="loader__foot">
-    <div class="loader__tip">
-      <span class="loader__tip-label">Sabías que</span>
-      <span class="loader__tip-text"></span>
-    </div>
-
-    <div class="loader__bar" aria-hidden="true"></div>
-
-    <div class="loader__status">
-      <span class="loader__spinner" aria-hidden="true"></span>
-      <span>Cargando</span>
-    </div>
+  <div class="loader__tip-bottom">
+    <span class="loader__tip-label">Sabías que</span>
+    <span class="loader__tip-text"></span>
   </div>
 </div>
 
@@ -174,7 +164,30 @@
 
     <!-- ============ INICIO ============ -->
     <section class="view" id="view-inicio" data-view-panel="inicio">
-      <div class="view-header">
+
+      <div class="hub-hero" id="hub-hero">
+        <div class="hub-hero__overlay"></div>
+        <div class="hub-hero__content">
+          <span class="badge badge--season" id="hero-season-badge">Iberian Football League · Temporada 1</span>
+          <h1 class="hub-hero__title"><span class="hub-hero__shine">IFL Hub</span></h1>
+          <p class="hub-hero__lead">
+            Todo sobre la Iberian Football League está aquí: calendario, clasificaciones,
+            goleadores y mucho más. ¿Jugador? Tienes tu propio panel para seguir tu carrera.
+          </p>
+          <div class="hub-hero__actions">
+            <a class="btn-hero btn-hero--solid hub-hero__shine" href="https://www.roblox.com/es/communities/1013265200/Iberian-Football-League#!/about" target="_blank" rel="noopener">Grupo de Roblox</a>
+            <a class="btn-hero btn-hero--ghost hub-hero__shine" href="https://discord.gg/AvqrdD5rux" target="_blank" rel="noopener">Discord oficial</a>
+          </div>
+        </div>
+        <div class="hub-hero__stats" id="hub-hero-stats">
+          <div class="hub-hero__stat"><span id="hero-stat-teams">—</span><small>Equipos</small></div>
+          <div class="hub-hero__stat"><span id="hero-stat-players">—</span><small>Jugadores</small></div>
+          <div class="hub-hero__stat"><span id="hero-stat-matches">—</span><small>Partidos jugados</small></div>
+          <div class="hub-hero__stat"><span id="hero-stat-goals">—</span><small>Goles marcados</small></div>
+        </div>
+      </div>
+
+      <div class="view-header" style="margin-top:36px;">
         <h2 class="dashboard__title">Resumen de la liga</h2>
         <span class="badge badge--season">Temporada 1</span>
       </div>
@@ -260,22 +273,38 @@
     <section class="view" id="view-clasificacion" data-view-panel="clasificacion" hidden>
       <h2 class="dashboard__title">Clasificación</h2>
 
-      <h3 class="table-heading">Primera División</h3>
-      <div class="table-wrap">
-        <table class="standings" id="standings-primera"></table>
-      </div>
-      <ul class="zone-legend">
-        <li><i class="is-down"></i> Descenso a Segunda División</li>
-      </ul>
+      <div class="division-board-grid">
+        <div class="division-card division-card--primera">
+          <div class="division-card__head">
+            <div>
+              <h3 class="division-card__title">Primera División</h3>
+              <p class="division-card__subtitle" id="primera-subtitle">8 equipos</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="standings" id="standings-primera"></table>
+          </div>
+          <ul class="zone-legend">
+            <li><i class="is-down"></i> Descenso a Segunda División</li>
+          </ul>
+        </div>
 
-      <h3 class="table-heading">Segunda División</h3>
-      <div class="table-wrap">
-        <table class="standings" id="standings-segunda"></table>
+        <div class="division-card division-card--segunda">
+          <div class="division-card__head">
+            <div>
+              <h3 class="division-card__title">Segunda División</h3>
+              <p class="division-card__subtitle" id="segunda-subtitle">8 equipos</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="standings" id="standings-segunda"></table>
+          </div>
+          <ul class="zone-legend">
+            <li><i class="is-up"></i> Ascenso directo</li>
+            <li><i class="is-playoff"></i> Playoff de ascenso</li>
+          </ul>
+        </div>
       </div>
-      <ul class="zone-legend">
-        <li><i class="is-up"></i> Ascenso directo</li>
-        <li><i class="is-playoff"></i> Playoff de ascenso</li>
-      </ul>
     </section>
 
     <!-- ============ MI CARRERA ============ -->
