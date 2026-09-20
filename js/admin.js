@@ -460,7 +460,7 @@
       if (editingTeamId === t.id) {
         return `
           <tr data-team-row="${t.id}">
-            <td>${crest}<input class="admin-input" data-edit="logo" type="file" accept="image/*" style="margin-top:6px;max-width:160px;"></td>
+            <td>${crest}<label class="file-upload" style="margin-top:6px;"><input class="file-upload__input" data-edit="logo" type="file" accept="image/*"><span class="file-upload__button" style="padding:6px 10px;font-size:11.5px;">Cambiar</span></label></td>
             <td><input class="admin-input" data-edit="name" value="${escapeHTML(t.name)}"></td>
             <td><input class="admin-input" data-edit="code" maxlength="4" value="${escapeHTML(t.code)}"></td>
             <td>
