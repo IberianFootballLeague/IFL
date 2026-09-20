@@ -270,3 +270,157 @@
 @media (max-width: 720px) {
   .result-event-row { grid-template-columns: 1fr; }
 }
+
+/* ---- Escudos de equipo ---- */
+
+.team-crest {
+  display: inline-block;
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.team-crest--empty {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px dashed var(--border, #23232b);
+}
+
+.team-crest--small {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+}
+
+.standings__club { display: flex; align-items: center; }
+
+.match-chip {
+  display: flex !important;
+  align-items: center;
+  gap: 4px;
+}
+
+.match-chip__crest {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+  border-radius: 2px;
+  flex: none;
+}
+
+.ifl-modal__title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ifl-modal__crest {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  border-radius: 5px;
+}
+
+/* ---- Foto de "Mi carrera" ---- */
+
+.career-avatar {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin: 0 0 18px;
+  border: 2px solid var(--border, #23232b);
+}
+
+/* ---- Notificaciones ---- */
+
+#notif-panel {
+  right: 46px;
+}
+
+#notif-button {
+  gap: 0;
+}
+
+/* ---- Campana de notificaciones (rediseño) ---- */
+
+.notif-bell {
+  position: relative;
+}
+
+.notif-bell__icon { font-size: 18px; line-height: 1; }
+
+.notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--down, #ef4444);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 46px;
+  z-index: 50;
+  width: 300px;
+  padding: 6px;
+  background: rgba(14, 14, 18, 0.97);
+  backdrop-filter: blur(22px);
+  border: 1px solid var(--border, #23232b);
+  border-radius: 10px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6);
+}
+
+.notif-panel[hidden] { display: none; }
+
+.notif-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--white, #fff);
+  border-bottom: 1px solid var(--border-soft, rgba(255,255,255,.07));
+  margin-bottom: 4px;
+}
+
+.notif-panel__list { max-height: 340px; overflow-y: auto; }
+
+.notif-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+}
+
+.notif-item:hover { background: rgba(255, 255, 255, 0.05); }
+
+.notif-item__icon { font-size: 18px; flex: none; }
+
+.notif-item__title { font-size: 13.5px; font-weight: 600; color: var(--white, #fff); }
+
+.notif-item__meta { font-size: 12px; color: var(--gray-3, #56585f); margin-top: 2px; }
+
+.notif-empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--gray-3, #56585f);
+  font-size: 13px;
+}
