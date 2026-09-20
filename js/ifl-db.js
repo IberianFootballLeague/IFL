@@ -332,18 +332,12 @@ window.IFLDB = (function () {
       (m) => m.status === "jugado" && m.home_team && m.away_team
     );
 
+    // Orden cronológico para poder sacar la racha de forma (últimos resultados)
+    matches.sort((a, b) => new Date(a.scheduled_at || 0) - new Date(b.scheduled_at || 0));
+
     const table = {};
     teams.forEach((t) => {
-      table[t.id] = {
-        team: t,
-        pts: 0,
-        pj: 0,
-        pg: 0,
-        pp: 0,
-        pe: 0,
-        gf: 0,
-        gc: 0,
-      };
+      table[t.id] = { team: t, pts: 0, pj: 0, pg: 0, pp: 0, pe: 0, gf: 0, gc: 0, form: [] };
     });
 
     matches.forEach((m) => {
@@ -359,19 +353,19 @@ window.IFLDB = (function () {
       away.gc += m.home_goals;
 
       if (m.home_goals > m.away_goals) {
-        home.pg++;
-        home.pts += 3;
-        away.pp++;
+        home.pg++; home.pts += 3; away.pp++;
+        home.form.push("W"); away.form.push("L");
       } else if (m.home_goals < m.away_goals) {
-        away.pg++;
-        away.pts += 3;
-        home.pp++;
+        away.pg++; away.pts += 3; home.pp++;
+        home.form.push("L"); away.form.push("W");
       } else {
-        home.pe++;
-        away.pe++;
-        home.pts++;
-        away.pts++;
+        home.pe++; away.pe++; home.pts++; away.pts++;
+        home.form.push("D"); away.form.push("D");
       }
+    });
+
+    Object.values(table).forEach((row) => {
+      row.form = row.form.slice(-5);
     });
 
     return Object.values(table).sort((a, b) => {
