@@ -10,7 +10,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
 
 <link rel="stylesheet" href="css/style.css" />
 <link rel="stylesheet" href="css/extra.css" />
@@ -21,9 +21,6 @@
      PANTALLA DE CARGA
 ===================================== -->
 <div id="loader" class="loader" role="status" aria-live="polite">
-  <div class="loader__bg" aria-hidden="true"></div>
-  <div class="loader__glow" aria-hidden="true"></div>
-
   <div class="loader__center">
     <img class="loader__logo" src="images/IFL_Logo.png" alt="" aria-hidden="true"
          onerror="this.style.display='none'" />
@@ -168,8 +165,9 @@
       <div class="hub-hero" id="hub-hero">
         <div class="hub-hero__overlay"></div>
         <div class="hub-hero__content">
-          <span class="badge badge--season" id="hero-season-badge">Iberian Football League · Temporada 1</span>
-          <h1 class="hub-hero__title"><span class="hub-hero__shine">IFL Hub</span></h1>
+          <img class="hub-hero__logo" src="images/IFL_Logo.png" alt="" onerror="this.style.display='none'">
+          <p class="hub-hero__eyebrow" id="hero-season-badge">Iberian Football League · Temporada 1</p>
+          <h1 class="hub-hero__title hub-hero__shine">IFL Hub</h1>
           <p class="hub-hero__lead">
             Todo sobre la Iberian Football League está aquí: calendario, clasificaciones,
             goleadores y mucho más. ¿Jugador? Tienes tu propio panel para seguir tu carrera.
@@ -271,11 +269,24 @@
 
     <!-- ============ CLASIFICACIÓN ============ -->
     <section class="view" id="view-clasificacion" data-view-panel="clasificacion" hidden>
-      <h2 class="dashboard__title">Clasificación</h2>
+      <div class="league-page-head">
+        <img class="league-page-head__logo" src="images/IFL_Logo.png" alt="" onerror="this.style.display='none'">
+        <div>
+          <h2 class="league-page-head__title">Clasificación</h2>
+          <p class="league-page-head__subtitle">Cada división y su tabla, actualizada sola con cada resultado.</p>
+        </div>
+      </div>
+
+      <div class="competitions-row">
+        <span class="competitions-row__label">Competiciones</span>
+        <span class="competitions-row__count">2 divisiones · Temporada <span id="clasificacion-season">1</span></span>
+      </div>
 
       <div class="division-board-grid">
         <div class="division-card division-card--primera">
+          <div class="division-card__glow"></div>
           <div class="division-card__head">
+            <span class="division-card__badge">1</span>
             <div>
               <h3 class="division-card__title">Primera División</h3>
               <p class="division-card__subtitle" id="primera-subtitle">8 equipos</p>
@@ -290,7 +301,9 @@
         </div>
 
         <div class="division-card division-card--segunda">
+          <div class="division-card__glow"></div>
           <div class="division-card__head">
+            <span class="division-card__badge">2</span>
             <div>
               <h3 class="division-card__title">Segunda División</h3>
               <p class="division-card__subtitle" id="segunda-subtitle">8 equipos</p>
