@@ -438,7 +438,6 @@
   // RANGOS
   // =====================================
 
-  const rankCreateForm = document.getElementById("rank-create-form");
   const rankAssignForm = document.getElementById("rank-assign-form");
   const rankAssignRobloxInput = document.getElementById("rank-assign-roblox");
   const rankAssignSelect = document.getElementById("rank-assign-select");
@@ -448,12 +447,21 @@
 
   let selectedRankPlayer = null;
 
+  // Solo aitor_lorente (super-admin) puede asignar los rangos Team Owner y Staff.
+  const RESTRICTED_RANK_NAMES = ["Team Owner", "Staff"];
+
   async function populateRankSelects() {
     let ranks = [];
     try { ranks = await db.getRanks(); } catch (e) { console.error(e); }
 
+    const visibleRanks = state.isSuperAdmin
+      ? ranks
+      : ranks.filter((r) => !RESTRICTED_RANK_NAMES.includes(r.name));
+
     if (rankAssignSelect) {
-      rankAssignSelect.innerHTML = ranks.map((r) => `<option value="${r.id}" data-name="${escapeHTML(r.name)}">${escapeHTML(r.name)}</option>`).join("");
+      const current = rankAssignSelect.value;
+      rankAssignSelect.innerHTML = visibleRanks.map((r) => `<option value="${r.id}" data-name="${escapeHTML(r.name)}">${escapeHTML(r.name)}</option>`).join("");
+      if (current && visibleRanks.some((r) => r.id === current)) rankAssignSelect.value = current;
     }
     if (rankOwnerClubSelect) {
       rankOwnerClubSelect.innerHTML = state.teams.map((t) => `<option value="${t.id}">${escapeHTML(t.name)}</option>`).join("");
@@ -511,22 +519,6 @@
     });
   }
 
-  if (rankCreateForm) {
-    rankCreateForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const name = document.getElementById("rank-new-name")?.value.trim();
-      const submitBtn = rankCreateForm.querySelector('button[type="submit"]');
-      if (!name) return;
-
-      withBusy(submitBtn, async () => {
-        await db.addRank(name);
-        rankCreateForm.reset();
-        await populateRankSelects();
-        toast("Rango añadido.");
-      });
-    });
-  }
-
   if (rankAssignForm) {
     rankAssignForm.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -539,8 +531,16 @@
 
       const rankId = rankAssignSelect.value;
       const selectedOption = rankAssignSelect.options[rankAssignSelect.selectedIndex];
-      const isOwner = selectedOption && selectedOption.dataset.name === "Team Owner";
+      const selectedName = selectedOption && selectedOption.dataset.name;
+      const isOwner = selectedName === "Team Owner";
       const clubId = isOwner ? rankOwnerClubSelect.value : null;
+
+      // El <select> ya oculta Team Owner/Staff a quien no es super-admin, pero
+      // esta comprobación es un cinturón de seguridad extra en el cliente.
+      if (RESTRICTED_RANK_NAMES.includes(selectedName) && !state.isSuperAdmin) {
+        alert("Solo aitor_lorente puede asignar el rango " + selectedName + ".");
+        return;
+      }
 
       if (isOwner && !clubId) {
         alert("Selecciona de qué club es Team Owner.");
@@ -570,14 +570,40 @@
     const ownedTeamsByPlayer = {};
     state.teams.forEach((t) => { if (t.owner_player_id) ownedTeamsByPlayer[t.owner_player_id] = t; });
 
-    ranksAssignedList.innerHTML = players.map((p) => `
-      <div class="admin-row">
-        <div class="admin-row__body">
-          <div class="admin-row__name">${escapeHTML(p.roblox_username || p.discord_username)}</div>
-          <div class="admin-row__meta">${escapeHTML(p.rank ? p.rank.name : "")}${ownedTeamsByPlayer[p.id] ? " · " + escapeHTML(ownedTeamsByPlayer[p.id].name) : ""}</div>
+    ranksAssignedList.innerHTML = players.map((p) => {
+      const rankTags = (p.ranks || []).map((r) => {
+        // Solo el super-admin puede quitar Team Owner/Staff (igual que solo él puede asignarlos).
+        const canRemove = state.isSuperAdmin || !RESTRICTED_RANK_NAMES.includes(r.name);
+        return `
+          <span class="admin-tag" style="background:rgba(255,255,255,.08);color:var(--white);border:1px solid rgba(255,255,255,.18);display:inline-flex;align-items:center;gap:6px;margin:2px 4px 2px 0;">
+            ${escapeHTML(r.name)}
+            ${canRemove ? `<button type="button" data-remove-rank="${p.id}::${r.id}" style="background:none;border:none;color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:0;">&times;</button>` : ""}
+          </span>
+        `;
+      }).join("");
+
+      return `
+        <div class="admin-row">
+          <div class="admin-row__body">
+            <div class="admin-row__name">${escapeHTML(p.roblox_username || p.discord_username)}</div>
+            <div class="admin-row__meta">${rankTags || "Sin rangos"}${ownedTeamsByPlayer[p.id] ? " · Team Owner de " + escapeHTML(ownedTeamsByPlayer[p.id].name) : ""}</div>
+          </div>
         </div>
-      </div>
-    `).join("") || '<div class="admin-panel__empty">Todavía no has asignado ningún rango.</div>';
+      `;
+    }).join("") || '<div class="admin-panel__empty">Todavía no has asignado ningún rango.</div>';
+  }
+
+  if (ranksAssignedList) {
+    ranksAssignedList.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-remove-rank]");
+      if (!btn) return;
+      const [playerId, rankId] = btn.getAttribute("data-remove-rank").split("::");
+      withBusy(btn, async () => {
+        await db.removePlayerRank(playerId, rankId);
+        await renderRanksAssignedList();
+        toast("Rango quitado.");
+      });
+    });
   }
 
   // =====================================
