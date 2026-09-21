@@ -7,6 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" href="images/IFL_Logo.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -370,16 +371,10 @@
           </div>
         </div>
 
-        <form id="rank-create-form" class="admin-form">
-          <div class="admin-form__title">Añadir un rango nuevo</div>
-          <div class="admin-field">
-            <label for="rank-new-name">Nombre del rango</label>
-            <input class="admin-input" id="rank-new-name" placeholder="p. ej. Capitán" required>
-          </div>
-          <div class="admin-form__actions">
-            <button type="submit" class="btn-admin btn-admin--solid">Añadir rango</button>
-          </div>
-        </form>
+        <p class="admin-form__note" style="margin-bottom:16px;">
+          Los rangos son fijos: Owner, Staff, Team Owner y Capo. Team Owner y Staff solo puede asignarlos
+          la cuenta de Discord <strong>aitor_lorente</strong>. Un jugador puede tener más de un rango a la vez.
+        </p>
 
         <form id="rank-assign-form" class="admin-form">
           <div class="admin-form__title">Asignar rango a un jugador</div>
