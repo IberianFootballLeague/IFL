@@ -24,7 +24,7 @@ window.IFLOnboarding = (function () {
     {
       title: "Clasificación",
       icon: "🏆",
-      body: "La clasificación de Primera y Segunda división se actualiza sola según se van registrando resultados. Los colores marcan las zonas de ascenso, playoff y descenso.",
+      body: "La clasificación de Primera y Segunda división se actualiza sola según se van registrando resultados. Los colores marcan las zonas de ascenso, playoff y descenso. Puedes alternar entre la temporada actual y el histórico total.",
     },
     {
       title: "Estadios",
@@ -42,7 +42,7 @@ window.IFLOnboarding = (function () {
     {
       title: "Bienvenido al panel de administración",
       icon: "🛡️",
-      body: "Desde aquí gestionas toda la IFL: equipos, contratos, partidos, resultados y estadios. Todos los cambios se guardan en la base de datos real, visibles para todo el mundo al instante.",
+      body: "Desde aquí gestionas toda la IFL: equipos, contratos, partidos, resultados, rangos, trofeos y estadios. Todos los cambios se guardan en la base de datos real, visibles para todo el mundo al instante.",
     },
     {
       title: "Equipos y Estadios",
@@ -50,14 +50,19 @@ window.IFLOnboarding = (function () {
       body: "Añade, edita y elimina equipos y estadios. Cada estadio puede vincularse a un club, y aparecerá automáticamente en los partidos que se jueguen ahí.",
     },
     {
-      title: "Contratos",
+      title: "Contratos y presupuesto",
       icon: "📋",
-      body: "Al firmar un contrato, busca primero por nombre de Roblox: si el jugador ya existe se reutiliza su ficha, si no se crea una nueva vinculada a su Discord.",
+      body: "Al firmar un contrato, busca primero por nombre de Roblox: si el jugador ya existe se reutiliza su ficha, si no se crea una nueva vinculada a su Discord. El precio del contrato se descuenta automáticamente del presupuesto del club.",
     },
     {
-      title: "Partidos y Resultados",
+      title: "Rangos y Team Owner",
+      icon: "👤",
+      body: "Asigna los rangos del grupo a cada jugador. Al rango 'Team Owner' se le vincula un club: ese jugador desbloqueará la sección 'Mi club' en la web, donde puede ver sus contratos y editar la descripción del club.",
+    },
+    {
+      title: "Partidos, Resultados y Trofeos",
       icon: "⚽",
-      body: "Programa partidos con fecha, jornada y estadio. Cuando se jueguen, entra en Resultados para poner el marcador y registrar goleadores, tarjetas, asistencias y MVP — filtrados automáticamente por el club de cada jugador.",
+      body: "Programa partidos con fecha, jornada y estadio. Cuando se jueguen, entra en Resultados para poner el marcador y registrar goleadores, tarjetas, asistencias y MVP. Desde Trofeos puedes añadir premios personalizados que aparecerán en la sección Premios.",
     },
     {
       title: "Admins e Historial",
