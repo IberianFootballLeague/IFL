@@ -6,7 +6,7 @@
 <title>IFL — Iberian Football League</title>
 <meta name="description" content="Plataforma oficial de la Iberian Football League." />
 
-<link rel="icon" type="image/png" href="images/IFL_Logo.png" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -28,7 +28,6 @@
   </div>
 
   <div class="loader__tip-bottom">
-    <span class="loader__tip-label">Sabías que</span>
     <span class="loader__tip-text"></span>
   </div>
 </div>
@@ -40,6 +39,7 @@
 
   <div class="login-page__field" aria-hidden="true"></div>
   <div class="login-page__shape login-page__shape--1" aria-hidden="true"></div>
+  <div class="login-page__shape login-page__shape--2" aria-hidden="true"></div>
 
   <img
     class="login-page__watermark"
@@ -51,9 +51,13 @@
 
   <main class="login-card">
 
-    <img class="login-card__logo" src="images/IFL_Logo.png" alt="Escudo de la IFL" />
+    <div class="login-card__logo-wrap">
+      <img src="images/IFL_Logo.png" alt="Escudo de la IFL" onerror="this.parentElement.style.display='none'">
+    </div>
 
-    <h1 class="login-card__title">Iberian Football League</h1>
+    <p class="login-card__eyebrow">Iberian Football League</p>
+    <h1 class="login-card__title">Bienvenido a la IFL</h1>
+    <p class="login-card__subtitle">Inicia sesión para seguir la competición y tu propia carrera.</p>
 
     <button id="discord-login" class="btn-discord" type="button">
       <svg class="btn-discord__icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -140,6 +144,11 @@
         <a href="#" class="profile-menu__item app-header__link" role="menuitem" data-view="carrera">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3.5 2.2 4.6 5 .7-3.6 3.6.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.6 5-.7L12 3.5Z" stroke-linejoin="round"/></svg>
           <span>Mi carrera</span>
+        </a>
+
+        <a href="#" id="my-club-menu-link" class="profile-menu__item app-header__link" role="menuitem" data-view="club" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V9l8-6 8 6v12" stroke-linejoin="round"/><path d="M9 21v-6h6v6" stroke-linejoin="round"/></svg>
+          <span>Mi club</span>
         </a>
 
         <a href="#" class="profile-menu__item app-header__link" role="menuitem" data-view="configuracion">
@@ -284,6 +293,11 @@
         <span class="competitions-row__count">2 divisiones · Temporada <span id="clasificacion-season">1</span></span>
       </div>
 
+      <div class="premio-tabs" data-clasif-tabs style="margin-bottom:18px;">
+        <button type="button" class="premio-tab is-active" data-tab="season">Temporada <span id="clasif-tab-season"></span></button>
+        <button type="button" class="premio-tab" data-tab="total">Total</button>
+      </div>
+
       <div class="division-board-grid">
         <div class="division-card division-card--primera">
           <div class="division-card__glow"></div>
@@ -332,6 +346,11 @@
           equipo de la IFL para poder ver tu carrera.
         </p>
       </div>
+    </section>
+
+    <!-- ============ MI CLUB (Team Owner) ============ -->
+    <section class="view" id="view-club" data-view-panel="club" hidden>
+      <div id="club-card-box"></div>
     </section>
 
     <!-- ============ ESTADIOS ============ -->
