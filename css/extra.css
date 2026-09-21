@@ -528,64 +528,67 @@
 .login-card {
   position: relative;
   z-index: 2;
-  padding: 50px 38px 40px;
-  border-radius: 18px;
-  background: rgba(14, 14, 18, 0.72);
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 0 0 1px rgba(88, 101, 242, 0.25), 0 30px 90px rgba(0, 0, 0, 0.55);
-  animation: login-card-glow 4s ease-in-out infinite;
+  padding: 44px 38px 36px;
+  border-radius: 12px;
+  /* Mismo tipo de superficie sólida que el resto de tarjetas de la app
+     (division-card, admin-panel...) en vez de una tarjeta de cristal aparte. */
+  background: var(--surface, #0e0e12);
+  border: 1px solid var(--border, #23232b);
+  box-shadow: 0 0 0 1px #5865f2, 0 0 24px -8px #5865f2, 0 30px 90px rgba(0, 0, 0, 0.55);
+  animation: login-card-glow 3.2s ease-in-out infinite;
   text-align: center;
   max-width: 420px;
 }
 
 @keyframes login-card-glow {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(88, 101, 242, 0.3), 0 0 34px -8px rgba(88, 101, 242, 0.55), 0 30px 90px rgba(0,0,0,.55); }
-  50%      { box-shadow: 0 0 0 1px rgba(59, 214, 255, 0.4), 0 0 48px -4px rgba(59, 214, 255, 0.6), 0 30px 90px rgba(0,0,0,.55); }
+  0%, 100% { box-shadow: 0 0 0 1px #5865f2, 0 0 16px -6px #5865f2, 0 30px 90px rgba(0,0,0,.55); }
+  50%      { box-shadow: 0 0 0 1px #3bd6ff, 0 0 30px 0px #3bd6ff, 0 30px 90px rgba(0,0,0,.55); }
 }
 
 .login-card__logo {
   display: none; /* sustituido por login-card__logo-wrap más abajo */
 }
 
+/* Mismo "wrap" con glow que usan el header y el hero de Inicio, para que
+   el logo se vea igual en todas partes de la app. */
 .login-card__logo-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 88px;
-  height: 88px;
-  margin: 0 auto 22px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.32);
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 20px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   animation: hero-logo-glow 3.2s ease-in-out infinite;
 }
 
 .login-card__logo-wrap img {
-  height: 50px;
+  height: 44px;
   width: auto;
-  filter: brightness(0) invert(1) drop-shadow(0 0 10px rgba(88, 101, 242, 0.7));
+  filter: brightness(0) invert(1);
 }
 
+/* Misma tipografía/estilo "eyebrow" que usa league-page-head y el hero */
 .login-card__eyebrow {
   margin: 0 0 6px;
   font-family: var(--font-hub);
   font-weight: 700;
   font-size: 11px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--cyan, #3bd6ff);
+  color: var(--gray-2, #8b8d96);
 }
 
 .login-card__title {
   margin: 0 0 8px;
   font-family: var(--font-hub);
   font-weight: 800;
-  font-size: 27px;
+  font-size: 26px;
   text-transform: none;
   letter-spacing: -0.01em;
-  color: #fff;
-  text-shadow: 0 0 30px rgba(88, 101, 242, 0.5);
+  color: var(--white, #fff);
 }
 
 .login-card__subtitle {
@@ -596,17 +599,18 @@
   color: var(--gray-2, #8b8d96);
 }
 
+/* Mismo estilo de botón sólido que btn-hero--solid del menú de Inicio */
 .btn-discord {
   font-family: var(--font-hub);
-  border-radius: 9px;
+  font-weight: 700;
+  border-radius: 6px;
   width: 100%;
-  box-shadow: 0 8px 24px -8px rgba(88, 101, 242, 0.7);
   transition: transform 0.15s ease, box-shadow 0.2s ease;
 }
 
 .btn-discord:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 30px -6px rgba(88, 101, 242, 0.85);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
 }
 
 .login-card__hint {
