@@ -628,18 +628,38 @@ window.IFLDB = (function () {
     return data;
   }
 
+  // Un jugador puede tener varios rangos a la vez: cada llamada AÑADE el
+  // rango indicado (no sustituye los que ya tenía). Si ya lo tenía, no falla.
   async function assignPlayerRank(playerId, rankId) {
-    const { error } = await client.from("players").update({ rank_id: rankId }).eq("id", playerId);
+    const { error } = await client
+      .from("player_ranks")
+      .upsert({ player_id: playerId, rank_id: rankId }, { onConflict: "player_id,rank_id" });
+    if (error) throw error;
+  }
+
+  async function removePlayerRank(playerId, rankId) {
+    const { error } = await client
+      .from("player_ranks")
+      .delete()
+      .eq("player_id", playerId)
+      .eq("rank_id", rankId);
     if (error) throw error;
   }
 
   async function getPlayersWithRanks() {
     const { data, error } = await client
-      .from("players")
-      .select("*, rank:ranks!players_rank_id_fkey(*)")
-      .not("rank_id", "is", null);
+      .from("player_ranks")
+      .select("player:players!player_ranks_player_id_fkey(*), rank:ranks!player_ranks_rank_id_fkey(*)");
     if (error) throw error;
-    return data || [];
+
+    // Agrupamos por jugador: cada jugador sale una vez con la lista de sus rangos.
+    const byPlayer = {};
+    (data || []).forEach((row) => {
+      if (!row.player) return;
+      if (!byPlayer[row.player.id]) byPlayer[row.player.id] = Object.assign({}, row.player, { ranks: [] });
+      if (row.rank) byPlayer[row.player.id].ranks.push(row.rank);
+    });
+    return Object.values(byPlayer);
   }
 
   async function setTeamOwner(teamId, playerId) {
@@ -787,6 +807,7 @@ window.IFLDB = (function () {
     getRanks,
     addRank,
     assignPlayerRank,
+    removePlayerRank,
     getPlayersWithRanks,
     setTeamOwner,
     getMyOwnedTeam,
