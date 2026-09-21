@@ -1,9 +1,10 @@
 /* =====================================
-   IFL — ESTILOS NUEVOS (Fase 2)
+   IFL — ESTILOS NUEVOS (Fase 2 + Fase 3)
    Componentes añadidos: modales de partido/estadio,
    tutorial en carrusel, chips de partido en el
-   calendario, tarjetas de estadio, y utilidades del
-   admin panel (toast, buscador, formulario de resultado).
+   calendario, tarjetas de estadio, utilidades del
+   admin panel (toast, buscador, formulario de resultado),
+   login rediseñado y loader 100% neón.
    Se carga DESPUÉS de style.css / admin.css.
 ===================================== */
 
@@ -425,7 +426,202 @@
   font-size: 13px;
 }
 
-/* ---- Pantalla de carga (rediseño) ---- */
+/* =====================================
+   PANTALLA DE CARGA — 100% neón, sin etiqueta "Consejos:"
+===================================== */
+
+.loader { padding: 0 !important; }
+
+.loader__logo {
+  width: min(50vw, 240px) !important;
+  filter: drop-shadow(0 0 18px rgba(88, 101, 242, 0.85)) drop-shadow(0 0 40px rgba(59, 214, 255, 0.5));
+  animation: loader-logo-neon 2.4s ease-in-out infinite;
+}
+
+@keyframes loader-logo-neon {
+  0%, 100% { filter: drop-shadow(0 0 14px rgba(88, 101, 242, 0.75)) drop-shadow(0 0 28px rgba(59, 214, 255, 0.4)); }
+  50%      { filter: drop-shadow(0 0 24px rgba(88, 101, 242, 1)) drop-shadow(0 0 54px rgba(59, 214, 255, 0.75)); }
+}
+
+.loader__progress {
+  box-shadow: 0 0 14px 1px rgba(88, 101, 242, 0.8);
+}
+
+.loader__progress-fill {
+  background: linear-gradient(90deg, #5865f2, #3bd6ff);
+  box-shadow: 0 0 12px 2px rgba(59, 214, 255, 1);
+}
+
+/* La etiqueta "Consejos:" (si el HTML/ui.js la renderiza) se oculta:
+   solo debe verse el texto del consejo en sí, en blanco puro con glow. */
+.loader__tip-bottom .loader__tip-label {
+  display: none !important;
+}
+
+.loader__tip-bottom .loader__tip-text {
+  color: #fff !important;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.55), 0 0 24px rgba(59, 214, 255, 0.35);
+}
+
+/* ---- Logos más grandes en todo el sitio ---- */
+
+.app-header__logo { width: 130px !important; height: auto !important; }
+.league-page-head__logo { height: 42px !important; }
+.admin-side__logo { width: 52px !important; height: 52px !important; }
+.admin-denied .locked-card img { width: 60px !important; height: 60px !important; }
+
+/* =====================================
+   LOGIN — rediseño neón completo
+===================================== */
+
+.login-page {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 10%, rgba(88, 101, 242, 0.22), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 90% 90%, rgba(59, 214, 255, 0.16), transparent 60%),
+    #050507;
+}
+
+.login-page__shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.login-page__shape--1 {
+  width: 420px;
+  height: 420px;
+  top: -140px;
+  left: -120px;
+  background: radial-gradient(circle, #5865f2, transparent 70%);
+  animation: login-shape-float 9s ease-in-out infinite;
+}
+
+.login-page__shape--2 {
+  width: 360px;
+  height: 360px;
+  bottom: -160px;
+  right: -100px;
+  background: radial-gradient(circle, #3bd6ff, transparent 70%);
+  animation: login-shape-float 11s ease-in-out infinite reverse;
+}
+
+@keyframes login-shape-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(30px, -20px) scale(1.08); }
+}
+
+.login-page__watermark {
+  position: absolute;
+  right: -6%;
+  bottom: -10%;
+  width: 46vw;
+  max-width: 560px;
+  opacity: 0.045;
+  filter: brightness(0) invert(1);
+  pointer-events: none;
+}
+
+.login-card {
+  position: relative;
+  z-index: 2;
+  padding: 50px 38px 40px;
+  border-radius: 18px;
+  background: rgba(14, 14, 18, 0.72);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 1px rgba(88, 101, 242, 0.25), 0 30px 90px rgba(0, 0, 0, 0.55);
+  animation: login-card-glow 4s ease-in-out infinite;
+  text-align: center;
+  max-width: 420px;
+}
+
+@keyframes login-card-glow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(88, 101, 242, 0.3), 0 0 34px -8px rgba(88, 101, 242, 0.55), 0 30px 90px rgba(0,0,0,.55); }
+  50%      { box-shadow: 0 0 0 1px rgba(59, 214, 255, 0.4), 0 0 48px -4px rgba(59, 214, 255, 0.6), 0 30px 90px rgba(0,0,0,.55); }
+}
+
+.login-card__logo {
+  display: none; /* sustituido por login-card__logo-wrap más abajo */
+}
+
+.login-card__logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 22px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  animation: hero-logo-glow 3.2s ease-in-out infinite;
+}
+
+.login-card__logo-wrap img {
+  height: 50px;
+  width: auto;
+  filter: brightness(0) invert(1) drop-shadow(0 0 10px rgba(88, 101, 242, 0.7));
+}
+
+.login-card__eyebrow {
+  margin: 0 0 6px;
+  font-family: var(--font-hub);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cyan, #3bd6ff);
+}
+
+.login-card__title {
+  margin: 0 0 8px;
+  font-family: var(--font-hub);
+  font-weight: 800;
+  font-size: 27px;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: #fff;
+  text-shadow: 0 0 30px rgba(88, 101, 242, 0.5);
+}
+
+.login-card__subtitle {
+  margin: 0 0 26px;
+  font-family: var(--font-hub);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--gray-2, #8b8d96);
+}
+
+.btn-discord {
+  font-family: var(--font-hub);
+  border-radius: 9px;
+  width: 100%;
+  box-shadow: 0 8px 24px -8px rgba(88, 101, 242, 0.7);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btn-discord:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px -6px rgba(88, 101, 242, 0.85);
+}
+
+.login-card__hint {
+  margin-top: 18px;
+  font-family: var(--font-hub);
+  font-size: 12px;
+  color: var(--gray-3, #56585f);
+}
+
+.login-page__footnote {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-hub);
+  text-align: center;
+}
 
 .loader__center {
   position: relative;
@@ -467,26 +663,9 @@
   text-align: center;
 }
 
-.loader__tip-bottom .loader__tip-label {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--cyan, #3bd6ff);
-}
-
-.loader__tip-bottom .loader__tip-text {
-  max-width: 520px;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--gray-2, #8b8d96);
-  transition: opacity 0.35s ease;
-}
+.loader__tip-bottom .loader__tip-text.is-fading { opacity: 0; }
 
 body { overflow-x: hidden; }
-
-.loader__tip-bottom .loader__tip-text.is-fading { opacity: 0; }
 
 /* ---- Cabecera: quitar la "píldora" de fondo del menú, texto normal ---- */
 
@@ -1031,4 +1210,120 @@ h1.hub-hero__title::after { animation-delay: 0.3s; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ---- Casilla de asistencia (quién jugó) en Resultados ---- */
+
+.attendance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 0 0 18px;
+}
+
+@media (max-width: 640px) {
+  .attendance-grid { grid-template-columns: 1fr; }
+}
+
+/* ---- Pestañas Temporada / Total (Premios y Clasificación) ---- */
+
+.premio-tabs {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.premio-tab {
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border, #23232b);
+  border-radius: 999px;
+  color: var(--gray-2, #8b8d96);
+  font-family: var(--font-hub, inherit);
+  font-weight: 600;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.premio-tab.is-active {
+  background: var(--div-color, var(--accent));
+  border-color: var(--div-color, var(--accent));
+  color: #fff;
+}
+
+/* ---- Mi Club ---- */
+
+.club-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  min-height: 260px;
+  background: #0a0a0d center/cover no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  animation: club-neon 2.6s ease-in-out infinite;
+}
+
+@keyframes club-neon {
+  0%, 100% { box-shadow: 0 0 0 2px #5865f2, 0 0 20px -4px #5865f2, 0 0 0 2px #5865f2 inset; }
+  50%      { box-shadow: 0 0 0 2px #3bd6ff, 0 0 40px 0px #3bd6ff, 0 0 0 2px #3bd6ff inset; }
+}
+
+.club-hero__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(180deg, rgba(5,5,7,.3) 0%, rgba(5,5,7,.85) 85%, rgba(5,5,7,.97) 100%);
+}
+
+.club-hero__content { position: relative; z-index: 1; padding: 28px 28px 24px; }
+
+.club-hero__logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  padding: 6px;
+  margin-bottom: 12px;
+}
+
+.club-hero__name {
+  margin: 0 0 4px;
+  font-family: var(--font-hub);
+  font-weight: 800;
+  font-size: 30px;
+  color: #fff;
+}
+
+.club-hero__meta { margin: 0; font-family: var(--font-hub); font-size: 13px; color: var(--gray-2, #8b8d96); }
+
+.club-hero__budget {
+  position: absolute;
+  z-index: 1;
+  top: 22px;
+  right: 24px;
+  text-align: right;
+}
+
+.club-hero__budget small {
+  display: block;
+  font-family: var(--font-hub);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray-2, #8b8d96);
+}
+
+.club-hero__budget span {
+  font-family: var(--font-hub);
+  font-weight: 800;
+  font-size: 24px;
+  color: #22c55e;
+  text-shadow: 0 0 18px rgba(34, 197, 94, 0.6);
 }
