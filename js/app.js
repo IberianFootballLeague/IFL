@@ -6,6 +6,18 @@
 const ADMIN_DISCORD_ID = "1149380955316957266";
 let CURRENT_SEASON = 1; // se sobreescribe con el valor real de la base de datos al cargar
 
+function playerDisplayName(p) {
+  return (p && (p.roblox_username || p.discord_username)) || "Jugador";
+}
+
+// Escapa cualquier texto que venga de la base de datos antes de meterlo en innerHTML.
+// TODO lo que provenga de db.* (nombres, descripciones, etc.) debe pasar por aquí.
+function escapeHTML(str) {
+  return String(str == null ? "" : str).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   const db = window.IFLDB;
 
@@ -176,6 +188,110 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupProfileControls();
     setupOnlinePresence();
     renderHero();
+    checkClubOwnership();
+  }
+
+  let myOwnedTeamCache = null;
+
+  async function checkClubOwnership() {
+    const link = document.getElementById("my-club-menu-link");
+    if (!link || !currentDiscordId) return;
+    try {
+      myOwnedTeamCache = await db.getMyOwnedTeam(currentDiscordId);
+    } catch (e) {
+      console.error("[IFL] Error comprobando propiedad de club:", e);
+      myOwnedTeamCache = null;
+    }
+    link.hidden = !myOwnedTeamCache;
+  }
+
+  async function renderMyClub() {
+    const box = document.getElementById("club-card-box");
+    if (!box) return;
+
+    if (!myOwnedTeamCache) {
+      try { myOwnedTeamCache = await db.getMyOwnedTeam(currentDiscordId); } catch (e) { console.error(e); }
+    }
+
+    if (!myOwnedTeamCache) {
+      box.innerHTML = `
+        <h2 class="dashboard__title">Mi club</h2>
+        <div class="locked-card">
+          <span class="locked-card__icon" aria-hidden="true">🔒</span>
+          <p class="locked-card__text">Esta sección es solo para el propietario (Team Owner) de un club.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const { team, stadium } = myOwnedTeamCache;
+    let contracts = [];
+    try { contracts = await db.getContractsByTeam(team.id); } catch (e) { console.error(e); }
+
+    const founded = new Date(team.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
+
+    box.innerHTML = `
+      <div class="club-hero" ${stadium?.image_url ? `style="background-image:url('${escapeHTML(stadium.image_url)}')"` : ""}>
+        <div class="club-hero__overlay"></div>
+        <div class="club-hero__content">
+          ${team.logo_url ? `<img src="${escapeHTML(team.logo_url)}" class="club-hero__logo" alt="">` : ""}
+          <h2 class="club-hero__name">${escapeHTML(team.name)}</h2>
+          <p class="club-hero__meta">Fundado el ${founded}</p>
+        </div>
+        <div class="club-hero__budget">
+          <small>Presupuesto</small>
+          <span>€${Number(team.budget).toLocaleString("es-ES")}</span>
+        </div>
+      </div>
+
+      <div class="settings-card" style="margin-top:20px;">
+        <p class="settings-card__title">Descripción del club</p>
+        <textarea id="club-description-input" class="admin-input" rows="3" style="width:100%;resize:vertical;margin-bottom:10px;" placeholder="Escribe algo sobre tu club…">${escapeHTML(team.description || "")}</textarea>
+        <button type="button" class="btn-admin btn-admin--solid" id="club-description-save">Guardar descripción</button>
+        <span id="club-description-status" style="margin-left:10px;font-size:12.5px;color:var(--gray-3);" hidden></span>
+      </div>
+
+      <h3 class="table-heading">Contratos del club</h3>
+      <div class="table-wrap">
+        <table class="standings">
+          <thead><tr><th>Jugador</th><th>Precio</th><th>Firmado</th><th>Estado</th></tr></thead>
+          <tbody>
+            ${contracts.map((c) => `
+              <tr class="club-contract-row" data-player-id="${c.player.id}" style="cursor:pointer;">
+                <td class="standings__club">${escapeHTML(playerDisplayName(c.player))}</td>
+                <td class="is-num">€${Number(c.price).toLocaleString("es-ES")}</td>
+                <td class="is-muted">T${c.signed_season}</td>
+                <td><span class="badge-state badge-state--active">${escapeHTML(c.status)}</span></td>
+              </tr>
+            `).join("") || '<tr><td colspan="4" class="admin-table-empty">Todavía no hay contratos en tu club.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+      <p class="admin-form__note" style="margin-top:14px;">
+        Como Team Owner puedes ver tu plantilla y su coste, pero solo la administración puede añadir o quitar contratos.
+      </p>
+    `;
+
+    document.getElementById("club-description-save")?.addEventListener("click", async () => {
+      const val = document.getElementById("club-description-input").value.trim();
+      const status = document.getElementById("club-description-status");
+      try {
+        await db.updateTeamDescription(team.id, val);
+        team.description = val;
+        if (status) { status.hidden = false; status.textContent = "Guardado ✅"; setTimeout(() => (status.hidden = true), 2000); }
+      } catch (err) {
+        console.error(err);
+        if (status) { status.hidden = false; status.textContent = "❌ No se pudo guardar."; }
+      }
+    });
+
+    box.querySelectorAll(".club-contract-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        showView("buscar");
+        navLinks.forEach((l) => l.classList.toggle("is-active", l.dataset.view === "buscar"));
+        setTimeout(() => showPlayerProfile(row.getAttribute("data-player-id")), 150);
+      });
+    });
   }
 
   // =================================
@@ -251,10 +367,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     if (name === "calendario") renderCalendar();
-    if (name === "clasificacion") renderStandings();
+    if (name === "clasificacion") renderStandings("season");
     if (name === "estadios") renderStadiums();
     if (name === "carrera") renderCareer();
     if (name === "premios") renderPremios();
+    if (name === "club") renderMyClub();
   }
 
   navLinks.forEach((link) => {
@@ -341,11 +458,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           chip.className = "match-chip";
           const homeCode = m.home_team ? m.home_team.code : "?";
           const awayCode = m.away_team ? m.away_team.code : "?";
-          const homeCrest = m.home_team && m.home_team.logo_url ? `<img src="${m.home_team.logo_url}" alt="" class="match-chip__crest">` : "";
-          const awayCrest = m.away_team && m.away_team.logo_url ? `<img src="${m.away_team.logo_url}" alt="" class="match-chip__crest">` : "";
+          const homeCrest = m.home_team && m.home_team.logo_url ? `<img src="${escapeHTML(m.home_team.logo_url)}" alt="" class="match-chip__crest">` : "";
+          const awayCrest = m.away_team && m.away_team.logo_url ? `<img src="${escapeHTML(m.away_team.logo_url)}" alt="" class="match-chip__crest">` : "";
           const scoreText =
             m.status === "jugado" ? `${m.home_goals}-${m.away_goals}` : "vs";
-          chip.innerHTML = `${homeCrest}<span>${homeCode} ${scoreText} ${awayCode}</span>${awayCrest}`;
+          chip.innerHTML = `${homeCrest}<span>${escapeHTML(homeCode)} ${scoreText} ${escapeHTML(awayCode)}</span>${awayCrest}`;
           chip.addEventListener("click", () => openMatchModal(m));
           slot.appendChild(chip);
         });
@@ -374,10 +491,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const box = document.getElementById("match-modal-box");
-    const home = match.home_team ? match.home_team.name : "Por confirmar";
-    const away = match.away_team ? match.away_team.name : "Por confirmar";
-    const homeCrest = match.home_team && match.home_team.logo_url ? `<img src="${match.home_team.logo_url}" alt="" class="ifl-modal__crest">` : "";
-    const awayCrest = match.away_team && match.away_team.logo_url ? `<img src="${match.away_team.logo_url}" alt="" class="ifl-modal__crest">` : "";
+    const home = match.home_team ? escapeHTML(match.home_team.name) : "Por confirmar";
+    const away = match.away_team ? escapeHTML(match.away_team.name) : "Por confirmar";
+    const homeCrest = match.home_team && match.home_team.logo_url ? `<img src="${escapeHTML(match.home_team.logo_url)}" alt="" class="ifl-modal__crest">` : "";
+    const awayCrest = match.away_team && match.away_team.logo_url ? `<img src="${escapeHTML(match.away_team.logo_url)}" alt="" class="ifl-modal__crest">` : "";
     const stadium = match.stadium;
     const dateText = match.scheduled_at
       ? new Date(match.scheduled_at).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" })
@@ -395,7 +512,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       ${
         stadium
-          ? `<button type="button" class="btn-ghost" id="match-modal-stadium-btn">Ver estadio: ${stadium.name}</button>`
+          ? `<button type="button" class="btn-ghost" id="match-modal-stadium-btn">Ver estadio: ${escapeHTML(stadium.name)}</button>`
           : `<p class="ifl-modal__meta">Estadio por confirmar</p>`
       }
     `;
@@ -415,7 +532,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // =================================
-  // CLASIFICACIÓN (calculada de verdad)
+  // CLASIFICACIÓN (calculada de verdad, con pestañas Temporada / Total)
   // =================================
 
   function formChips(form) {
@@ -430,12 +547,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!tableEl) return;
     let body = "";
     rows.forEach((r, i) => {
-      const crest = r.team.logo_url ? `<img src="${r.team.logo_url}" alt="" class="team-crest team-crest--small">` : "";
+      const crest = r.team.logo_url ? `<img src="${escapeHTML(r.team.logo_url)}" alt="" class="team-crest team-crest--small">` : "";
       const diff = r.gf - r.gc;
       body += `
         <tr>
           <td class="standings__pos">${i + 1}</td>
-          <td class="standings__club">${crest}${r.team.name}</td>
+          <td class="standings__club">${crest}${escapeHTML(r.team.name)}</td>
           <td class="is-num">${r.pj}</td>
           <td class="is-num">${diff > 0 ? "+" : ""}${diff}</td>
           <td class="is-num" style="font-weight:800;">${r.pts}</td>
@@ -451,14 +568,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     `;
   }
 
-  async function renderStandings() {
+  async function renderStandings(scope) {
+    scope = scope || "season";
+
     const seasonEl = document.getElementById("clasificacion-season");
     if (seasonEl) seasonEl.textContent = CURRENT_SEASON;
+    const tabSeasonLabel = document.getElementById("clasif-tab-season");
+    if (tabSeasonLabel) tabSeasonLabel.textContent = CURRENT_SEASON;
+
+    const seasonArg = scope === "total" ? null : CURRENT_SEASON;
 
     try {
       const [primera, segunda] = await Promise.all([
-        db.computeStandings(CURRENT_SEASON, "primera"),
-        db.computeStandings(CURRENT_SEASON, "segunda"),
+        db.computeStandings(seasonArg, "primera"),
+        db.computeStandings(seasonArg, "segunda"),
       ]);
       buildStandingsTable(document.getElementById("standings-primera"), primera);
       buildStandingsTable(document.getElementById("standings-segunda"), segunda);
@@ -474,6 +597,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (e) {
       console.error("[IFL] Error calculando clasificación:", e);
     }
+  }
+
+  const clasifTabsEl = document.querySelector("[data-clasif-tabs]");
+  if (clasifTabsEl) {
+    clasifTabsEl.addEventListener("click", (e) => {
+      const btn = e.target.closest(".premio-tab");
+      if (!btn) return;
+      clasifTabsEl.querySelectorAll(".premio-tab").forEach((b) => b.classList.toggle("is-active", b === btn));
+      renderStandings(btn.dataset.tab);
+    });
   }
 
   // =================================
@@ -510,9 +643,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       card.type = "button";
       card.className = "stadium-card";
       card.innerHTML = `
-        <div class="stadium-card__name">${s.name}</div>
-        <div class="stadium-card__meta">${s.team ? s.team.name : "Sin equipo asignado"}</div>
-        <div class="stadium-card__meta">${s.city || ""}${s.capacity ? " · " + s.capacity.toLocaleString("es-ES") + " asientos" : ""}</div>
+        <div class="stadium-card__name">${escapeHTML(s.name)}</div>
+        <div class="stadium-card__meta">${s.team ? escapeHTML(s.team.name) : "Sin equipo asignado"}</div>
+        <div class="stadium-card__meta">${escapeHTML(s.city || "")}${s.capacity ? " · " + s.capacity.toLocaleString("es-ES") + " asientos" : ""}</div>
       `;
       card.addEventListener("click", () => openStadiumModal(s));
       list.appendChild(card);
@@ -533,10 +666,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const box = document.getElementById("stadium-modal-box");
     box.innerHTML = `
       <button type="button" class="ifl-modal__close" id="stadium-modal-close">&times;</button>
-      <h2 class="ifl-modal__title">${stadium.name}</h2>
-      <p class="ifl-modal__meta">${stadium.team ? "Estadio de " + stadium.team.name : "Sin equipo asignado"}</p>
-      <p class="ifl-modal__meta">${stadium.city || ""}${stadium.capacity ? " · " + stadium.capacity.toLocaleString("es-ES") + " asientos" : ""}</p>
-      ${stadium.description ? `<p class="view-lead">${stadium.description}</p>` : ""}
+      <h2 class="ifl-modal__title">${escapeHTML(stadium.name)}</h2>
+      <p class="ifl-modal__meta">${stadium.team ? "Estadio de " + escapeHTML(stadium.team.name) : "Sin equipo asignado"}</p>
+      <p class="ifl-modal__meta">${escapeHTML(stadium.city || "")}${stadium.capacity ? " · " + stadium.capacity.toLocaleString("es-ES") + " asientos" : ""}</p>
+      ${stadium.description ? `<p class="view-lead">${escapeHTML(stadium.description)}</p>` : ""}
     `;
     modal.hidden = false;
     document.getElementById("stadium-modal-close").addEventListener("click", () => (modal.hidden = true));
@@ -583,8 +716,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         (c) => `
         <div class="admin-row">
           <div class="admin-row__body">
-            <div class="admin-row__name">${c.team ? c.team.name : "Club desconocido"}</div>
-            <div class="admin-row__meta">Temporada ${c.signed_season} · ${c.status}</div>
+            <div class="admin-row__name">${c.team ? escapeHTML(c.team.name) : "Club desconocido"}</div>
+            <div class="admin-row__meta">Temporada ${c.signed_season} · ${escapeHTML(c.status)}</div>
           </div>
         </div>`
       )
@@ -592,7 +725,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     section.innerHTML = `
       <h2 class="dashboard__title">Mi carrera</h2>
-      ${career.player.avatar_url ? `<img src="${career.player.avatar_url}" alt="" class="career-avatar">` : ""}
+      ${career.player.avatar_url ? `<img src="${escapeHTML(career.player.avatar_url)}" alt="" class="career-avatar">` : ""}
       <div class="stat-grid" style="margin-bottom:28px;">
         <div class="stat-tile"><span class="stat-tile__value">${stats.goles}</span><span class="stat-tile__label">Goles</span></div>
         <div class="stat-tile"><span class="stat-tile__value">${stats.asistencias}</span><span class="stat-tile__label">Asistencias</span></div>
@@ -647,21 +780,53 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // =================================
-  // PREMIOS (goleadores, asistentes, playoff)
+  // PREMIOS (goleadores, apariciones, dinero, victorias, trofeos)
   // =================================
 
-  function leaderboardRows(entries, label) {
+  function leaderboardRows(entries, label, nameFn) {
     if (!entries.length) return `<div class="admin-panel__empty">Todavía no hay datos.</div>`;
     return entries.map((e, i) => `
       <div class="admin-row">
         <span class="admin-row__dot admin-row__dot--up" style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:var(--div-color);">${i + 1}</span>
         <div class="admin-row__body">
-          <div class="admin-row__name">${e.player.roblox_username}</div>
-          <div class="admin-row__meta">${e.team ? e.team.name : ""}</div>
+          <div class="admin-row__name">${escapeHTML(nameFn(e))}</div>
+          <div class="admin-row__meta">${e.team ? escapeHTML(e.team.name) : ""}</div>
         </div>
-        <span class="admin-tag" style="background:rgba(255,255,255,.08);color:var(--white);border:1px solid rgba(255,255,255,.18);">${e.count} ${label}</span>
+        <span class="admin-tag" style="background:rgba(255,255,255,.08);color:var(--white);border:1px solid rgba(255,255,255,.18);">${e.count}${label ? " " + label : ""}</span>
       </div>
     `).join("");
+  }
+
+  function teamLeaderboardRows(entries, formatFn) {
+    if (!entries.length) return `<div class="admin-panel__empty">Todavía no hay datos.</div>`;
+    return entries.map((e, i) => `
+      <div class="admin-row">
+        <span class="admin-row__dot admin-row__dot--up" style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:var(--div-color);">${i + 1}</span>
+        <div class="admin-row__body">
+          <div class="admin-row__name">${e.team.logo_url ? `<img src="${escapeHTML(e.team.logo_url)}" class="team-crest team-crest--small">` : ""}${escapeHTML(e.team.name)}</div>
+        </div>
+        <span class="admin-tag" style="background:rgba(255,255,255,.08);color:var(--white);border:1px solid rgba(255,255,255,.18);">${formatFn(e)}</span>
+      </div>
+    `).join("");
+  }
+
+  function premioCard({ id, colorVar, icon, title, tabs }) {
+    const tabsHTML = tabs
+      ? `<div class="premio-tabs" data-premio="${id}">${tabs.map((t, i) => `<button type="button" class="premio-tab ${i === 0 ? "is-active" : ""}" data-tab="${t.key}">${t.label}</button>`).join("")}</div>`
+      : "";
+    return `
+      <div class="division-card" style="--div-color:${colorVar};">
+        <div class="division-card__glow"></div>
+        <div class="division-card__head">
+          <span class="division-card__badge">${icon}</span>
+          <div>
+            <h3 class="division-card__title">${title}</h3>
+          </div>
+        </div>
+        ${tabsHTML}
+        <div style="position:relative;z-index:1;" id="premio-body-${id}"></div>
+      </div>
+    `;
   }
 
   async function renderPremios() {
@@ -673,71 +838,106 @@ document.addEventListener("DOMContentLoaded", async () => {
         <img class="league-page-head__logo" src="images/IFL_Logo.png" alt="" onerror="this.style.display='none'">
         <div>
           <h2 class="league-page-head__title">Premios</h2>
-          <p class="league-page-head__subtitle">Máximos goleadores, asistentes y el playoff de ascenso, actualizados solos.</p>
+          <p class="league-page-head__subtitle">Clasificaciones y trofeos, actualizados solos con cada resultado.</p>
         </div>
       </div>
     `;
-
-    let scorers = [], assists = [], playoffMatch = null;
-    try {
-      [scorers, assists, playoffMatch] = await Promise.all([
-        db.getLeaderboard(CURRENT_SEASON, "gol", 10),
-        db.getLeaderboard(CURRENT_SEASON, "asistencia", 10),
-        db.getPlayoffMatch(CURRENT_SEASON),
-      ]);
-    } catch (e) {
-      console.error("[IFL] Error cargando premios:", e);
-    }
 
     const board = document.createElement("div");
     board.className = "division-board-grid";
     board.style.marginTop = "24px";
-    board.innerHTML = `
-      <div class="division-card division-card--primera">
-        <div class="division-card__glow"></div>
-        <div class="division-card__head">
-          <span class="division-card__badge">⚽</span>
-          <div>
-            <h3 class="division-card__title">Máximos goleadores</h3>
-            <p class="division-card__subtitle">Temporada ${CURRENT_SEASON}</p>
-          </div>
-        </div>
-        <div style="position:relative;z-index:1;">${leaderboardRows(scorers, "goles")}</div>
-      </div>
-      <div class="division-card division-card--segunda">
-        <div class="division-card__glow"></div>
-        <div class="division-card__head">
-          <span class="division-card__badge">🎯</span>
-          <div>
-            <h3 class="division-card__title">Máximos asistentes</h3>
-            <p class="division-card__subtitle">Temporada ${CURRENT_SEASON}</p>
-          </div>
-        </div>
-        <div style="position:relative;z-index:1;">${leaderboardRows(assists, "asist.")}</div>
-      </div>
-    `;
+    board.innerHTML =
+      premioCard({ id: "scorers", colorVar: "#5865f2", icon: "⚽", title: "Máximos goleadores", tabs: [{ key: "season", label: "Temporada " + CURRENT_SEASON }, { key: "total", label: "Total" }] }) +
+      premioCard({ id: "appearances", colorVar: "#3bd6ff", icon: "🎽", title: "Jugadores que más han jugado", tabs: [{ key: "season", label: "Temporada " + CURRENT_SEASON }, { key: "total", label: "Total" }] }) +
+      premioCard({ id: "money", colorVar: "#22c55e", icon: "💰", title: "Clubs con más dinero", tabs: null }) +
+      premioCard({ id: "wins", colorVar: "#eab308", icon: "🏆", title: "Clubs con más victorias", tabs: [{ key: "season", label: "Temporada " + CURRENT_SEASON }, { key: "total", label: "Total" }] });
     section.appendChild(board);
+
+    async function loadScorers(scope) {
+      const season = scope === "total" ? null : CURRENT_SEASON;
+      const data = await db.getLeaderboard(season, "gol", 10);
+      document.getElementById("premio-body-scorers").innerHTML = leaderboardRows(data, "goles", (e) => playerDisplayName(e.player));
+    }
+    async function loadAppearances(scope) {
+      const season = scope === "total" ? null : CURRENT_SEASON;
+      const data = await db.getLeaderboard(season, "presencia", 10);
+      document.getElementById("premio-body-appearances").innerHTML = leaderboardRows(data, "partidos", (e) => playerDisplayName(e.player));
+    }
+    async function loadMoney() {
+      const data = await db.getTeamsByBudget(10);
+      const rows = data.map((t) => ({ team: t, budget: t.budget }));
+      document.getElementById("premio-body-money").innerHTML = teamLeaderboardRows(rows, (e) => "€" + Number(e.budget).toLocaleString("es-ES"));
+    }
+    async function loadWins(scope) {
+      const season = scope === "total" ? null : CURRENT_SEASON;
+      const data = await db.computeTeamWins(season, 10);
+      document.getElementById("premio-body-wins").innerHTML = teamLeaderboardRows(data, (e) => e.count + (e.count === 1 ? " victoria" : " victorias"));
+    }
+
+    try {
+      await Promise.all([loadScorers("season"), loadAppearances("season"), loadMoney(), loadWins("season")]);
+    } catch (e) {
+      console.error("[IFL] Error cargando premios:", e);
+    }
+
+    board.querySelectorAll(".premio-tabs").forEach((tabsEl) => {
+      const id = tabsEl.dataset.premio;
+      tabsEl.addEventListener("click", (e) => {
+        const btn = e.target.closest(".premio-tab");
+        if (!btn) return;
+        tabsEl.querySelectorAll(".premio-tab").forEach((b) => b.classList.toggle("is-active", b === btn));
+        const scope = btn.dataset.tab;
+        if (id === "scorers") loadScorers(scope);
+        if (id === "appearances") loadAppearances(scope);
+        if (id === "wins") loadWins(scope);
+      });
+    });
+
+    // Trofeos personalizados (añadidos desde el panel de admin)
+    let trophies = [];
+    try { trophies = await db.getTrophies(); } catch (e) { console.error("[IFL] Error cargando trofeos:", e); }
+
+    if (trophies.length) {
+      const trophyHead = document.createElement("h3");
+      trophyHead.className = "table-heading";
+      trophyHead.style.marginTop = "28px";
+      trophyHead.textContent = "Trofeos";
+      section.appendChild(trophyHead);
+
+      const trophyGrid = document.createElement("div");
+      trophyGrid.className = "stat-grid";
+      trophyGrid.innerHTML = trophies.map((t) => `
+        <div class="stat-tile">
+          <span class="stat-tile__value">${t.icon ? escapeHTML(t.icon) : "🏆"}</span>
+          <span class="stat-tile__label">${escapeHTML(t.title)}${t.team ? " · " + escapeHTML(t.team.name) : ""}</span>
+        </div>
+      `).join("");
+      section.appendChild(trophyGrid);
+    }
+
+    let playoffMatch = null;
+    try { playoffMatch = await db.getPlayoffMatch(CURRENT_SEASON); } catch (e) { console.error(e); }
 
     if (playoffMatch) {
       const home = playoffMatch.home_team;
       const away = playoffMatch.away_team;
       const bracket = document.createElement("div");
       bracket.className = "division-card";
-      bracket.style.cssText = "margin-top:22px;--div-color:#3bd6ff;text-align:center;padding:28px 22px;";
+      bracket.style.cssText = "margin-top:22px;--div-color:#a855f7;text-align:center;padding:28px 22px;";
       bracket.innerHTML = `
         <div class="division-card__glow"></div>
         <h3 class="table-heading" style="margin-top:0;position:relative;z-index:1;">Playoff de ascenso (Segunda División)</h3>
         <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;margin-top:10px;">
           <div style="text-align:center;">
-            ${home?.logo_url ? `<img src="${home.logo_url}" class="ifl-modal__crest" style="width:52px;height:52px;">` : ""}
-            <div style="font-family:var(--font-hub);font-weight:800;margin-top:8px;color:var(--white);">${home ? home.name : "?"}</div>
+            ${home?.logo_url ? `<img src="${escapeHTML(home.logo_url)}" class="ifl-modal__crest" style="width:52px;height:52px;">` : ""}
+            <div style="font-family:var(--font-hub);font-weight:800;margin-top:8px;color:var(--white);">${home ? escapeHTML(home.name) : "?"}</div>
           </div>
           <div style="font-family:var(--font-hub);font-weight:800;font-size:30px;color:var(--white);">
             ${playoffMatch.status === "jugado" ? `${playoffMatch.home_goals} - ${playoffMatch.away_goals}` : "VS"}
           </div>
           <div style="text-align:center;">
-            ${away?.logo_url ? `<img src="${away.logo_url}" class="ifl-modal__crest" style="width:52px;height:52px;">` : ""}
-            <div style="font-family:var(--font-hub);font-weight:800;margin-top:8px;color:var(--white);">${away ? away.name : "?"}</div>
+            ${away?.logo_url ? `<img src="${escapeHTML(away.logo_url)}" class="ifl-modal__crest" style="width:52px;height:52px;">` : ""}
+            <div style="font-family:var(--font-hub);font-weight:800;margin-top:8px;color:var(--white);">${away ? escapeHTML(away.name) : "?"}</div>
           </div>
         </div>
         <p class="ifl-modal__meta" style="margin-top:14px;position:relative;z-index:1;">${playoffMatch.status === "jugado" ? "Playoff finalizado" : "Partido único · pendiente de jugarse"}</p>
@@ -839,8 +1039,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       <div class="notif-item">
         <span class="notif-item__icon">${NOTIF_ICONS[n.type] || "🔔"}</span>
         <div class="notif-item__body">
-          <div class="notif-item__title">${n.title}</div>
-          <div class="notif-item__meta">${n.body || ""} · ${timeAgo(n.created_at)}</div>
+          <div class="notif-item__title">${escapeHTML(n.title)}</div>
+          <div class="notif-item__meta">${escapeHTML(n.body || "")} · ${timeAgo(n.created_at)}</div>
         </div>
       </div>
     `).join("");
@@ -885,13 +1085,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     const visibilityToggle = document.getElementById("setting-public-profile");
     const visibilityNote = document.getElementById("profile-visibility-note");
 
+    // showApp() puede llamarse más de una vez (onAuthStateChange también
+    // dispara en refresh de token) — evitamos añadir listeners duplicados.
+    if (avatarInput && avatarInput.dataset.wired === "1") return;
+
     let myPlayer = null;
-    try { myPlayer = await db.getPlayerByDiscordId(currentDiscordId); } catch (e) { console.error(e); }
+    try {
+      myPlayer = await db.getPlayerByDiscordId(currentDiscordId);
+      if (!myPlayer) {
+        // Cualquiera que inicie sesión puede tener foto de perfil, aunque
+        // todavía no tenga contrato: le creamos una ficha mínima.
+        const discordName = document.getElementById("settings-name")?.textContent || "Usuario";
+        myPlayer = await db.findOrCreatePlayer({
+          discordId: currentDiscordId,
+          discordUsername: discordName,
+          robloxUsername: null,
+        });
+      }
+    } catch (e) {
+      console.error("[IFL] Error preparando el perfil:", e);
+    }
 
     if (!myPlayer) {
       if (visibilityNote) {
         visibilityNote.hidden = false;
-        visibilityNote.textContent = "Todavía no tienes ficha de jugador (hace falta un contrato para tenerla), así que esta opción no aplica aún.";
+        visibilityNote.textContent = "No se pudo cargar tu ficha de jugador. Prueba a recargar la página.";
       }
       if (visibilityToggle) visibilityToggle.disabled = true;
       if (avatarInput) avatarInput.disabled = true;
@@ -913,6 +1131,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (avatarInput) {
       avatarInput.disabled = false;
+      avatarInput.dataset.wired = "1";
       avatarInput.addEventListener("change", async () => {
         const file = avatarInput.files && avatarInput.files[0];
         if (!file) return;
@@ -933,7 +1152,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           if (statusEl) { statusEl.textContent = "Foto actualizada ✅"; setTimeout(() => (statusEl.hidden = true), 2500); }
         } catch (e) {
-          console.error(e);
+          console.error("[IFL] Error subiendo avatar:", e);
           if (statusEl) statusEl.textContent = "❌ " + (e.message || "No se pudo subir la imagen.");
           avatarInput.value = "";
         }
@@ -1030,11 +1249,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         playerSearchResults.innerHTML = results.map((p) => `
           <div class="player-result-row" data-player-id="${p.id}">
             ${p.avatar_url
-              ? `<img src="${p.avatar_url}" class="player-result-row__avatar" alt="">`
-              : `<span class="player-result-row__avatar player-result-row__avatar--fallback">${p.roblox_username.charAt(0).toUpperCase()}</span>`}
+              ? `<img src="${escapeHTML(p.avatar_url)}" class="player-result-row__avatar" alt="">`
+              : `<span class="player-result-row__avatar player-result-row__avatar--fallback">${escapeHTML(playerDisplayName(p).charAt(0).toUpperCase())}</span>`}
             <div class="player-result-row__body">
-              <div class="player-result-row__name">${p.roblox_username}</div>
-              <div class="player-result-row__meta">${p.discord_username}</div>
+              <div class="player-result-row__name">${escapeHTML(playerDisplayName(p))}</div>
+              <div class="player-result-row__meta">${escapeHTML(p.discord_username)}</div>
             </div>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
@@ -1059,14 +1278,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const { player, isPublic, stats, contracts } = profile;
     const avatarHTML = player.avatar_url
-      ? `<img src="${player.avatar_url}" class="career-avatar" alt="">`
-      : `<div class="career-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--accent);font-family:var(--font-display);font-weight:700;font-size:32px;">${player.roblox_username.charAt(0).toUpperCase()}</div>`;
+      ? `<img src="${escapeHTML(player.avatar_url)}" class="career-avatar" alt="">`
+      : `<div class="career-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--accent);font-family:var(--font-display);font-weight:700;font-size:32px;">${escapeHTML(playerDisplayName(player).charAt(0).toUpperCase())}</div>`;
 
     if (!isPublic) {
       playerProfileBox.innerHTML = `
         <div class="locked-card">
           ${avatarHTML}
-          <h3 style="margin:6px 0 0;color:var(--white);">${player.roblox_username}</h3>
+          <h3 style="margin:6px 0 0;color:var(--white);">${escapeHTML(playerDisplayName(player))}</h3>
           <p class="locked-card__text">Este usuario tiene desactivada la visualización del perfil.</p>
         </div>
       `;
@@ -1078,8 +1297,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     playerProfileBox.innerHTML = `
       <div class="locked-card" style="align-items:center;">
         ${avatarHTML}
-        <h3 style="margin:6px 0 0;color:var(--white);">${player.roblox_username}</h3>
-        <p class="ifl-modal__meta">${currentClub ? "Actualmente en " + currentClub.team.name : "Sin club actualmente"}</p>
+        <h3 style="margin:6px 0 0;color:var(--white);">${escapeHTML(playerDisplayName(player))}</h3>
+        <p class="ifl-modal__meta">${currentClub ? "Actualmente en " + escapeHTML(currentClub.team.name) : "Sin club actualmente"}</p>
       </div>
       <div class="stat-grid" style="margin-top:20px;">
         <div class="stat-tile"><span class="stat-tile__value">${stats.goles}</span><span class="stat-tile__label">Goles</span></div>
