@@ -6,6 +6,8 @@
 <title>Admin Panel · IFL</title>
 <meta name="robots" content="noindex, nofollow">
 
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -54,9 +56,11 @@
       <button type="button" class="admin-nav__link" data-admin-view="teams">Equipos</button>
       <button type="button" class="admin-nav__link" data-admin-view="stadiums">Estadios</button>
       <button type="button" class="admin-nav__link" data-admin-view="contracts">Contratos</button>
+      <button type="button" class="admin-nav__link" data-admin-view="rangos">Rangos</button>
       <button type="button" class="admin-nav__link" data-admin-view="matches">Partidos</button>
       <button type="button" class="admin-nav__link" data-admin-view="results">Resultados</button>
       <button type="button" class="admin-nav__link" data-admin-view="divisions">Divisiones</button>
+      <button type="button" class="admin-nav__link" data-admin-view="trophies">Trofeos</button>
       <button type="button" class="admin-nav__link" data-admin-view="admins" hidden>Admins</button>
       <button type="button" class="admin-nav__link" data-admin-view="history" hidden>Historial</button>
     </nav>
@@ -201,6 +205,10 @@
             </select>
           </div>
           <div class="admin-field">
+            <label for="team-budget">Presupuesto inicial (€)</label>
+            <input class="admin-input" id="team-budget" type="number" min="0" step="0.01" value="0">
+          </div>
+          <div class="admin-field">
             <label for="team-logo">Escudo (imagen, opcional)</label>
             <label class="file-upload">
               <input class="file-upload__input" id="team-logo" type="file" accept="image/*">
@@ -329,7 +337,7 @@
           <div class="admin-form__actions">
             <button type="submit" class="btn-admin btn-admin--solid">Añadir contrato</button>
           </div>
-          <p class="admin-form__note">Si el nombre de Roblox ya existe, haz clic en el resultado del buscador para reutilizar esa ficha de jugador en vez de crear una nueva. El contrato se reduce automáticamente cada vez que pulsas «Avanzar temporada».</p>
+          <p class="admin-form__note">Si el nombre de Roblox ya existe, haz clic en el resultado del buscador para reutilizar esa ficha de jugador en vez de crear una nueva. El precio se descuenta automáticamente del presupuesto del club, y el contrato se reduce cada vez que pulsas «Avanzar temporada».</p>
         </form>
 
         <div class="table-wrap">
@@ -350,6 +358,52 @@
             </thead>
             <tbody id="contracts-table-body"></tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- ============ RANGOS ============ -->
+      <section class="admin-view" data-admin-view="rangos" hidden>
+        <div class="admin-view-head">
+          <div>
+            <h1 class="admin-body__title">Rangos</h1>
+            <p class="admin-body__subtitle">Gestiona los rangos del grupo de la IFL y asígnalos a jugadores. El rango "Team Owner" desbloquea "Mi club" en la web.</p>
+          </div>
+        </div>
+
+        <form id="rank-create-form" class="admin-form">
+          <div class="admin-form__title">Añadir un rango nuevo</div>
+          <div class="admin-field">
+            <label for="rank-new-name">Nombre del rango</label>
+            <input class="admin-input" id="rank-new-name" placeholder="p. ej. Capitán" required>
+          </div>
+          <div class="admin-form__actions">
+            <button type="submit" class="btn-admin btn-admin--solid">Añadir rango</button>
+          </div>
+        </form>
+
+        <form id="rank-assign-form" class="admin-form">
+          <div class="admin-form__title">Asignar rango a un jugador</div>
+          <div class="admin-field">
+            <label for="rank-assign-roblox">Jugador (busca por Roblox o Discord)</label>
+            <input class="admin-input" id="rank-assign-roblox" placeholder="Escribe para buscar…" autocomplete="off" required>
+          </div>
+          <div class="admin-field">
+            <label for="rank-assign-select">Rango</label>
+            <select class="admin-select" id="rank-assign-select" required></select>
+          </div>
+          <div class="admin-field" id="rank-owner-club-field" hidden>
+            <label for="rank-owner-club-select">¿De qué club es Team Owner?</label>
+            <select class="admin-select" id="rank-owner-club-select"></select>
+          </div>
+          <div class="admin-form__actions">
+            <button type="submit" class="btn-admin btn-admin--solid">Asignar rango</button>
+          </div>
+          <p class="admin-form__note">Ahora mismo el rango se guarda en la web de la IFL. Sincronizarlo automáticamente con los roles del grupo de Roblox requiere configurar una API key de Roblox aparte — pregúntame si quieres montarlo.</p>
+        </form>
+
+        <div class="admin-panel">
+          <div class="admin-panel__head"><div class="admin-panel__head-title">Jugadores con rango asignado</div></div>
+          <div class="admin-panel__body" id="ranks-assigned-list"></div>
         </div>
       </section>
 
@@ -450,6 +504,44 @@
             <div class="division-column__head"><span>Segunda</span><span id="division-count-segunda">0</span></div>
             <div class="division-column__body" id="division-list-segunda"></div>
           </div>
+        </div>
+      </section>
+
+      <!-- ============ TROFEOS (Premios) ============ -->
+      <section class="admin-view" data-admin-view="trophies" hidden>
+        <div class="admin-view-head">
+          <div>
+            <h1 class="admin-body__title">Trofeos</h1>
+            <p class="admin-body__subtitle">Añade premios y reconocimientos que aparecerán en la sección Premios de la web.</p>
+          </div>
+        </div>
+
+        <form id="trophy-form" class="admin-form">
+          <div class="admin-form__title">Añadir trofeo</div>
+          <div class="admin-field">
+            <label for="trophy-title">Título</label>
+            <input class="admin-input" id="trophy-title" placeholder="p. ej. Campeón Temporada 1" required>
+          </div>
+          <div class="admin-field">
+            <label for="trophy-icon">Icono (emoji)</label>
+            <input class="admin-input" id="trophy-icon" placeholder="🏆" maxlength="4">
+          </div>
+          <div class="admin-field">
+            <label for="trophy-team">Club (opcional)</label>
+            <select class="admin-select" id="trophy-team"><option value="">— Sin club —</option></select>
+          </div>
+          <div class="admin-field admin-field--full">
+            <label for="trophy-description">Descripción</label>
+            <input class="admin-input" id="trophy-description" placeholder="Opcional">
+          </div>
+          <div class="admin-form__actions">
+            <button type="submit" class="btn-admin btn-admin--solid">Añadir trofeo</button>
+          </div>
+        </form>
+
+        <div class="admin-panel">
+          <div class="admin-panel__head"><div class="admin-panel__head-title">Trofeos actuales</div></div>
+          <div class="admin-panel__body" id="trophies-list"></div>
         </div>
       </section>
 
