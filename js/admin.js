@@ -435,6 +435,152 @@
   }
 
   // =====================================
+  // RANGOS
+  // =====================================
+
+  const rankCreateForm = document.getElementById("rank-create-form");
+  const rankAssignForm = document.getElementById("rank-assign-form");
+  const rankAssignRobloxInput = document.getElementById("rank-assign-roblox");
+  const rankAssignSelect = document.getElementById("rank-assign-select");
+  const rankOwnerClubField = document.getElementById("rank-owner-club-field");
+  const rankOwnerClubSelect = document.getElementById("rank-owner-club-select");
+  const ranksAssignedList = document.getElementById("ranks-assigned-list");
+
+  let selectedRankPlayer = null;
+
+  async function populateRankSelects() {
+    let ranks = [];
+    try { ranks = await db.getRanks(); } catch (e) { console.error(e); }
+
+    if (rankAssignSelect) {
+      rankAssignSelect.innerHTML = ranks.map((r) => `<option value="${r.id}" data-name="${escapeHTML(r.name)}">${escapeHTML(r.name)}</option>`).join("");
+    }
+    if (rankOwnerClubSelect) {
+      rankOwnerClubSelect.innerHTML = state.teams.map((t) => `<option value="${t.id}">${escapeHTML(t.name)}</option>`).join("");
+    }
+    toggleOwnerClubField();
+  }
+
+  function toggleOwnerClubField() {
+    if (!rankOwnerClubField || !rankAssignSelect) return;
+    const selectedOption = rankAssignSelect.options[rankAssignSelect.selectedIndex];
+    const isOwner = selectedOption && selectedOption.dataset.name === "Team Owner";
+    rankOwnerClubField.hidden = !isOwner;
+  }
+
+  if (rankAssignSelect) rankAssignSelect.addEventListener("change", toggleOwnerClubField);
+
+  if (rankAssignRobloxInput) {
+    let box = null;
+    function closeBox() { if (box) box.remove(); box = null; }
+
+    rankAssignRobloxInput.addEventListener("input", async () => {
+      selectedRankPlayer = null;
+      const q = rankAssignRobloxInput.value.trim();
+      closeBox();
+      if (!q) return;
+
+      let results = [];
+      try { results = await db.searchPlayers(q); } catch (e) { console.error(e); }
+      if (!results.length) return;
+
+      box = document.createElement("div");
+      box.className = "admin-search-results";
+      results.forEach((p) => {
+        const row = document.createElement("div");
+        row.className = "admin-row";
+        row.style.cursor = "pointer";
+        row.innerHTML = `
+          <div class="admin-row__body">
+            <div class="admin-row__name">${escapeHTML(p.roblox_username || p.discord_username)}</div>
+            <div class="admin-row__meta">${escapeHTML(p.discord_username)}</div>
+          </div>
+        `;
+        row.addEventListener("click", () => {
+          selectedRankPlayer = p;
+          rankAssignRobloxInput.value = p.roblox_username || p.discord_username;
+          closeBox();
+        });
+        box.appendChild(row);
+      });
+      rankAssignRobloxInput.parentElement.appendChild(box);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (box && !rankAssignRobloxInput.parentElement.contains(e.target)) closeBox();
+    });
+  }
+
+  if (rankCreateForm) {
+    rankCreateForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("rank-new-name")?.value.trim();
+      const submitBtn = rankCreateForm.querySelector('button[type="submit"]');
+      if (!name) return;
+
+      withBusy(submitBtn, async () => {
+        await db.addRank(name);
+        rankCreateForm.reset();
+        await populateRankSelects();
+        toast("Rango añadido.");
+      });
+    });
+  }
+
+  if (rankAssignForm) {
+    rankAssignForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const submitBtn = rankAssignForm.querySelector('button[type="submit"]');
+
+      if (!selectedRankPlayer) {
+        alert("Busca y selecciona un jugador de la lista antes de asignar el rango.");
+        return;
+      }
+
+      const rankId = rankAssignSelect.value;
+      const selectedOption = rankAssignSelect.options[rankAssignSelect.selectedIndex];
+      const isOwner = selectedOption && selectedOption.dataset.name === "Team Owner";
+      const clubId = isOwner ? rankOwnerClubSelect.value : null;
+
+      if (isOwner && !clubId) {
+        alert("Selecciona de qué club es Team Owner.");
+        return;
+      }
+
+      withBusy(submitBtn, async () => {
+        await db.assignPlayerRank(selectedRankPlayer.id, rankId);
+        if (isOwner && clubId) {
+          await db.setTeamOwner(clubId, selectedRankPlayer.id);
+        }
+        rankAssignForm.reset();
+        selectedRankPlayer = null;
+        await reloadAll();
+        await populateRankSelects();
+        await renderRanksAssignedList();
+        toast("Rango asignado.");
+      });
+    });
+  }
+
+  async function renderRanksAssignedList() {
+    if (!ranksAssignedList) return;
+    let players = [];
+    try { players = await db.getPlayersWithRanks(); } catch (e) { console.error(e); }
+
+    const ownedTeamsByPlayer = {};
+    state.teams.forEach((t) => { if (t.owner_player_id) ownedTeamsByPlayer[t.owner_player_id] = t; });
+
+    ranksAssignedList.innerHTML = players.map((p) => `
+      <div class="admin-row">
+        <div class="admin-row__body">
+          <div class="admin-row__name">${escapeHTML(p.roblox_username || p.discord_username)}</div>
+          <div class="admin-row__meta">${escapeHTML(p.rank ? p.rank.name : "")}${ownedTeamsByPlayer[p.id] ? " · " + escapeHTML(ownedTeamsByPlayer[p.id].name) : ""}</div>
+        </div>
+      </div>
+    `).join("") || '<div class="admin-panel__empty">Todavía no has asignado ningún rango.</div>';
+  }
+
+  // =====================================
   // EQUIPOS (con edición inline + Guardar)
   // =====================================
 
@@ -454,7 +600,7 @@
 
     teamsTableBody.innerHTML = state.teams.map((t) => {
       const crest = t.logo_url
-        ? `<img src="${t.logo_url}" alt="" class="team-crest">`
+        ? `<img src="${escapeHTML(t.logo_url)}" alt="" class="team-crest">`
         : `<span class="team-crest team-crest--empty"></span>`;
 
       if (editingTeamId === t.id) {
@@ -500,6 +646,7 @@
       const name = document.getElementById("team-name")?.value.trim();
       const code = document.getElementById("team-code")?.value.trim().toUpperCase();
       const division = document.getElementById("team-division")?.value || null;
+      const budget = parseFloat(document.getElementById("team-budget")?.value) || 0;
       const submitBtn = teamForm.querySelector('button[type="submit"]');
 
       if (!name || !code) return;
@@ -513,7 +660,7 @@
         const file = fileInput && fileInput.files && fileInput.files[0];
         const logoUrl = await readFileAsDataURL(file);
 
-        await db.addTeam({ code, name, division, logo_url: logoUrl });
+        await db.addTeam({ code, name, division, logo_url: logoUrl, budget });
         teamForm.reset();
         await reloadAll();
         renderAll();
@@ -542,9 +689,16 @@
       if (saveBtn) {
         const id = saveBtn.getAttribute("data-save-team");
         const row = document.querySelector(`[data-team-row="${id}"]`);
+        const newCode = row.querySelector('[data-edit="code"]').value.trim().toUpperCase();
+
+        if (state.teams.some((t) => t.id !== id && t.code === newCode)) {
+          alert(`Ya existe otro equipo con el código "${newCode}". Usa otro código.`);
+          return;
+        }
+
         const patch = {
           name: row.querySelector('[data-edit="name"]').value.trim(),
-          code: row.querySelector('[data-edit="code"]').value.trim().toUpperCase(),
+          code: newCode,
           division: row.querySelector('[data-edit="division"]').value || null,
         };
         withBusy(saveBtn, async () => {
@@ -603,7 +757,7 @@
 
     stadiumsTableBody.innerHTML = state.stadiums.map((s) => `
       <tr>
-        <td>${s.image_url ? `<img src="${s.image_url}" alt="" class="team-crest" style="width:40px;height:26px;border-radius:4px;object-fit:cover;">` : `<span class="team-crest team-crest--empty" style="width:40px;height:26px;"></span>`}</td>
+        <td>${s.image_url ? `<img src="${escapeHTML(s.image_url)}" alt="" class="team-crest" style="width:40px;height:26px;border-radius:4px;object-fit:cover;">` : `<span class="team-crest team-crest--empty" style="width:40px;height:26px;"></span>`}</td>
         <td class="standings__club">${escapeHTML(s.name)}</td>
         <td>${s.team ? escapeHTML(s.team.name) : "—"}</td>
         <td>${escapeHTML(s.city || "—")}</td>
@@ -736,7 +890,7 @@
     contractsTableBody.innerHTML = state.contracts.map((c) => {
       const isActive = c.status === "ACTIVO";
       const avatar = c.player?.avatar_url
-        ? `<img src="${c.player.avatar_url}" alt="" class="team-crest" style="border-radius:50%;">`
+        ? `<img src="${escapeHTML(c.player.avatar_url)}" alt="" class="team-crest" style="border-radius:50%;">`
         : `<span class="team-crest team-crest--empty" style="border-radius:50%;"></span>`;
       return `
         <tr>
@@ -788,6 +942,12 @@
           seasonsTotal,
           signedSeason: state.season,
         });
+
+        // Restar el precio del contrato del presupuesto del club
+        const team = state.teams.find((t) => t.id === clubId);
+        if (team) {
+          await db.updateTeam(clubId, { budget: Number(team.budget || 0) - price });
+        }
 
         contractForm.reset();
         selectedPlayer = null;
@@ -986,8 +1146,12 @@
       db.getMatchEvents(matchId),
     ]);
 
+    function playerLabel(p) {
+      return (p && (p.roblox_username || p.discord_username)) || "Jugador";
+    }
+
     function playerOptions(roster) {
-      return roster.map((c) => `<option value="${c.player.id}">${escapeHTML(c.player.roblox_username)}</option>`).join("");
+      return roster.map((c) => `<option value="${c.player.id}">${escapeHTML(playerLabel(c.player))}</option>`).join("");
     }
 
     resultFormBox.hidden = false;
@@ -1004,6 +1168,18 @@
         </div>
       </div>
 
+      <div class="admin-form__title" style="margin-top:6px;">Jugadores que han jugado este partido</div>
+      <div class="attendance-grid">
+        <div>
+          <p class="admin-form__note" style="margin:0 0 8px;">${match.home_team ? escapeHTML(match.home_team.name) : "Local"}</p>
+          <div id="attendance-home"></div>
+        </div>
+        <div>
+          <p class="admin-form__note" style="margin:0 0 8px;">${match.away_team ? escapeHTML(match.away_team.name) : "Visitante"}</p>
+          <div id="attendance-away"></div>
+        </div>
+      </div>
+
       <div class="result-events" id="result-events-list"></div>
 
       <div class="admin-form__actions" style="padding:0 0 20px;">
@@ -1015,6 +1191,24 @@
         <button type="button" class="btn-admin" id="result-cancel-btn">Cancelar</button>
       </div>
     `;
+
+    const existingAttendance = new Set(
+      existingEvents.filter((ev) => ev.type === "presencia").map((ev) => ev.player_id)
+    );
+    // Cualquier jugador con un evento (gol, tarjeta...) se marca como presente por defecto.
+    existingEvents.forEach((ev) => existingAttendance.add(ev.player_id));
+
+    function renderAttendance(containerId, roster) {
+      const box = document.getElementById(containerId);
+      box.innerHTML = roster.map((c) => `
+        <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;color:var(--gray-1);cursor:pointer;">
+          <input type="checkbox" data-attendance="${c.player.id}" ${existingAttendance.has(c.player.id) ? "checked" : ""}>
+          ${escapeHTML(playerLabel(c.player))}
+        </label>
+      `).join("") || '<p class="admin-form__note" style="margin:0;">Sin jugadores contratados en este club.</p>';
+    }
+    renderAttendance("attendance-home", homeRoster);
+    renderAttendance("attendance-away", awayRoster);
 
     const eventsList = document.getElementById("result-events-list");
     const eventTypeLabels = {
@@ -1081,6 +1275,23 @@
         };
       });
 
+      const attendanceIds = new Set(events.map((e) => e.playerId));
+
+      document.querySelectorAll("#attendance-home [data-attendance]:checked").forEach((el) => {
+        const playerId = el.getAttribute("data-attendance");
+        if (!attendanceIds.has(playerId)) {
+          events.push({ playerId, type: "presencia", teamId: match.home_team_id });
+          attendanceIds.add(playerId);
+        }
+      });
+      document.querySelectorAll("#attendance-away [data-attendance]:checked").forEach((el) => {
+        const playerId = el.getAttribute("data-attendance");
+        if (!attendanceIds.has(playerId)) {
+          events.push({ playerId, type: "presencia", teamId: match.away_team_id });
+          attendanceIds.add(playerId);
+        }
+      });
+
       withBusy(evt.target, async () => {
         await db.setMatchResult(matchId, { homeGoals, awayGoals, events });
         resultFormBox.hidden = true;
@@ -1145,6 +1356,70 @@
       renderAll();
     });
   });
+
+  // =====================================
+  // TROFEOS (Premios)
+  // =====================================
+
+  const trophyForm = document.getElementById("trophy-form");
+  const trophyTeamSelect = document.getElementById("trophy-team");
+  const trophiesList = document.getElementById("trophies-list");
+
+  async function renderTrophiesView() {
+    if (trophyTeamSelect) {
+      const current = trophyTeamSelect.value;
+      trophyTeamSelect.innerHTML = '<option value="">— Sin club —</option>' +
+        state.teams.map((t) => `<option value="${t.id}">${escapeHTML(t.name)}</option>`).join("");
+      trophyTeamSelect.value = current;
+    }
+    if (!trophiesList) return;
+
+    let trophies = [];
+    try { trophies = await db.getTrophies(); } catch (e) { console.error(e); }
+
+    trophiesList.innerHTML = trophies.map((t) => `
+      <div class="admin-row">
+        <span style="font-size:20px;flex:none;">${t.icon ? escapeHTML(t.icon) : "🏆"}</span>
+        <div class="admin-row__body">
+          <div class="admin-row__name">${escapeHTML(t.title)}</div>
+          <div class="admin-row__meta">${t.team ? escapeHTML(t.team.name) : "Sin club"}${t.season ? " · Temporada " + t.season : ""}</div>
+        </div>
+        <button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-delete-trophy="${t.id}">Eliminar</button>
+      </div>
+    `).join("") || '<div class="admin-panel__empty">Todavía no hay trofeos.</div>';
+  }
+
+  if (trophyForm) {
+    trophyForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const title = document.getElementById("trophy-title")?.value.trim();
+      const icon = document.getElementById("trophy-icon")?.value.trim();
+      const teamId = trophyTeamSelect?.value || null;
+      const description = document.getElementById("trophy-description")?.value.trim();
+      const submitBtn = trophyForm.querySelector('button[type="submit"]');
+      if (!title) return;
+
+      withBusy(submitBtn, async () => {
+        await db.addTrophy({ title, icon, teamId, description, season: state.season });
+        trophyForm.reset();
+        await renderTrophiesView();
+        toast("Trofeo añadido.");
+      });
+    });
+  }
+
+  if (trophiesList) {
+    trophiesList.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-delete-trophy]");
+      if (!btn) return;
+      if (!confirm("¿Eliminar este trofeo?")) return;
+      withBusy(btn, async () => {
+        await db.deleteTrophy(btn.getAttribute("data-delete-trophy"));
+        await renderTrophiesView();
+        toast("Trofeo eliminado.");
+      });
+    });
+  }
 
   // =====================================
   // ADMINS (solo super-admin)
@@ -1257,7 +1532,8 @@
 
   const CRUMBS = {
     overview: "Overview", teams: "Equipos", contracts: "Contratos", divisions: "Divisiones",
-    stadiums: "Estadios", matches: "Partidos", results: "Resultados", admins: "Admins", history: "Historial",
+    stadiums: "Estadios", matches: "Partidos", results: "Resultados", rangos: "Rangos",
+    trophies: "Trofeos", admins: "Admins", history: "Historial",
   };
 
   function showAdminView(name) {
@@ -1275,6 +1551,7 @@
 
     if (name === "results") renderResultsView();
     if (name === "history") renderHistoryView();
+    if (name === "trophies") renderTrophiesView();
   }
   window.IFLAdminShowView = showAdminView;
 
@@ -1324,6 +1601,8 @@
     renderDivisionsView();
     if (state.isSuperAdmin) renderAdminsView();
     applyRoleVisibility();
+    populateRankSelects();
+    renderRanksAssignedList();
   }
 
   // =====================================
