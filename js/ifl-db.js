@@ -324,6 +324,7 @@ window.IFLDB = (function () {
 
   // =====================================
   // CLASIFICACIÓN (calculada a partir de partidos jugados)
+  // season = null  →  agrega TODAS las temporadas (modo "Total")
   // =====================================
 
   async function computeStandings(season, division) {
@@ -611,6 +612,136 @@ window.IFLDB = (function () {
     return channel;
   }
 
+  // =====================================
+  // RANGOS
+  // =====================================
+
+  async function getRanks() {
+    const { data, error } = await client.from("ranks").select("*").order("name", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function addRank(name) {
+    const { data, error } = await client.from("ranks").insert({ name }).select().single();
+    if (error) throw error;
+    return data;
+  }
+
+  async function assignPlayerRank(playerId, rankId) {
+    const { error } = await client.from("players").update({ rank_id: rankId }).eq("id", playerId);
+    if (error) throw error;
+  }
+
+  async function getPlayersWithRanks() {
+    const { data, error } = await client
+      .from("players")
+      .select("*, rank:ranks!players_rank_id_fkey(*)")
+      .not("rank_id", "is", null);
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function setTeamOwner(teamId, playerId) {
+    const { error } = await client.from("teams").update({ owner_player_id: playerId }).eq("id", teamId);
+    if (error) throw error;
+  }
+
+  // =====================================
+  // MI CLUB (Team Owner)
+  // =====================================
+
+  async function getMyOwnedTeam(discordId) {
+    if (!discordId) return null;
+    const { data: player, error: playerError } = await client
+      .from("players")
+      .select("*")
+      .eq("discord_id", discordId)
+      .maybeSingle();
+    if (playerError) throw playerError;
+    if (!player) return null;
+
+    const { data: team, error: teamError } = await client
+      .from("teams")
+      .select("*")
+      .eq("owner_player_id", player.id)
+      .maybeSingle();
+    if (teamError) throw teamError;
+    if (!team) return null;
+
+    const { data: stadium, error: stadiumError } = await client
+      .from("stadiums")
+      .select("*")
+      .eq("team_id", team.id)
+      .maybeSingle();
+    if (stadiumError) throw stadiumError;
+
+    return { team, stadium: stadium || null };
+  }
+
+  async function updateTeamDescription(teamId, description) {
+    const { error } = await client.from("teams").update({ description }).eq("id", teamId);
+    if (error) throw error;
+  }
+
+  // =====================================
+  // PREMIOS: dinero, victorias, trofeos
+  // =====================================
+
+  async function getTeamsByBudget(limit) {
+    const { data, error } = await client
+      .from("teams")
+      .select("*")
+      .order("budget", { ascending: false })
+      .limit(limit || 10);
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function computeTeamWins(season, limit) {
+    const matches = (await getMatches(season)).filter((m) => m.status === "jugado" && m.home_team && m.away_team);
+    const counts = {};
+    matches.forEach((m) => {
+      let winner = null;
+      if (m.home_goals > m.away_goals) winner = m.home_team;
+      else if (m.away_goals > m.home_goals) winner = m.away_team;
+      if (!winner) return;
+      if (!counts[winner.id]) counts[winner.id] = { team: winner, count: 0 };
+      counts[winner.id].count++;
+    });
+    return Object.values(counts).sort((a, b) => b.count - a.count).slice(0, limit || 10);
+  }
+
+  async function getTrophies() {
+    const { data, error } = await client
+      .from("trophies")
+      .select("*, team:teams!trophies_team_id_fkey(*)")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function addTrophy({ title, icon, teamId, description, season }) {
+    const { data, error } = await client
+      .from("trophies")
+      .insert({
+        title,
+        icon: icon || null,
+        team_id: teamId || null,
+        description: description || null,
+        season: season || null,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async function deleteTrophy(id) {
+    const { error } = await client.from("trophies").delete().eq("id", id);
+    if (error) throw error;
+  }
+
   return {
     client,
     isAdmin,
@@ -653,5 +784,17 @@ window.IFLDB = (function () {
     getNotifications,
     getLeaderboard,
     getPlayoffMatch,
+    getRanks,
+    addRank,
+    assignPlayerRank,
+    getPlayersWithRanks,
+    setTeamOwner,
+    getMyOwnedTeam,
+    updateTeamDescription,
+    getTeamsByBudget,
+    computeTeamWins,
+    getTrophies,
+    addTrophy,
+    deleteTrophy,
   };
 })();
