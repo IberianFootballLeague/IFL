@@ -233,45 +233,100 @@ document.addEventListener("DOMContentLoaded", async () => {
   // MERCADO DE FICHAJES
   // =================================
 
+  function robloxAvatarHTML(p, sizeClass) {
+    sizeClass = sizeClass || "market-player-row__avatar";
+    if (p && p.avatar_url) {
+      return `<img src="${escapeHTML(p.avatar_url)}" class="${sizeClass}" alt="">`;
+    }
+    const initial = escapeHTML(playerDisplayName(p).charAt(0).toUpperCase());
+    return `<span class="${sizeClass} ${sizeClass}--fallback">${initial}</span>`;
+  }
+
   async function renderMercado() {
     const staffTool = document.getElementById("market-staff-tool");
     const myOffersBox = document.getElementById("market-my-offers");
     if (staffTool) staffTool.hidden = !myRanksCache.includes("Staff");
     if (myOffersBox) myOffersBox.hidden = !myOwnedTeamCache;
 
-    const tasks = [renderFreeAgents(), renderMarketFeed()];
+    const tasks = [renderFreeAgents(), renderMarketFeed(), renderFreeAgentCard()];
     if (myOwnedTeamCache) tasks.push(renderMyOffers());
     await Promise.all(tasks);
+  }
+
+  // Panel "Free Agent": solo para quien NO es Team Owner de ningún club,
+  // para que pueda presentarse en el mercado con su trayectoria y posición.
+  let freeAgentCardWired = false;
+
+  async function renderFreeAgentCard() {
+    const card = document.getElementById("market-free-agent-card");
+    if (!card) return;
+
+    if (myOwnedTeamCache) { card.hidden = true; return; }
+
+    let me = null;
+    try { me = await db.getPlayerByDiscordId(currentDiscordId); } catch (e) { console.error(e); }
+    card.hidden = false;
+
+    const nameEl = document.getElementById("free-agent-name");
+    const careerInput = document.getElementById("free-agent-career");
+    const positionInput = document.getElementById("free-agent-position");
+    if (nameEl) nameEl.textContent = me ? playerDisplayName(me) : (userInfo?.textContent || "").replace("Sesión iniciada como ", "");
+    if (careerInput) careerInput.value = (me && me.career_summary) || "";
+    if (positionInput) positionInput.value = (me && me.position) || "";
+
+    if (!freeAgentCardWired) {
+      freeAgentCardWired = true;
+      document.getElementById("free-agent-save")?.addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        const statusEl = document.getElementById("free-agent-status");
+        btn.disabled = true;
+        try {
+          await db.updateMyFreeAgentProfile(currentDiscordId, {
+            position: positionInput?.value || "",
+            careerSummary: careerInput?.value.trim() || "",
+          });
+          if (statusEl) { statusEl.hidden = false; statusEl.textContent = "Guardado ✅"; setTimeout(() => (statusEl.hidden = true), 2200); }
+          await renderFreeAgents();
+        } catch (err) {
+          console.error("[IFL] Error guardando el perfil de Free Agent:", err);
+          if (statusEl) { statusEl.hidden = false; statusEl.textContent = "❌ No se pudo guardar."; }
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
   }
 
   async function renderFreeAgents() {
     const list = document.getElementById("market-free-agents-list");
     if (!list) return;
-    list.innerHTML = `<div class="admin-panel__empty">Cargando…</div>`;
+    list.innerHTML = `<div class="market-empty">Cargando…</div>`;
 
     let agents = [];
     try { agents = await db.getFreeAgents(); } catch (e) { console.error("[IFL] Error cargando agentes libres:", e); }
 
     if (!agents.length) {
-      list.innerHTML = '<div class="admin-panel__empty">No hay jugadores libres ahora mismo.</div>';
+      list.innerHTML = '<div class="market-empty">No hay jugadores libres ahora mismo.</div>';
       return;
     }
 
     list.innerHTML = agents.map((p) => `
-      <div class="admin-row">
-        ${p.avatar_url
-          ? `<img src="${escapeHTML(p.avatar_url)}" class="team-crest" style="width:34px;height:34px;border-radius:50%;">`
-          : `<span class="team-crest team-crest--empty" style="width:34px;height:34px;border-radius:50%;"></span>`}
-        <div class="admin-row__body">
-          <div class="admin-row__name">${escapeHTML(playerDisplayName(p))}</div>
-          <div class="admin-row__meta">Agente libre</div>
+      <div class="market-player-row">
+        ${robloxAvatarHTML(p)}
+        <div class="market-player-row__body">
+          <div class="market-player-row__name">${escapeHTML(playerDisplayName(p))}</div>
+          <div class="market-player-row__meta">
+            <span class="market-player-row__tag">Agente libre</span>
+            ${p.position ? `<span class="market-player-row__tag">${escapeHTML(p.position)}</span>` : ""}
+            ${p.career_summary ? `<div style="margin-top:5px;">${escapeHTML(p.career_summary)}</div>` : ""}
+          </div>
         </div>
-        ${myOwnedTeamCache ? `<button type="button" class="btn-admin btn-admin--small btn-admin--solid" data-offer-player="${p.id}">Ofertar fichaje</button>` : ""}
+        ${myOwnedTeamCache ? `<button type="button" class="btn-market btn-market--small" data-offer-player="${p.id}">Ofertar fichaje</button>` : ""}
       </div>
       ${myOwnedTeamCache ? `
-        <div class="market-offer-form" id="market-offer-form-${p.id}" hidden style="padding:6px 4px 16px;display:flex;gap:8px;flex-wrap:wrap;">
-          <input type="number" min="0" step="0.01" class="admin-input" id="market-offer-price-${p.id}" placeholder="Precio de la oferta (€)" style="max-width:220px;">
-          <button type="button" class="btn-admin btn-admin--solid" data-confirm-offer="${p.id}">Confirmar oferta</button>
+        <div class="market-offer-box" id="market-offer-form-${p.id}" hidden>
+          <input type="number" min="0" step="0.01" class="market-input" id="market-offer-price-${p.id}" placeholder="Precio de la oferta (€)" style="max-width:220px;">
+          <button type="button" class="btn-market btn-market--small" data-confirm-offer="${p.id}">Confirmar oferta</button>
         </div>
       ` : ""}
     `).join("");
@@ -315,13 +370,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function renderMarketFeed() {
     const list = document.getElementById("market-feed-list");
     if (!list) return;
-    list.innerHTML = `<div class="admin-panel__empty">Cargando…</div>`;
+    list.innerHTML = `<div class="market-empty">Cargando…</div>`;
 
     let feed = [];
     try { feed = await db.getMarketFeed(20); } catch (e) { console.error("[IFL] Error cargando el mercado:", e); }
 
     if (!feed.length) {
-      list.innerHTML = '<div class="admin-panel__empty">Todavía no se ha cerrado ningún fichaje.</div>';
+      list.innerHTML = '<div class="market-empty">Todavía no se ha cerrado ningún fichaje.</div>';
       return;
     }
 
@@ -337,7 +392,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           ${o.team.logo_url ? `<img src="${escapeHTML(o.team.logo_url)}" class="team-crest team-crest--small">` : ""}${escapeHTML(o.team.name)}
         </div>
         <div class="transfer-row__player">
-          ${o.player.avatar_url ? `<img src="${escapeHTML(o.player.avatar_url)}" class="team-crest team-crest--small" style="border-radius:50%;">` : ""}${escapeHTML(playerDisplayName(o.player))}
+          ${robloxAvatarHTML(o.player, "team-crest")}${escapeHTML(playerDisplayName(o.player))}
         </div>
         <span class="transfer-row__price">€${Number(o.price).toLocaleString("es-ES")}</span>
         <span class="transfer-row__date">${o.resolved_at ? new Date(o.resolved_at).toLocaleDateString("es-ES") : ""}</span>
@@ -353,29 +408,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     try { offers = await db.getMyMarketOffers(currentDiscordId); } catch (e) { console.error("[IFL] Error cargando tus fichajes:", e); }
 
     if (!offers.length) {
-      list.innerHTML = '<div class="admin-panel__empty">Todavía no has hecho ninguna oferta.</div>';
+      list.innerHTML = '<div class="market-empty">Todavía no has hecho ninguna oferta.</div>';
       return;
     }
 
     const statusLabel = { pendiente: "Pendiente", aceptado: "Aceptada", rechazado: "Rechazada" };
-    const statusClass = { pendiente: "badge-state--neutral", aceptado: "badge-state--active", rechazado: "badge-state--inactive" };
+    const statusClass = { pendiente: "badge-pill--pending", aceptado: "badge-pill--accepted", rechazado: "badge-pill--rejected" };
 
     list.innerHTML = offers.map((o) => `
-      <div class="admin-row" style="flex-direction:column;align-items:stretch;">
-        <div style="display:flex;align-items:center;gap:10px;width:100%;">
-          <div class="admin-row__body">
-            <div class="admin-row__name">${escapeHTML(playerDisplayName(o.player))}</div>
-            <div class="admin-row__meta">€${Number(o.price).toLocaleString("es-ES")} · ${new Date(o.created_at).toLocaleDateString("es-ES")}</div>
+      <div class="market-player-row" style="align-items:flex-start;">
+        ${robloxAvatarHTML(o.player)}
+        <div class="market-player-row__body">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span class="market-player-row__name">${escapeHTML(playerDisplayName(o.player))}</span>
+            <span class="badge-pill ${statusClass[o.status] || ""}">${statusLabel[o.status] || o.status}</span>
           </div>
-          <span class="badge-state ${statusClass[o.status] || ""}">${statusLabel[o.status] || o.status}</span>
+          <div class="market-player-row__meta">€${Number(o.price).toLocaleString("es-ES")} · ${new Date(o.created_at).toLocaleDateString("es-ES")}</div>
+          ${o.status === "aceptado" && o.code ? `
+            <div class="market-code-box">
+              <p class="market-code-box__hint" style="margin:0;">Código de registro</p>
+              <p class="market-code-box__value">${escapeHTML(o.code)}</p>
+              <p class="market-code-box__hint">Pasa este código y su contrato para poder registrarlo.</p>
+            </div>
+          ` : ""}
         </div>
-        ${o.status === "aceptado" && o.code ? `
-          <div class="settings-card" style="margin-top:10px;">
-            <p class="settings-card__title" style="margin-bottom:6px;">Código de registro</p>
-            <p style="font-family:var(--font-hub);font-weight:800;font-size:20px;letter-spacing:0.12em;color:var(--white);margin:0 0 6px;">${escapeHTML(o.code)}</p>
-            <p class="admin-form__note" style="margin:0;">Pasa este código y su contrato para poder registrarlo.</p>
-          </div>
-        ` : ""}
       </div>
     `).join("");
   }
@@ -388,20 +444,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       const code = input?.value.trim();
       if (!code || !resultBox) return;
 
-      resultBox.innerHTML = "Buscando…";
+      resultBox.innerHTML = '<p class="market-empty" style="padding:8px 0;">Buscando…</p>';
       let offer = null;
       try { offer = await db.getMarketOfferByCode(code); } catch (e) { console.error("[IFL] Error buscando el código:", e); }
 
       if (!offer) {
-        resultBox.innerHTML = '<p class="admin-form__note" style="margin:0;">No se encontró ningún fichaje aceptado con ese código.</p>';
+        resultBox.innerHTML = '<p class="market-code-box__hint" style="margin:0;">No se encontró ningún fichaje aceptado con ese código.</p>';
         return;
       }
 
       resultBox.innerHTML = `
-        <p style="color:var(--white);font-weight:700;margin:0 0 4px;">${escapeHTML(playerDisplayName(offer.player))}</p>
-        <p class="ifl-modal__meta">Club: ${escapeHTML(offer.team.name)} · Precio: €${Number(offer.price).toLocaleString("es-ES")}</p>
-        <p class="ifl-modal__meta">Fecha: ${offer.resolved_at ? new Date(offer.resolved_at).toLocaleDateString("es-ES") : ""}</p>
-        <p class="admin-form__note" style="margin-top:8px;">Pasa este código y su contrato para poder registrarlo.</p>
+        <div class="market-code-box" style="border-style:solid;">
+          <p style="color:var(--white);font-weight:700;margin:0 0 6px;font-family:var(--font-hub);">${escapeHTML(playerDisplayName(offer.player))}</p>
+          <p class="market-code-box__hint">Club: ${escapeHTML(offer.team.name)} · Precio: €${Number(offer.price).toLocaleString("es-ES")}</p>
+          <p class="market-code-box__hint">Fecha: ${offer.resolved_at ? new Date(offer.resolved_at).toLocaleDateString("es-ES") : ""}</p>
+          <p class="market-code-box__hint" style="margin-top:8px;">Pasa este código y su contrato para poder registrarlo.</p>
+        </div>
       `;
     });
   }
