@@ -762,6 +762,200 @@ window.IFLDB = (function () {
     if (error) throw error;
   }
 
+  // =====================================
+  // RANGOS DE UN JUGADOR (por Discord ID) — para gatear cosas en el cliente
+  // (p. ej. mostrar la herramienta de Staff en el Mercado)
+  // =====================================
+
+  async function getPlayerRankNames(discordId) {
+    if (!discordId) return [];
+    const { data: player, error: pErr } = await client
+      .from("players")
+      .select("id")
+      .eq("discord_id", discordId)
+      .maybeSingle();
+    if (pErr) throw pErr;
+    if (!player) return [];
+
+    const { data, error } = await client
+      .from("player_ranks")
+      .select("rank:ranks!player_ranks_rank_id_fkey(name)")
+      .eq("player_id", player.id);
+    if (error) throw error;
+    return (data || []).map((r) => r.rank && r.rank.name).filter(Boolean);
+  }
+
+  // =====================================
+  // MERCADO DE FICHAJES
+  // =====================================
+
+  function generateMarketCode() {
+    // Sin caracteres ambiguos (0/O, 1/I) para que sea fácil de pasar de palabra.
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+
+  async function getFreeAgents() {
+    const [{ data: activeContracts, error: cErr }, { data: players, error: pErr }] = await Promise.all([
+      client.from("contracts").select("player_id").eq("status", "ACTIVO"),
+      client.from("players").select("*").order("roblox_username", { ascending: true }),
+    ]);
+    if (cErr) throw cErr;
+    if (pErr) throw pErr;
+    const signedIds = new Set((activeContracts || []).map((c) => c.player_id));
+    return (players || []).filter((p) => !signedIds.has(p.id) && p.roblox_username);
+  }
+
+  async function createMarketOffer({ playerId, teamId, price, buyerDiscordId, buyerDiscordUsername }) {
+    // Guardamos el club actual del jugador (si tiene uno) solo para poder
+    // mostrar la flecha "club anterior → club nuevo" en el anuncio público.
+    const { data: activeContract } = await client
+      .from("contracts")
+      .select("team_id")
+      .eq("player_id", playerId)
+      .eq("status", "ACTIVO")
+      .maybeSingle();
+
+    const { data, error } = await client
+      .from("market_offers")
+      .insert({
+        player_id: playerId,
+        team_id: teamId,
+        from_team_id: activeContract ? activeContract.team_id : null,
+        price,
+        buyer_discord_id: buyerDiscordId,
+        buyer_discord_username: buyerDiscordUsername,
+        status: "pendiente",
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async function getMarketFeed(limit) {
+    // Anuncio público de fichajes ya aceptados. Deliberadamente NO se pide
+    // la columna "code" aquí: esta consulta es la que ve cualquier visitante.
+    const { data, error } = await client
+      .from("market_offers")
+      .select(
+        "id, price, resolved_at, player:players!market_offers_player_id_fkey(*), team:teams!market_offers_team_id_fkey(*), from_team:teams!market_offers_from_team_id_fkey(*)"
+      )
+      .eq("status", "aceptado")
+      .order("resolved_at", { ascending: false })
+      .limit(limit || 20);
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function getPendingMarketOffers() {
+    const { data, error } = await client
+      .from("market_offers")
+      .select(
+        "*, player:players!market_offers_player_id_fkey(*), team:teams!market_offers_team_id_fkey(*), from_team:teams!market_offers_from_team_id_fkey(*)"
+      )
+      .eq("status", "pendiente")
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function getMyMarketOffers(discordId) {
+    if (!discordId) return [];
+    const { data, error } = await client
+      .from("market_offers")
+      .select("*, player:players!market_offers_player_id_fkey(*), team:teams!market_offers_team_id_fkey(*)")
+      .eq("buyer_discord_id", discordId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function getMarketOfferByCode(code) {
+    if (!code) return null;
+    const { data, error } = await client
+      .from("market_offers")
+      .select("*, player:players!market_offers_player_id_fkey(*), team:teams!market_offers_team_id_fkey(*)")
+      .eq("status", "aceptado")
+      .eq("code", code.trim().toUpperCase())
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  async function resolveMarketOffer(offerId, decision) {
+    const { data: offer, error: offerError } = await client
+      .from("market_offers")
+      .select("*")
+      .eq("id", offerId)
+      .single();
+    if (offerError) throw offerError;
+
+    if (decision === "rechazado") {
+      const { error } = await client
+        .from("market_offers")
+        .update({ status: "rechazado", resolved_at: new Date().toISOString() })
+        .eq("id", offerId);
+      if (error) throw error;
+      return { status: "rechazado" };
+    }
+
+    // Aceptado: cerramos cualquier contrato activo previo del jugador (en
+    // cualquier club), creamos el contrato nuevo con el club comprador,
+    // descontamos el precio del presupuesto de ese club y generamos el código.
+    const { data: oldContracts, error: oldErr } = await client
+      .from("contracts")
+      .select("id")
+      .eq("player_id", offer.player_id)
+      .eq("status", "ACTIVO");
+    if (oldErr) throw oldErr;
+
+    for (const c of oldContracts || []) {
+      const { error } = await client
+        .from("contracts")
+        .update({ status: "INACTIVO", ended_at: new Date().toISOString() })
+        .eq("id", c.id);
+      if (error) throw error;
+    }
+
+    const currentSeason = await getSetting("current_season", 1);
+
+    const { error: contractError } = await client.from("contracts").insert({
+      player_id: offer.player_id,
+      team_id: offer.team_id,
+      price: offer.price,
+      seasons_total: 1,
+      seasons_left: 1,
+      signed_season: currentSeason,
+      status: "ACTIVO",
+    });
+    if (contractError) throw contractError;
+
+    const { data: team, error: teamError } = await client
+      .from("teams")
+      .select("budget")
+      .eq("id", offer.team_id)
+      .single();
+    if (teamError) throw teamError;
+
+    const { error: budgetError } = await client
+      .from("teams")
+      .update({ budget: Number(team.budget || 0) - Number(offer.price) })
+      .eq("id", offer.team_id);
+    if (budgetError) throw budgetError;
+
+    const code = generateMarketCode();
+    const { error: resolveError } = await client
+      .from("market_offers")
+      .update({ status: "aceptado", code, resolved_at: new Date().toISOString() })
+      .eq("id", offerId);
+    if (resolveError) throw resolveError;
+
+    return { status: "aceptado", code };
+  }
+
   return {
     client,
     isAdmin,
@@ -817,5 +1011,13 @@ window.IFLDB = (function () {
     getTrophies,
     addTrophy,
     deleteTrophy,
+    getPlayerRankNames,
+    getFreeAgents,
+    createMarketOffer,
+    getMarketFeed,
+    getPendingMarketOffers,
+    getMyMarketOffers,
+    getMarketOfferByCode,
+    resolveMarketOffer,
   };
 })();
