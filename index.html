@@ -112,6 +112,10 @@
         <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" stroke-linejoin="round"/><path d="M7 6H4.5A1.5 1.5 0 0 0 3 7.5C3 9.5 4.5 11 7 11M17 6h2.5A1.5 1.5 0 0 1 21 7.5C21 9.5 19.5 11 17 11M12 13.5V17M9 20h6" stroke-linecap="round"/></svg>
         <span>Premios</span>
       </a>
+      <a href="#" class="app-header__link" data-view="mercado">
+        <svg class="app-header__link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l1.5-5h15L21 9M3 9v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9M3 9h18M9 13a3 3 0 0 0 6 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Mercado</span>
+      </a>
     </nav>
 
     <div class="app-header__account">
@@ -380,6 +384,43 @@
     <section class="view" id="view-premios" data-view-panel="premios" hidden>
       <h2 class="dashboard__title">Premios</h2>
       <p class="dashboard__placeholder">Próximamente.</p>
+    </section>
+
+    <!-- ============ MERCADO DE FICHAJES ============ -->
+    <section class="view" id="view-mercado" data-view-panel="mercado" hidden>
+      <div class="league-page-head">
+        <img class="league-page-head__logo" src="images/IFL_Logo.png" alt="" onerror="this.style.display='none'">
+        <div>
+          <h2 class="league-page-head__title">Mercado de fichajes</h2>
+          <p class="league-page-head__subtitle">Jugadores libres disponibles y los últimos fichajes cerrados en la liga.</p>
+        </div>
+      </div>
+
+      <div id="market-staff-tool" hidden style="margin-top:22px;">
+        <div class="division-card" style="--div-color:#a855f7;">
+          <div class="division-card__glow"></div>
+          <div class="division-card__head">
+            <span class="division-card__badge">🔑</span>
+            <div><h3 class="division-card__title">Verificar código de fichaje</h3></div>
+          </div>
+          <div style="position:relative;z-index:1;display:flex;gap:8px;flex-wrap:wrap;">
+            <input id="market-code-input" class="admin-input" placeholder="Código de 8 caracteres" style="max-width:220px;">
+            <button type="button" class="btn-admin btn-admin--solid" id="market-code-search">Buscar</button>
+          </div>
+          <div id="market-code-result" style="position:relative;z-index:1;margin-top:14px;"></div>
+        </div>
+      </div>
+
+      <div id="market-my-offers" hidden style="margin-top:22px;">
+        <h3 class="table-heading">Mis fichajes</h3>
+        <div class="admin-panel"><div class="admin-panel__body" id="market-my-offers-list"></div></div>
+      </div>
+
+      <h3 class="table-heading" style="margin-top:28px;">Jugadores disponibles</h3>
+      <div class="admin-panel"><div class="admin-panel__body" id="market-free-agents-list"></div></div>
+
+      <h3 class="table-heading" style="margin-top:28px;">Fichajes recientes</h3>
+      <div class="admin-panel"><div class="admin-panel__body" id="market-feed-list"></div></div>
     </section>
 
     <section class="view" id="view-perfil" data-view-panel="perfil" hidden>
