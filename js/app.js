@@ -18,6 +18,36 @@ function escapeHTML(str) {
   }[c]));
 }
 
+// Intenta traer el avatar (headshot) real de Roblox a partir del nombre de
+// usuario. Usa las APIs públicas de Roblox directamente desde el navegador:
+// si en algún momento Roblox bloquea estas llamadas por CORS desde este
+// dominio, esto simplemente falla en silencio y se sigue usando la foto
+// subida a mano o la inicial de color como respaldo.
+async function fetchRobloxAvatarUrl(username) {
+  if (!username) return null;
+  try {
+    const idRes = await fetch("https://users.roblox.com/v1/usernames/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usernames: [username], excludeBannedUsers: true }),
+    });
+    if (!idRes.ok) return null;
+    const idData = await idRes.json();
+    const userId = idData && idData.data && idData.data[0] && idData.data[0].id;
+    if (!userId) return null;
+
+    const thumbRes = await fetch(
+      `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`
+    );
+    if (!thumbRes.ok) return null;
+    const thumbData = await thumbRes.json();
+    return (thumbData && thumbData.data && thumbData.data[0] && thumbData.data[0].imageUrl) || null;
+  } catch (e) {
+    console.warn("[IFL] No se pudo obtener el avatar de Roblox automáticamente:", e);
+    return null;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   const db = window.IFLDB;
 
@@ -189,9 +219,192 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupOnlinePresence();
     renderHero();
     checkClubOwnership();
+    loadMyRanks();
   }
 
   let myOwnedTeamCache = null;
+  let myRanksCache = [];
+
+  async function loadMyRanks() {
+    try { myRanksCache = await db.getPlayerRankNames(currentDiscordId); } catch (e) { myRanksCache = []; }
+  }
+
+  // =================================
+  // MERCADO DE FICHAJES
+  // =================================
+
+  async function renderMercado() {
+    const staffTool = document.getElementById("market-staff-tool");
+    const myOffersBox = document.getElementById("market-my-offers");
+    if (staffTool) staffTool.hidden = !myRanksCache.includes("Staff");
+    if (myOffersBox) myOffersBox.hidden = !myOwnedTeamCache;
+
+    const tasks = [renderFreeAgents(), renderMarketFeed()];
+    if (myOwnedTeamCache) tasks.push(renderMyOffers());
+    await Promise.all(tasks);
+  }
+
+  async function renderFreeAgents() {
+    const list = document.getElementById("market-free-agents-list");
+    if (!list) return;
+    list.innerHTML = `<div class="admin-panel__empty">Cargando…</div>`;
+
+    let agents = [];
+    try { agents = await db.getFreeAgents(); } catch (e) { console.error("[IFL] Error cargando agentes libres:", e); }
+
+    if (!agents.length) {
+      list.innerHTML = '<div class="admin-panel__empty">No hay jugadores libres ahora mismo.</div>';
+      return;
+    }
+
+    list.innerHTML = agents.map((p) => `
+      <div class="admin-row">
+        ${p.avatar_url
+          ? `<img src="${escapeHTML(p.avatar_url)}" class="team-crest" style="width:34px;height:34px;border-radius:50%;">`
+          : `<span class="team-crest team-crest--empty" style="width:34px;height:34px;border-radius:50%;"></span>`}
+        <div class="admin-row__body">
+          <div class="admin-row__name">${escapeHTML(playerDisplayName(p))}</div>
+          <div class="admin-row__meta">Agente libre</div>
+        </div>
+        ${myOwnedTeamCache ? `<button type="button" class="btn-admin btn-admin--small btn-admin--solid" data-offer-player="${p.id}">Ofertar fichaje</button>` : ""}
+      </div>
+      ${myOwnedTeamCache ? `
+        <div class="market-offer-form" id="market-offer-form-${p.id}" hidden style="padding:6px 4px 16px;display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="number" min="0" step="0.01" class="admin-input" id="market-offer-price-${p.id}" placeholder="Precio de la oferta (€)" style="max-width:220px;">
+          <button type="button" class="btn-admin btn-admin--solid" data-confirm-offer="${p.id}">Confirmar oferta</button>
+        </div>
+      ` : ""}
+    `).join("");
+
+    list.querySelectorAll("[data-offer-player]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const box = document.getElementById("market-offer-form-" + btn.getAttribute("data-offer-player"));
+        if (box) box.hidden = !box.hidden;
+      });
+    });
+
+    list.querySelectorAll("[data-confirm-offer]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const playerId = btn.getAttribute("data-confirm-offer");
+        const priceInput = document.getElementById("market-offer-price-" + playerId);
+        const price = parseFloat(priceInput?.value);
+        if (!price || price <= 0) { alert("Introduce un precio válido."); return; }
+        if (!myOwnedTeamCache) return;
+
+        btn.disabled = true;
+        try {
+          await db.createMarketOffer({
+            playerId,
+            teamId: myOwnedTeamCache.team.id,
+            price,
+            buyerDiscordId: currentDiscordId,
+            buyerDiscordUsername: (userInfo?.textContent || "").replace("Sesión iniciada como ", ""),
+          });
+          alert("Oferta enviada. La administración tiene que aceptarla para que se haga efectiva.");
+          await renderFreeAgents();
+          await renderMyOffers();
+        } catch (e) {
+          console.error("[IFL] Error enviando la oferta:", e);
+          alert("No se pudo enviar la oferta.");
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  async function renderMarketFeed() {
+    const list = document.getElementById("market-feed-list");
+    if (!list) return;
+    list.innerHTML = `<div class="admin-panel__empty">Cargando…</div>`;
+
+    let feed = [];
+    try { feed = await db.getMarketFeed(20); } catch (e) { console.error("[IFL] Error cargando el mercado:", e); }
+
+    if (!feed.length) {
+      list.innerHTML = '<div class="admin-panel__empty">Todavía no se ha cerrado ningún fichaje.</div>';
+      return;
+    }
+
+    list.innerHTML = feed.map((o) => `
+      <div class="transfer-row">
+        <div class="transfer-row__club">
+          ${o.from_team
+            ? (o.from_team.logo_url ? `<img src="${escapeHTML(o.from_team.logo_url)}" class="team-crest team-crest--small">` : "") + escapeHTML(o.from_team.name)
+            : `<span class="is-muted">Agente libre</span>`}
+        </div>
+        <span class="transfer-row__arrow">→</span>
+        <div class="transfer-row__club">
+          ${o.team.logo_url ? `<img src="${escapeHTML(o.team.logo_url)}" class="team-crest team-crest--small">` : ""}${escapeHTML(o.team.name)}
+        </div>
+        <div class="transfer-row__player">
+          ${o.player.avatar_url ? `<img src="${escapeHTML(o.player.avatar_url)}" class="team-crest team-crest--small" style="border-radius:50%;">` : ""}${escapeHTML(playerDisplayName(o.player))}
+        </div>
+        <span class="transfer-row__price">€${Number(o.price).toLocaleString("es-ES")}</span>
+        <span class="transfer-row__date">${o.resolved_at ? new Date(o.resolved_at).toLocaleDateString("es-ES") : ""}</span>
+      </div>
+    `).join("");
+  }
+
+  async function renderMyOffers() {
+    const list = document.getElementById("market-my-offers-list");
+    if (!list) return;
+
+    let offers = [];
+    try { offers = await db.getMyMarketOffers(currentDiscordId); } catch (e) { console.error("[IFL] Error cargando tus fichajes:", e); }
+
+    if (!offers.length) {
+      list.innerHTML = '<div class="admin-panel__empty">Todavía no has hecho ninguna oferta.</div>';
+      return;
+    }
+
+    const statusLabel = { pendiente: "Pendiente", aceptado: "Aceptada", rechazado: "Rechazada" };
+    const statusClass = { pendiente: "badge-state--neutral", aceptado: "badge-state--active", rechazado: "badge-state--inactive" };
+
+    list.innerHTML = offers.map((o) => `
+      <div class="admin-row" style="flex-direction:column;align-items:stretch;">
+        <div style="display:flex;align-items:center;gap:10px;width:100%;">
+          <div class="admin-row__body">
+            <div class="admin-row__name">${escapeHTML(playerDisplayName(o.player))}</div>
+            <div class="admin-row__meta">€${Number(o.price).toLocaleString("es-ES")} · ${new Date(o.created_at).toLocaleDateString("es-ES")}</div>
+          </div>
+          <span class="badge-state ${statusClass[o.status] || ""}">${statusLabel[o.status] || o.status}</span>
+        </div>
+        ${o.status === "aceptado" && o.code ? `
+          <div class="settings-card" style="margin-top:10px;">
+            <p class="settings-card__title" style="margin-bottom:6px;">Código de registro</p>
+            <p style="font-family:var(--font-hub);font-weight:800;font-size:20px;letter-spacing:0.12em;color:var(--white);margin:0 0 6px;">${escapeHTML(o.code)}</p>
+            <p class="admin-form__note" style="margin:0;">Pasa este código y su contrato para poder registrarlo.</p>
+          </div>
+        ` : ""}
+      </div>
+    `).join("");
+  }
+
+  const marketCodeSearchBtn = document.getElementById("market-code-search");
+  if (marketCodeSearchBtn) {
+    marketCodeSearchBtn.addEventListener("click", async () => {
+      const input = document.getElementById("market-code-input");
+      const resultBox = document.getElementById("market-code-result");
+      const code = input?.value.trim();
+      if (!code || !resultBox) return;
+
+      resultBox.innerHTML = "Buscando…";
+      let offer = null;
+      try { offer = await db.getMarketOfferByCode(code); } catch (e) { console.error("[IFL] Error buscando el código:", e); }
+
+      if (!offer) {
+        resultBox.innerHTML = '<p class="admin-form__note" style="margin:0;">No se encontró ningún fichaje aceptado con ese código.</p>';
+        return;
+      }
+
+      resultBox.innerHTML = `
+        <p style="color:var(--white);font-weight:700;margin:0 0 4px;">${escapeHTML(playerDisplayName(offer.player))}</p>
+        <p class="ifl-modal__meta">Club: ${escapeHTML(offer.team.name)} · Precio: €${Number(offer.price).toLocaleString("es-ES")}</p>
+        <p class="ifl-modal__meta">Fecha: ${offer.resolved_at ? new Date(offer.resolved_at).toLocaleDateString("es-ES") : ""}</p>
+        <p class="admin-form__note" style="margin-top:8px;">Pasa este código y su contrato para poder registrarlo.</p>
+      `;
+    });
+  }
 
   async function checkClubOwnership() {
     const link = document.getElementById("my-club-menu-link");
@@ -372,6 +585,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (name === "carrera") renderCareer();
     if (name === "premios") renderPremios();
     if (name === "club") renderMyClub();
+    if (name === "mercado") renderMercado();
   }
 
   navLinks.forEach((link) => {
@@ -658,18 +872,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       modal = document.createElement("div");
       modal.id = "stadium-modal";
       modal.className = "ifl-modal";
-      modal.innerHTML = '<div class="ifl-modal__overlay"></div><div class="ifl-modal__box" id="stadium-modal-box"></div>';
+      modal.innerHTML = '<div class="ifl-modal__overlay"></div><div class="ifl-modal__box ifl-modal__box--stadium" id="stadium-modal-box"></div>';
       document.body.appendChild(modal);
       modal.querySelector(".ifl-modal__overlay").addEventListener("click", () => (modal.hidden = true));
     }
 
     const box = document.getElementById("stadium-modal-box");
+    const bannerStyle = stadium.image_url ? ` style="background-image:url('${escapeHTML(stadium.image_url)}')"` : "";
     box.innerHTML = `
       <button type="button" class="ifl-modal__close" id="stadium-modal-close">&times;</button>
-      <h2 class="ifl-modal__title">${escapeHTML(stadium.name)}</h2>
-      <p class="ifl-modal__meta">${stadium.team ? "Estadio de " + escapeHTML(stadium.team.name) : "Sin equipo asignado"}</p>
-      <p class="ifl-modal__meta">${escapeHTML(stadium.city || "")}${stadium.capacity ? " · " + stadium.capacity.toLocaleString("es-ES") + " asientos" : ""}</p>
-      ${stadium.description ? `<p class="view-lead">${escapeHTML(stadium.description)}</p>` : ""}
+      <div class="ifl-modal__stadium-banner"${bannerStyle}></div>
+      <div class="ifl-modal__stadium-body">
+        <h2 class="ifl-modal__title" style="justify-content:flex-start;">${escapeHTML(stadium.name)}</h2>
+        <p class="ifl-modal__meta">${stadium.team ? "Estadio de " + escapeHTML(stadium.team.name) : "Sin equipo asignado"}</p>
+        <p class="ifl-modal__meta">${escapeHTML(stadium.city || "")}${stadium.capacity ? " · " + stadium.capacity.toLocaleString("es-ES") + " asientos" : ""}</p>
+        ${stadium.description ? `<p class="view-lead" style="margin-top:10px;">${escapeHTML(stadium.description)}</p>` : ""}
+      </div>
     `;
     modal.hidden = false;
     document.getElementById("stadium-modal-close").addEventListener("click", () => (modal.hidden = true));
@@ -710,6 +928,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const { stats, contracts } = career;
+
+    if (!career.player.avatar_url && career.player.roblox_username) {
+      const robloxAvatar = await fetchRobloxAvatarUrl(career.player.roblox_username);
+      if (robloxAvatar) {
+        career.player.avatar_url = robloxAvatar;
+        db.updateMyAvatar(currentDiscordId, robloxAvatar).catch((e) => console.warn("[IFL] No se pudo guardar el avatar automático:", e));
+      }
+    }
 
     const contractsHTML = contracts
       .map(
@@ -786,13 +1012,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   function leaderboardRows(entries, label, nameFn) {
     if (!entries.length) return `<div class="admin-panel__empty">Todavía no hay datos.</div>`;
     return entries.map((e, i) => `
-      <div class="admin-row">
-        <span class="admin-row__dot admin-row__dot--up" style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:var(--div-color);">${i + 1}</span>
-        <div class="admin-row__body">
-          <div class="admin-row__name">${escapeHTML(nameFn(e))}</div>
-          <div class="admin-row__meta">${e.team ? escapeHTML(e.team.name) : ""}</div>
+      <div class="lb-row">
+        <span class="lb-row__rank">${i + 1}</span>
+        <div class="lb-row__body">
+          <div class="lb-row__name">${escapeHTML(nameFn(e))}</div>
+          ${e.team ? `<div class="lb-row__meta">${escapeHTML(e.team.name)}</div>` : ""}
         </div>
-        <span class="admin-tag" style="background:rgba(255,255,255,.08);color:var(--white);border:1px solid rgba(255,255,255,.18);">${e.count}${label ? " " + label : ""}</span>
+        <span class="lb-row__value">${e.count}${label ? " " + label : ""}</span>
       </div>
     `).join("");
   }
@@ -800,12 +1026,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   function teamLeaderboardRows(entries, formatFn) {
     if (!entries.length) return `<div class="admin-panel__empty">Todavía no hay datos.</div>`;
     return entries.map((e, i) => `
-      <div class="admin-row">
-        <span class="admin-row__dot admin-row__dot--up" style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:var(--div-color);">${i + 1}</span>
-        <div class="admin-row__body">
-          <div class="admin-row__name">${e.team.logo_url ? `<img src="${escapeHTML(e.team.logo_url)}" class="team-crest team-crest--small">` : ""}${escapeHTML(e.team.name)}</div>
+      <div class="lb-row">
+        <span class="lb-row__rank">${i + 1}</span>
+        <div class="lb-row__body">
+          <div class="lb-row__name">
+            ${e.team.logo_url ? `<img src="${escapeHTML(e.team.logo_url)}" class="lb-row__crest" alt="">` : ""}
+            ${escapeHTML(e.team.name)}
+          </div>
         </div>
-        <span class="admin-tag" style="background:rgba(255,255,255,.08);color:var(--white);border:1px solid rgba(255,255,255,.18);">${formatFn(e)}</span>
+        <span class="lb-row__value">${formatFn(e)}</span>
       </div>
     `).join("");
   }
@@ -1116,6 +1345,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    // Si el jugador tiene nombre de Roblox pero todavía no tiene foto, se la
+    // ponemos automáticamente con su avatar real de Roblox.
+    if (!myPlayer.avatar_url && myPlayer.roblox_username) {
+      const robloxAvatar = await fetchRobloxAvatarUrl(myPlayer.roblox_username);
+      if (robloxAvatar) {
+        try {
+          await db.updateMyAvatar(currentDiscordId, robloxAvatar);
+          myPlayer.avatar_url = robloxAvatar;
+          const headerAvatar = document.getElementById("user-avatar");
+          const headerFallback = document.getElementById("user-avatar-fallback");
+          if (headerAvatar) { headerAvatar.src = robloxAvatar; headerAvatar.hidden = false; }
+          if (headerFallback) headerFallback.hidden = true;
+        } catch (e) {
+          console.warn("[IFL] No se pudo guardar el avatar automático de Roblox:", e);
+        }
+      }
+    }
+
     if (visibilityToggle) {
       visibilityToggle.disabled = false;
       visibilityToggle.checked = myPlayer.is_public !== false;
@@ -1277,6 +1524,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!profile) { playerProfileBox.innerHTML = `<div class="admin-panel__empty">No se encontró ese jugador.</div>`; return; }
 
     const { player, isPublic, stats, contracts } = profile;
+
+    if (!player.avatar_url && player.roblox_username) {
+      const robloxAvatar = await fetchRobloxAvatarUrl(player.roblox_username);
+      if (robloxAvatar) player.avatar_url = robloxAvatar; // solo para mostrarlo aquí; no es "mi" jugador, no se puede guardar
+    }
+
     const avatarHTML = player.avatar_url
       ? `<img src="${escapeHTML(player.avatar_url)}" class="career-avatar" alt="">`
       : `<div class="career-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--accent);font-family:var(--font-display);font-weight:700;font-size:32px;">${escapeHTML(playerDisplayName(player).charAt(0).toUpperCase())}</div>`;
