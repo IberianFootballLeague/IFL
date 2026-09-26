@@ -105,7 +105,6 @@ window.IFLOnboarding = (function () {
     document.getElementById("ifl-tutorial-next").addEventListener("click", () => {
       if (currentIndex >= currentPages.length - 1) {
         close();
-        if (onFinish) onFinish();
       } else {
         go(currentIndex + 1);
       }
@@ -145,6 +144,14 @@ window.IFLOnboarding = (function () {
   function close() {
     const modal = document.getElementById("ifl-tutorial");
     if (modal) modal.hidden = true;
+    // Cerrar el tutorial de cualquier forma (X, clic fuera, o llegar al
+    // final) cuenta como "visto" — así no vuelve a aparecer solo, aunque
+    // la sesión se refresque en segundo plano al cambiar de pestaña.
+    if (onFinish) {
+      const cb = onFinish;
+      onFinish = null;
+      cb();
+    }
   }
 
   function openSiteTutorial() {
