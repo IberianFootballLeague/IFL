@@ -620,7 +620,7 @@
     if (subtitle) subtitle.textContent = state.teams.length + " clubes en total";
 
     if (!state.teams.length) {
-      teamsTableBody.innerHTML = '<tr><td colspan="5" class="admin-table-empty">Todavía no hay equipos.</td></tr>';
+      teamsTableBody.innerHTML = '<tr><td colspan="6" class="admin-table-empty">Todavía no hay equipos.</td></tr>';
       return;
     }
 
@@ -642,6 +642,7 @@
                 <option value="segunda" ${t.division === "segunda" ? "selected" : ""}>Segunda</option>
               </select>
             </td>
+            <td><input class="admin-input" data-edit="budget" type="number" min="0" step="0.01" value="${Number(t.budget || 0)}" style="width:100px;"></td>
             <td>${teamPlayerCount(t.id)}</td>
             <td class="admin-table__actions">
               <button type="button" class="btn-admin btn-admin--small btn-admin--solid" data-save-team="${t.id}">Guardar</button>
@@ -656,6 +657,7 @@
           <td class="standings__club">${escapeHTML(t.name)}</td>
           <td>${escapeHTML(t.code)}</td>
           <td>${divisionLabel(t.division)}</td>
+          <td class="is-num">€${Number(t.budget || 0).toLocaleString("es-ES")}</td>
           <td class="is-num">${teamPlayerCount(t.id)}</td>
           <td class="admin-table__actions">
             <button type="button" class="btn-admin btn-admin--small" data-edit-team="${t.id}">Editar</button>
@@ -726,6 +728,7 @@
           name: row.querySelector('[data-edit="name"]').value.trim(),
           code: newCode,
           division: row.querySelector('[data-edit="division"]').value || null,
+          budget: parseFloat(row.querySelector('[data-edit="budget"]').value) || 0,
         };
         withBusy(saveBtn, async () => {
           const logoInput = row.querySelector('[data-edit="logo"]');
@@ -1448,6 +1451,67 @@
   }
 
   // =====================================
+  // MERCADO DE FICHAJES
+  // =====================================
+
+  const marketPendingList = document.getElementById("market-pending-list");
+
+  async function renderMarketView() {
+    if (!marketPendingList) return;
+    marketPendingList.innerHTML = `<div class="admin-panel__empty">Cargando…</div>`;
+
+    let offers = [];
+    try { offers = await db.getPendingMarketOffers(); } catch (e) { console.error(e); }
+
+    if (!offers.length) {
+      marketPendingList.innerHTML = '<div class="admin-panel__empty">No hay ofertas pendientes.</div>';
+      return;
+    }
+
+    marketPendingList.innerHTML = offers.map((o) => `
+      <div class="admin-row">
+        <div class="admin-row__body">
+          <div class="admin-row__name">${escapeHTML(o.player ? (o.player.roblox_username || o.player.discord_username) : "?")}</div>
+          <div class="admin-row__meta">
+            ${o.from_team ? escapeHTML(o.from_team.name) + " → " : "Agente libre → "}${o.team ? escapeHTML(o.team.name) : "?"}
+            · €${Number(o.price).toLocaleString("es-ES")}
+            · ${formatDateTime(o.created_at)}
+            · Ofertado por ${escapeHTML(o.buyer_discord_username || "—")}
+          </div>
+        </div>
+        <button type="button" class="btn-admin btn-admin--small btn-admin--solid" data-market-accept="${o.id}">Aceptar</button>
+        <button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-market-reject="${o.id}">Rechazar</button>
+      </div>
+    `).join("");
+  }
+
+  if (marketPendingList) {
+    marketPendingList.addEventListener("click", (e) => {
+      const acceptBtn = e.target.closest("[data-market-accept]");
+      if (acceptBtn) {
+        withBusy(acceptBtn, async () => {
+          const result = await db.resolveMarketOffer(acceptBtn.getAttribute("data-market-accept"), "aceptado");
+          await reloadAll();
+          renderAll();
+          await renderMarketView();
+          toast("Fichaje aceptado. Código: " + result.code);
+        });
+        return;
+      }
+
+      const rejectBtn = e.target.closest("[data-market-reject]");
+      if (rejectBtn) {
+        if (!confirm("¿Rechazar esta oferta?")) return;
+        withBusy(rejectBtn, async () => {
+          await db.resolveMarketOffer(rejectBtn.getAttribute("data-market-reject"), "rechazado");
+          await renderMarketView();
+          toast("Oferta rechazada.");
+        });
+      }
+    });
+  }
+
+  // =====================================
   // ADMINS (solo super-admin)
   // =====================================
 
@@ -1559,7 +1623,7 @@
   const CRUMBS = {
     overview: "Overview", teams: "Equipos", contracts: "Contratos", divisions: "Divisiones",
     stadiums: "Estadios", matches: "Partidos", results: "Resultados", rangos: "Rangos",
-    trophies: "Trofeos", admins: "Admins", history: "Historial",
+    trophies: "Trofeos", market: "Mercado", admins: "Admins", history: "Historial",
   };
 
   function showAdminView(name) {
@@ -1578,6 +1642,7 @@
     if (name === "results") renderResultsView();
     if (name === "history") renderHistoryView();
     if (name === "trophies") renderTrophiesView();
+    if (name === "market") renderMarketView();
   }
   window.IFLAdminShowView = showAdminView;
 
@@ -1762,10 +1827,17 @@
       const candidates = getDiscordIdCandidates(session.user);
       state.currentDiscordId = candidates[0] || null;
 
-      if (!isAdminUserLocal(session.user)) { showDenied(); return; }
+      // El dueño fijo (aitor_lorente) siempre entra. Cualquier otra persona
+      // entra si está en la tabla "admins" (is_admin() lo comprueba en el servidor).
+      const isOwner = isAdminUserLocal(session.user);
+      let hasAccess = isOwner;
+      if (!hasAccess) {
+        try { hasAccess = await db.isAdmin(); } catch (e) { console.warn("[IFL Admin] is_admin() falló:", e); hasAccess = false; }
+      }
+      if (!hasAccess) { showDenied(); return; }
 
       paintSidebarUser(session.user);
-      state.isSuperAdmin = await db.isSuperAdmin();
+      state.isSuperAdmin = isOwner || (await db.isSuperAdmin().catch(() => false));
       showPanel();
     }).catch((error) => {
       console.error("[IFL Admin] Error obteniendo la sesión:", error);
