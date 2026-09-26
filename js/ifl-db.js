@@ -767,6 +767,14 @@ window.IFLDB = (function () {
   // (p. ej. mostrar la herramienta de Staff en el Mercado)
   // =====================================
 
+  async function updateMyFreeAgentProfile(discordId, { position, careerSummary }) {
+    const { error } = await client
+      .from("players")
+      .update({ position: position || null, career_summary: careerSummary || null })
+      .eq("discord_id", discordId);
+    if (error) throw error;
+  }
+
   async function getPlayerRankNames(discordId) {
     if (!discordId) return [];
     const { data: player, error: pErr } = await client
@@ -1012,6 +1020,7 @@ window.IFLDB = (function () {
     addTrophy,
     deleteTrophy,
     getPlayerRankNames,
+    updateMyFreeAgentProfile,
     getFreeAgents,
     createMarketOffer,
     getMarketFeed,
