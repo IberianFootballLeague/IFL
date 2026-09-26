@@ -1511,3 +1511,241 @@ h1.hub-hero__title::after { animation-delay: 0.3s; }
   font-size: 11px;
   color: var(--gray-3, #56585f);
 }
+
+/* =====================================
+   MERCADO — componentes propios (inputs, botones, tarjetas)
+   Se definen aquí en vez de reutilizar .admin-input/.admin-form porque
+   esas clases solo están completas en admin.css (que no se carga en
+   index.html), y usarlas fuera del panel de admin salía sin estilo
+   (cajas blancas). Estos componentes funcionan en cualquier página.
+===================================== */
+
+.market-label {
+  display: block;
+  font-family: var(--font-hub);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-2, #8b8d96);
+}
+
+.market-input,
+.market-select,
+.market-textarea {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border, #23232b);
+  border-radius: 8px;
+  color: var(--white, #fff);
+  font-family: var(--font-hub, inherit);
+  font-size: 13.5px;
+  transition: border-color 0.15s ease, box-shadow 0.2s ease;
+}
+
+.market-input::placeholder,
+.market-textarea::placeholder { color: var(--gray-3, #56585f); }
+
+.market-input:focus,
+.market-select:focus,
+.market-textarea:focus {
+  outline: none;
+  border-color: var(--accent, #5865f2);
+  box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.18);
+}
+
+.market-select option { background: #0e0e12; color: #fff; }
+.market-textarea { resize: vertical; min-height: 76px; font-family: inherit; line-height: 1.5; }
+
+.btn-market {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #5865f2, #3bd6ff);
+  color: #fff;
+  font-family: var(--font-hub);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.15s ease;
+}
+
+.btn-market:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -8px rgba(88, 101, 242, 0.7); }
+.btn-market:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-market--ghost {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--white, #fff);
+}
+
+.btn-market--danger { background: linear-gradient(135deg, #ef4444, #7c2d2d); }
+.btn-market--small { padding: 7px 14px; font-size: 12px; }
+
+.market-card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border-radius: 12px;
+  background: var(--surface, #0e0e12);
+  border: 1px solid var(--border, #23232b);
+  margin-bottom: 20px;
+}
+
+.market-card--glow {
+  --div-color: #5865f2;
+  animation: division-glow 3.2s ease-in-out infinite;
+}
+
+.market-card__title {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-hub);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--white, #fff);
+  margin: 0 0 14px;
+}
+
+.market-card--glow::before {
+  content: "";
+  position: absolute;
+  top: -60px;
+  left: -40px;
+  width: 220px;
+  height: 160px;
+  background: radial-gradient(circle, var(--div-color), transparent 70%);
+  opacity: 0.3;
+  filter: blur(30px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.market-player-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+}
+
+.market-player-row:last-child { border-bottom: none; }
+
+.market-player-row__avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.market-player-row__avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--accent, #5865f2), #262835);
+  font-family: var(--font-hub);
+  font-weight: 800;
+  color: #fff;
+  font-size: 15px;
+}
+
+.market-player-row__body { flex: 1; min-width: 160px; }
+
+.market-player-row__name {
+  font-family: var(--font-hub);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--white, #fff);
+}
+
+.market-player-row__meta {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--gray-3, #56585f);
+  line-height: 1.5;
+}
+
+.market-player-row__tag {
+  display: inline-block;
+  margin: 3px 6px 0 0;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(88, 101, 242, 0.15);
+  border: 1px solid rgba(88, 101, 242, 0.4);
+  color: #cdd3ff;
+  font-family: var(--font-hub);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.market-offer-box {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 12px 4px 0 54px;
+}
+
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-family: var(--font-hub);
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+}
+
+.badge-pill--pending { background: rgba(234, 179, 8, 0.15); border: 1px solid rgba(234, 179, 8, 0.4); color: #eab308; }
+.badge-pill--accepted { background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.4); color: #22c55e; }
+.badge-pill--rejected { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #ef4444; }
+
+.market-code-box {
+  position: relative;
+  z-index: 1;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgba(88, 101, 242, 0.08);
+  border: 1px dashed rgba(88, 101, 242, 0.5);
+}
+
+.market-code-box__value {
+  font-family: var(--font-hub);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.14em;
+  color: var(--white, #fff);
+  margin: 4px 0 6px;
+}
+
+.market-code-box__hint {
+  font-size: 11.5px;
+  color: var(--gray-2, #8b8d96);
+  margin: 0;
+}
+
+.market-empty {
+  position: relative;
+  z-index: 1;
+  padding: 20px 4px;
+  text-align: center;
+  color: var(--gray-3, #56585f);
+  font-size: 13px;
+}
