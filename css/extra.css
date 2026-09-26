@@ -1331,3 +1331,183 @@ h1.hub-hero__title::after { animation-delay: 0.3s; }
   color: #22c55e;
   text-shadow: 0 0 18px rgba(34, 197, 94, 0.6);
 }
+
+/* =====================================
+   RANKINGS (Premios) — filas limpias e integradas
+===================================== */
+
+.lb-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lb-row:last-child { border-bottom: none; }
+
+.lb-row__rank {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-family: var(--font-hub);
+  font-weight: 800;
+  font-size: 11.5px;
+  color: var(--gray-1, #d7d7dd);
+}
+
+.lb-row:nth-child(1) .lb-row__rank {
+  background: linear-gradient(135deg, var(--div-color, #5865f2), rgba(0,0,0,.3));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 0 12px -2px var(--div-color, #5865f2);
+}
+
+.lb-row__body { flex: 1; min-width: 0; }
+
+.lb-row__name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-hub);
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--white, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lb-row__meta {
+  margin-top: 1px;
+  font-size: 11.5px;
+  color: var(--gray-3, #56585f);
+}
+
+.lb-row__crest {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  border-radius: 4px;
+  flex: none;
+}
+
+.lb-row__value {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-family: var(--font-hub);
+  font-weight: 700;
+  font-size: 11.5px;
+  color: var(--white, #fff);
+  white-space: nowrap;
+}
+
+/* =====================================
+   MODAL DE ESTADIO — versión con foto de fondo y borde neón
+===================================== */
+
+.ifl-modal__box--stadium {
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  box-shadow: 0 0 0 1px var(--cyan, #3bd6ff), 0 0 34px -8px var(--cyan, #3bd6ff), 0 24px 70px rgba(0,0,0,.55);
+  animation: stadium-modal-glow 3s ease-in-out infinite;
+}
+
+@keyframes stadium-modal-glow {
+  0%, 100% { box-shadow: 0 0 0 1px var(--cyan, #3bd6ff), 0 0 20px -6px var(--cyan, #3bd6ff), 0 24px 70px rgba(0,0,0,.55); }
+  50%      { box-shadow: 0 0 0 1px #5865f2, 0 0 36px 0px #5865f2, 0 24px 70px rgba(0,0,0,.55); }
+}
+
+.ifl-modal__box--stadium .ifl-modal__stadium-banner {
+  position: relative;
+  height: 160px;
+  background: #0a0a0d center/cover no-repeat;
+}
+
+.ifl-modal__box--stadium .ifl-modal__stadium-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5,5,7,.15) 0%, rgba(5,5,7,.55) 70%, rgba(14,14,18,1) 100%);
+}
+
+.ifl-modal__box--stadium .ifl-modal__stadium-body { padding: 22px 26px 26px; }
+.ifl-modal__box--stadium .ifl-modal__close { top: 12px; right: 12px; background: rgba(0,0,0,.5); }
+
+/* =====================================
+   LOGIN — brillo extra en el botón, a juego con el hero
+===================================== */
+
+.btn-discord {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-discord::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  animation: hero-shine 6s ease-in-out infinite;
+}
+
+/* =====================================
+   MERCADO DE FICHAJES
+===================================== */
+
+.transfer-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.transfer-row:last-child { border-bottom: none; }
+
+.transfer-row__club,
+.transfer-row__player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-hub);
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--white, #fff);
+}
+
+.transfer-row__arrow {
+  color: var(--cyan, #3bd6ff);
+  font-weight: 800;
+  text-shadow: 0 0 8px rgba(59, 214, 255, 0.6);
+}
+
+.transfer-row__price {
+  margin-left: auto;
+  font-family: var(--font-hub);
+  font-weight: 800;
+  font-size: 13px;
+  color: #22c55e;
+}
+
+.transfer-row__date {
+  font-size: 11px;
+  color: var(--gray-3, #56585f);
+}
