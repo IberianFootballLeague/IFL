@@ -38,6 +38,34 @@
     }[c]));
   }
 
+  // Intenta traer el avatar (headshot) real de Roblox a partir del nombre de
+  // usuario. Si Roblox bloquea la llamada (CORS) o el usuario no existe,
+  // falla en silencio y se sigue pudiendo subir la foto a mano como siempre.
+  async function fetchRobloxAvatarUrl(username) {
+    if (!username) return null;
+    try {
+      const idRes = await fetch("https://users.roblox.com/v1/usernames/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usernames: [username], excludeBannedUsers: true }),
+      });
+      if (!idRes.ok) return null;
+      const idData = await idRes.json();
+      const userId = idData && idData.data && idData.data[0] && idData.data[0].id;
+      if (!userId) return null;
+
+      const thumbRes = await fetch(
+        `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`
+      );
+      if (!thumbRes.ok) return null;
+      const thumbData = await thumbRes.json();
+      return (thumbData && thumbData.data && thumbData.data[0] && thumbData.data[0].imageUrl) || null;
+    } catch (e) {
+      console.warn("[IFL Admin] No se pudo obtener el avatar de Roblox automáticamente:", e);
+      return null;
+    }
+  }
+
   function formatDate(iso) {
     if (!iso) return "—";
     try {
@@ -964,6 +992,14 @@
           ? selectedPlayer
           : await db.findOrCreatePlayer({ discordId, discordUsername: discordUser, robloxUsername: robloxUser });
 
+        // Si el jugador no tiene foto todavía, le ponemos su avatar real de Roblox.
+        if (!player.avatar_url && player.roblox_username) {
+          const robloxAvatar = await fetchRobloxAvatarUrl(player.roblox_username);
+          if (robloxAvatar) {
+            try { await db.updatePlayerAvatar(player.id, robloxAvatar); } catch (e) { console.warn(e); }
+          }
+        }
+
         await db.addContract({
           playerId: player.id,
           teamId: clubId,
@@ -1019,6 +1055,28 @@
         await reloadAll();
         renderAll();
         toast("Contrato eliminado.");
+      });
+    });
+  }
+
+  const fetchRobloxAvatarsBtn = document.getElementById("fetch-roblox-avatars-btn");
+  if (fetchRobloxAvatarsBtn) {
+    fetchRobloxAvatarsBtn.addEventListener("click", () => {
+      withBusy(fetchRobloxAvatarsBtn, async () => {
+        const missing = state.contracts.filter((c) => c.player && !c.player.avatar_url && c.player.roblox_username);
+        if (!missing.length) { toast("Todos los contratos ya tienen foto."); return; }
+
+        let updated = 0;
+        for (const c of missing) {
+          const url = await fetchRobloxAvatarUrl(c.player.roblox_username);
+          if (url) {
+            try { await db.updatePlayerAvatar(c.player.id, url); updated++; } catch (e) { console.warn(e); }
+          }
+        }
+
+        await reloadAll();
+        renderAll();
+        toast(updated ? `${updated} avatar(es) actualizado(s) desde Roblox.` : "No se pudo traer ningún avatar (puede que Roblox esté bloqueando la petición).", !updated);
       });
     });
   }
