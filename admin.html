@@ -62,6 +62,7 @@
       <button type="button" class="admin-nav__link" data-admin-view="results">Resultados</button>
       <button type="button" class="admin-nav__link" data-admin-view="divisions">Divisiones</button>
       <button type="button" class="admin-nav__link" data-admin-view="trophies">Trofeos</button>
+      <button type="button" class="admin-nav__link" data-admin-view="market">Mercado</button>
       <button type="button" class="admin-nav__link" data-admin-view="admins" hidden>Admins</button>
       <button type="button" class="admin-nav__link" data-admin-view="history" hidden>Historial</button>
     </nav>
@@ -231,6 +232,7 @@
                 <th>Club</th>
                 <th>Código</th>
                 <th>División</th>
+                <th>Presupuesto</th>
                 <th>Jugadores</th>
                 <th></th>
               </tr>
@@ -537,6 +539,21 @@
         <div class="admin-panel">
           <div class="admin-panel__head"><div class="admin-panel__head-title">Trofeos actuales</div></div>
           <div class="admin-panel__body" id="trophies-list"></div>
+        </div>
+      </section>
+
+      <!-- ============ MERCADO DE FICHAJES ============ -->
+      <section class="admin-view" data-admin-view="market" hidden>
+        <div class="admin-view-head">
+          <div>
+            <h1 class="admin-body__title">Mercado de fichajes</h1>
+            <p class="admin-body__subtitle">Ofertas de los Team Owners pendientes de aprobar. Al aceptar una, se genera el código de registro y se cierra el contrato anterior del jugador si tenía.</p>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel__head"><div class="admin-panel__head-title">Ofertas pendientes</div></div>
+          <div class="admin-panel__body" id="market-pending-list"></div>
         </div>
       </section>
 
