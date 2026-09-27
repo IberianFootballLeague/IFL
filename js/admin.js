@@ -959,10 +959,7 @@
         : `<span class="team-crest team-crest--empty" style="border-radius:50%;"></span>`;
       return `
         <tr>
-          <td>
-            ${avatar}
-            <button type="button" class="btn-admin btn-admin--small" data-upload-avatar="${c.player?.id}" style="margin-left:6px;">Subir foto</button>
-          </td>
+          <td>${avatar}</td>
           <td>${escapeHTML(c.player ? c.player.discord_username : "—")}</td>
           <td>${escapeHTML(c.player ? c.player.roblox_username : "—")}</td>
           <td>${escapeHTML(c.team ? c.team.name : "—")}</td>
@@ -1033,28 +1030,6 @@
 
   if (contractsTableBody) {
     contractsTableBody.addEventListener("click", (e) => {
-      const avatarBtn = e.target.closest("[data-upload-avatar]");
-      if (avatarBtn) {
-        const playerId = avatarBtn.getAttribute("data-upload-avatar");
-        if (!playerId) return;
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = "image/*";
-        input.addEventListener("change", () => {
-          const file = input.files && input.files[0];
-          if (!file) return;
-          withBusy(avatarBtn, async () => {
-            const dataUrl = await readFileAsDataURL(file);
-            await db.updatePlayerAvatar(playerId, dataUrl);
-            await reloadAll();
-            renderAll();
-            toast("Foto actualizada.");
-          });
-        });
-        input.click();
-        return;
-      }
-
       const btn = e.target.closest("[data-delete-contract]");
       if (!btn) return;
       if (!confirm("¿Eliminar este contrato?")) return;
