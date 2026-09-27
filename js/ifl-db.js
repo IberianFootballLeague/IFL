@@ -816,12 +816,37 @@ window.IFLDB = (function () {
   async function getFreeAgents() {
     const [{ data: activeContracts, error: cErr }, { data: players, error: pErr }] = await Promise.all([
       client.from("contracts").select("player_id").eq("status", "ACTIVO"),
-      client.from("players").select("*").order("roblox_username", { ascending: true }),
+      client.from("players").select("*").eq("is_free_agent", true).order("roblox_username", { ascending: true }),
     ]);
     if (cErr) throw cErr;
     if (pErr) throw pErr;
     const signedIds = new Set((activeContracts || []).map((c) => c.player_id));
     return (players || []).filter((p) => !signedIds.has(p.id) && p.roblox_username);
+  }
+
+  async function hasActiveContract(discordId) {
+    if (!discordId) return false;
+    const { data: player, error: pErr } = await client
+      .from("players")
+      .select("id")
+      .eq("discord_id", discordId)
+      .maybeSingle();
+    if (pErr) throw pErr;
+    if (!player) return false;
+
+    const { data, error } = await client
+      .from("contracts")
+      .select("id")
+      .eq("player_id", player.id)
+      .eq("status", "ACTIVO")
+      .limit(1);
+    if (error) throw error;
+    return !!(data && data.length);
+  }
+
+  async function declareFreeAgent(discordId) {
+    const { error } = await client.from("players").update({ is_free_agent: true }).eq("discord_id", discordId);
+    if (error) throw error;
   }
 
   async function createMarketOffer({ playerId, teamId, price, buyerDiscordId, buyerDiscordUsername }) {
@@ -1031,6 +1056,8 @@ window.IFLDB = (function () {
     getPlayerRankNames,
     updateMyFreeAgentProfile,
     getFreeAgents,
+    hasActiveContract,
+    declareFreeAgent,
     createMarketOffer,
     getMarketFeed,
     getPendingMarketOffers,
