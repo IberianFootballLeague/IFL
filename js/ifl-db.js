@@ -667,6 +667,14 @@ window.IFLDB = (function () {
     if (error) throw error;
   }
 
+  // Cuando se le quita el rango Team Owner a un jugador, hay que soltarle
+  // también la propiedad del club — si no, "Mi club" y el mercado le
+  // seguirían funcionando aunque ya no tenga el rango.
+  async function clearTeamOwnership(playerId) {
+    const { error } = await client.from("teams").update({ owner_player_id: null }).eq("owner_player_id", playerId);
+    if (error) throw error;
+  }
+
   // =====================================
   // MI CLUB (Team Owner)
   // =====================================
@@ -1012,6 +1020,7 @@ window.IFLDB = (function () {
     removePlayerRank,
     getPlayersWithRanks,
     setTeamOwner,
+    clearTeamOwnership,
     getMyOwnedTeam,
     updateTeamDescription,
     getTeamsByBudget,
