@@ -605,7 +605,7 @@
         return `
           <span class="admin-tag" style="background:rgba(255,255,255,.08);color:var(--white);border:1px solid rgba(255,255,255,.18);display:inline-flex;align-items:center;gap:6px;margin:2px 4px 2px 0;">
             ${escapeHTML(r.name)}
-            ${canRemove ? `<button type="button" data-remove-rank="${p.id}::${r.id}" style="background:none;border:none;color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:0;">&times;</button>` : ""}
+            ${canRemove ? `<button type="button" data-remove-rank="${p.id}::${r.id}" data-rank-name="${escapeHTML(r.name)}" style="background:none;border:none;color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:0;">&times;</button>` : ""}
           </span>
         `;
       }).join("");
@@ -626,8 +626,16 @@
       const btn = e.target.closest("[data-remove-rank]");
       if (!btn) return;
       const [playerId, rankId] = btn.getAttribute("data-remove-rank").split("::");
+      const rankName = btn.getAttribute("data-rank-name");
       withBusy(btn, async () => {
         await db.removePlayerRank(playerId, rankId);
+        // Si el rango quitado era Team Owner, le soltamos también el club:
+        // si no, seguiría teniendo acceso a "Mi club" y al mercado.
+        if (rankName === "Team Owner") {
+          try { await db.clearTeamOwnership(playerId); } catch (e2) { console.warn(e2); }
+          await reloadAll();
+          renderAll();
+        }
         await renderRanksAssignedList();
         toast("Rango quitado.");
       });
