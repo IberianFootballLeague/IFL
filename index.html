@@ -396,31 +396,27 @@
         </div>
       </div>
 
-      <div id="market-staff-tool" hidden style="margin-top:22px;">
-        <div class="division-card" style="--div-color:#a855f7;">
-          <div class="division-card__glow"></div>
-          <div class="division-card__head">
-            <span class="division-card__badge">🔑</span>
-            <div><h3 class="division-card__title">Verificar código de fichaje</h3></div>
-          </div>
-          <div style="position:relative;z-index:1;display:flex;gap:8px;flex-wrap:wrap;">
-            <input id="market-code-input" class="admin-input" placeholder="Código de 8 caracteres" style="max-width:220px;">
-            <button type="button" class="btn-admin btn-admin--solid" id="market-code-search">Buscar</button>
-          </div>
-          <div id="market-code-result" style="position:relative;z-index:1;margin-top:14px;"></div>
+      <div class="market-card market-card--glow" id="market-free-agent-card" style="--div-color:#22c55e;" hidden></div>
+
+      <div class="market-card market-card--glow" id="market-staff-tool" style="--div-color:#a855f7;" hidden>
+        <div class="market-card__title">🔑 Verificar código de fichaje</div>
+        <div style="position:relative;z-index:1;display:flex;gap:10px;flex-wrap:wrap;">
+          <input id="market-code-input" class="market-input" placeholder="Código de 8 caracteres" style="max-width:220px;">
+          <button type="button" class="btn-market" id="market-code-search">Buscar</button>
         </div>
+        <div id="market-code-result" style="position:relative;z-index:1;margin-top:14px;"></div>
       </div>
 
-      <div id="market-my-offers" hidden style="margin-top:22px;">
+      <div id="market-my-offers" hidden>
         <h3 class="table-heading">Mis fichajes</h3>
-        <div class="admin-panel"><div class="admin-panel__body" id="market-my-offers-list"></div></div>
+        <div class="market-card" id="market-my-offers-list"></div>
       </div>
 
       <h3 class="table-heading" style="margin-top:28px;">Jugadores disponibles</h3>
-      <div class="admin-panel"><div class="admin-panel__body" id="market-free-agents-list"></div></div>
+      <div class="market-card" id="market-free-agents-list"></div>
 
       <h3 class="table-heading" style="margin-top:28px;">Fichajes recientes</h3>
-      <div class="admin-panel"><div class="admin-panel__body" id="market-feed-list"></div></div>
+      <div class="market-card" id="market-feed-list"></div>
     </section>
 
     <section class="view" id="view-perfil" data-view-panel="perfil" hidden>
@@ -439,12 +435,11 @@
           </div>
         </div>
         <div class="admin-field" style="padding-bottom:18px;">
-          <label for="settings-avatar-upload">Foto de perfil (se usa en "Mi carrera" y en el buscador)</label>
-          <label class="file-upload">
-            <input class="file-upload__input" id="settings-avatar-upload" type="file" accept="image/*" disabled>
-            <span class="file-upload__button">Subir foto</span>
-            <span class="file-upload__name">Ningún archivo</span>
-          </label>
+          <p class="setting-row__desc" style="margin:0;">
+            Tu foto de perfil se coge automáticamente de tu avatar de Roblox (el mismo
+            usuario de Roblox que tienes vinculado en tu contrato). Se actualiza sola,
+            no hace falta subir nada a mano.
+          </p>
           <p id="avatar-upload-status" class="setting-row__desc" hidden></p>
         </div>
       </div>
