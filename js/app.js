@@ -1053,11 +1053,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     cachedStadiums.forEach((s) => {
       const card = document.createElement("button");
       card.type = "button";
-      card.className = "stadium-card";
+      card.className = "stadium-card2" + (s.image_url ? "" : " stadium-card2--noimg");
+      if (s.image_url) card.style.backgroundImage = `url('${s.image_url}')`;
       card.innerHTML = `
-        <div class="stadium-card__name">${escapeHTML(s.name)}</div>
-        <div class="stadium-card__meta">${s.team ? escapeHTML(s.team.name) : "Sin equipo asignado"}</div>
-        <div class="stadium-card__meta">${escapeHTML(s.city || "")}${s.capacity ? " · " + s.capacity.toLocaleString("es-ES") + " asientos" : ""}</div>
+        ${s.image_url ? `<div class="stadium-card2__overlay"></div>` : ""}
+        <div class="stadium-card2__body">
+          ${s.team && s.team.logo_url ? `<img src="${escapeHTML(s.team.logo_url)}" class="stadium-card2__crest" alt="">` : ""}
+          <div class="stadium-card2__name">${escapeHTML(s.name)}</div>
+          <div class="stadium-card2__meta">${s.team ? escapeHTML(s.team.name) : "Sin equipo asignado"}</div>
+          <div class="stadium-card2__foot">
+            ${s.city ? `<span>📍 ${escapeHTML(s.city)}</span>` : ""}
+            ${s.capacity ? `<span>👥 ${s.capacity.toLocaleString("es-ES")}</span>` : ""}
+          </div>
+        </div>
       `;
       card.addEventListener("click", () => openStadiumModal(s));
       list.appendChild(card);
