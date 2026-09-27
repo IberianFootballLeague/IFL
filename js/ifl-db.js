@@ -67,8 +67,23 @@ window.IFLDB = (function () {
   }
 
   async function deleteTeam(id) {
+    // Antes de borrar el club, apuntamos quién tenía contrato activo ahí
+    // para poder declararlos Free Agent automáticamente en cuanto se borre.
+    const { data: activeContracts, error: cErr } = await client
+      .from("contracts")
+      .select("player_id")
+      .eq("team_id", id)
+      .eq("status", "ACTIVO");
+    if (cErr) throw cErr;
+
     const { error } = await client.from("teams").delete().eq("id", id);
     if (error) throw error;
+
+    const playerIds = (activeContracts || []).map((c) => c.player_id).filter(Boolean);
+    if (playerIds.length) {
+      const { error: faError } = await client.from("players").update({ is_free_agent: true }).in("id", playerIds);
+      if (faError) console.warn("[IFLDB] No se pudo marcar como Free Agent tras borrar el club:", faError);
+    }
   }
 
   // =====================================
@@ -210,6 +225,17 @@ window.IFLDB = (function () {
       .eq("status", "ACTIVO");
     if (error) throw error;
     return data || [];
+  }
+
+  async function getActiveContractForPlayer(playerId) {
+    const { data, error } = await client
+      .from("contracts")
+      .select("*, team:teams!contracts_team_id_fkey(*)")
+      .eq("player_id", playerId)
+      .eq("status", "ACTIVO")
+      .maybeSingle();
+    if (error) throw error;
+    return data;
   }
 
   async function addContract({ playerId, teamId, price, seasonsTotal, signedSeason }) {
@@ -1020,6 +1046,7 @@ window.IFLDB = (function () {
     trackOnlinePresence,
     getContracts,
     getContractsByTeam,
+    getActiveContractForPlayer,
     addContract,
     deleteContract,
     advanceSeason,
