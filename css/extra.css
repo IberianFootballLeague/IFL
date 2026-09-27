@@ -1747,3 +1747,89 @@ h1.hub-hero__title::after { animation-delay: 0.3s; }
   color: var(--gray-3, #56585f);
   font-size: 13px;
 }
+
+/* =====================================
+   ESTADIOS — tarjetas con foto de fondo y borde neón al pasar el ratón
+===================================== */
+
+.stadiums-grid {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.stadium-card2 {
+  position: relative;
+  overflow: hidden;
+  height: 190px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid var(--border, #23232b);
+  background: #0a0a0d center/cover no-repeat;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease;
+}
+
+.stadium-card2:hover {
+  transform: translateY(-2px);
+  border-color: transparent;
+  box-shadow: 0 0 0 1px var(--cyan, #3bd6ff), 0 0 26px -6px var(--cyan, #3bd6ff), 0 18px 40px rgba(0, 0, 0, 0.5);
+}
+
+.stadium-card2--noimg {
+  background:
+    radial-gradient(circle at 25% 15%, rgba(88, 101, 242, 0.22), transparent 60%),
+    radial-gradient(circle at 85% 90%, rgba(59, 214, 255, 0.16), transparent 60%),
+    #0e0e12;
+}
+
+.stadium-card2__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 5, 7, 0.1) 0%, rgba(5, 5, 7, 0.55) 55%, rgba(5, 5, 7, 0.95) 100%);
+}
+
+.stadium-card2__body {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 16px 18px;
+}
+
+.stadium-card2__crest {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+
+.stadium-card2__name {
+  font-family: var(--font-hub);
+  font-weight: 800;
+  font-size: 17px;
+  color: var(--white, #fff);
+  line-height: 1.2;
+}
+
+.stadium-card2__meta {
+  margin-top: 3px;
+  font-family: var(--font-hub);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gray-1, #d7d7dd);
+}
+
+.stadium-card2__foot {
+  margin-top: 10px;
+  display: flex;
+  gap: 14px;
+  font-family: var(--font-hub);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--gray-2, #8b8d96);
+}
