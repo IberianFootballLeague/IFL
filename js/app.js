@@ -220,6 +220,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderHero();
     checkClubOwnership();
     loadMyRanks();
+    startAccessPolling();
+  }
+
+  // Si un admin te quita el club o un rango mientras estás navegando la web,
+  // esto lo detecta en un margen de hasta 45s y te actualiza el menú (oculta
+  // "Mi club", te saca de esa vista si la tenías abierta, refresca el
+  // mercado) sin que tengas que recargar la página a mano.
+  let accessPollingStarted = false;
+  function startAccessPolling() {
+    if (accessPollingStarted) return;
+    accessPollingStarted = true;
+    setInterval(async () => {
+      if (!currentDiscordId) return;
+      const hadClub = !!myOwnedTeamCache;
+      await checkClubOwnership();
+      await loadMyRanks();
+      const hasClub = !!myOwnedTeamCache;
+
+      if (hadClub && !hasClub) {
+        const activeLink = document.querySelector(".app-header__link.is-active");
+        const activeView = activeLink && activeLink.dataset.view;
+        if (activeView === "club") {
+          showView("inicio");
+          navLinks.forEach((l) => l.classList.toggle("is-active", l.dataset.view === "inicio"));
+        }
+        if (activeView === "mercado") renderMercado();
+      }
+    }, 45000);
   }
 
   let myOwnedTeamCache = null;
@@ -503,11 +531,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     box.innerHTML = `
       <div class="club-hero" ${stadium?.image_url ? `style="background-image:url('${escapeHTML(stadium.image_url)}')"` : ""}>
-        <div class="club-hero__overlay"></div>
+        ${stadium?.image_url ? `<div class="club-hero__overlay"></div>` : ""}
         <div class="club-hero__content">
           ${team.logo_url ? `<img src="${escapeHTML(team.logo_url)}" class="club-hero__logo" alt="">` : ""}
           <h2 class="club-hero__name">${escapeHTML(team.name)}</h2>
-          <p class="club-hero__meta">Fundado el ${founded}</p>
+          <p class="club-hero__meta">Fundado el ${founded}${stadium ? " · Juega en " + escapeHTML(stadium.name) : ""}</p>
         </div>
         <div class="club-hero__budget">
           <small>Presupuesto</small>
@@ -515,11 +543,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         </div>
       </div>
 
-      <div class="settings-card" style="margin-top:20px;">
-        <p class="settings-card__title">Descripción del club</p>
-        <textarea id="club-description-input" class="admin-input" rows="3" style="width:100%;resize:vertical;margin-bottom:10px;" placeholder="Escribe algo sobre tu club…">${escapeHTML(team.description || "")}</textarea>
-        <button type="button" class="btn-admin btn-admin--solid" id="club-description-save">Guardar descripción</button>
-        <span id="club-description-status" style="margin-left:10px;font-size:12.5px;color:var(--gray-3);" hidden></span>
+      <div class="market-card" style="margin-top:20px;">
+        <p class="market-card__title" style="margin-bottom:10px;">Descripción del club</p>
+        <textarea id="club-description-input" class="market-textarea" rows="3" placeholder="Escribe algo sobre tu club…">${escapeHTML(team.description || "")}</textarea>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
+          <button type="button" class="btn-market" id="club-description-save">Guardar descripción</button>
+          <span id="club-description-status" style="font-size:12.5px;color:var(--gray-3, #56585f);" hidden></span>
+        </div>
       </div>
 
       <h3 class="table-heading">Contratos del club</h3>
