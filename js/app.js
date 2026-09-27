@@ -281,8 +281,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     await Promise.all(tasks);
   }
 
-  // Panel "Free Agent": solo para quien NO es Team Owner de ningún club,
-  // para que pueda presentarse en el mercado con su trayectoria y posición.
+  // Panel "Free Agent": solo para quien no tiene equipo (ni es Team Owner
+  // ni tiene un contrato activo en ningún club). Hay que declararse antes
+  // de poder rellenar la trayectoria/posición.
   let freeAgentCardWired = false;
 
   async function renderFreeAgentCard() {
@@ -291,38 +292,138 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (myOwnedTeamCache) { card.hidden = true; return; }
 
+    let alreadySigned = false;
+    try { alreadySigned = await db.hasActiveContract(currentDiscordId); } catch (e) { console.error(e); }
+    if (alreadySigned) { card.hidden = true; return; }
+
     let me = null;
     try { me = await db.getPlayerByDiscordId(currentDiscordId); } catch (e) { console.error(e); }
     card.hidden = false;
 
-    const nameEl = document.getElementById("free-agent-name");
-    const careerInput = document.getElementById("free-agent-career");
-    const positionInput = document.getElementById("free-agent-position");
-    if (nameEl) nameEl.textContent = me ? playerDisplayName(me) : (userInfo?.textContent || "").replace("Sesión iniciada como ", "");
-    if (careerInput) careerInput.value = (me && me.career_summary) || "";
-    if (positionInput) positionInput.value = (me && me.position) || "";
+    const displayName = me ? playerDisplayName(me) : (userInfo?.textContent || "").replace("Sesión iniciada como ", "");
 
-    if (!freeAgentCardWired) {
-      freeAgentCardWired = true;
-      document.getElementById("free-agent-save")?.addEventListener("click", async (e) => {
+    if (!me || !me.is_free_agent) {
+      card.innerHTML = `
+        <div class="market-card__title">🆓 Free Agent</div>
+        <p class="market-code-box__hint" style="position:relative;z-index:1;margin:0 0 14px;">
+          No tienes equipo ahora mismo. Declárate como agente libre para aparecer en "Jugadores disponibles"
+          y que cualquier Team Owner pueda ofertar por ti.
+        </p>
+        <button type="button" class="btn-market" id="free-agent-declare" style="position:relative;z-index:1;">Declararse como Agente Libre</button>
+      `;
+      document.getElementById("free-agent-declare")?.addEventListener("click", async (e) => {
         const btn = e.currentTarget;
-        const statusEl = document.getElementById("free-agent-status");
         btn.disabled = true;
         try {
-          await db.updateMyFreeAgentProfile(currentDiscordId, {
-            position: positionInput?.value || "",
-            careerSummary: careerInput?.value.trim() || "",
-          });
-          if (statusEl) { statusEl.hidden = false; statusEl.textContent = "Guardado ✅"; setTimeout(() => (statusEl.hidden = true), 2200); }
+          await db.declareFreeAgent(currentDiscordId);
+          await renderFreeAgentCard();
           await renderFreeAgents();
         } catch (err) {
-          console.error("[IFL] Error guardando el perfil de Free Agent:", err);
-          if (statusEl) { statusEl.hidden = false; statusEl.textContent = "❌ No se pudo guardar."; }
-        } finally {
+          console.error("[IFL] Error al declararse agente libre:", err);
+          alert("No se pudo completar la declaración.");
           btn.disabled = false;
         }
       });
+      return;
     }
+
+    card.innerHTML = `
+      <div class="market-card__title">🆓 Eres Free Agent</div>
+      <div style="display:grid;gap:14px;position:relative;z-index:1;">
+        <div>
+          <span class="market-label">Nombre</span>
+          <p style="margin:4px 0 0;color:var(--white);font-weight:700;font-family:var(--font-hub);">${escapeHTML(displayName)}</p>
+        </div>
+        <div>
+          <span class="market-label">Trayectoria en esta liga o en otras</span>
+          <textarea id="free-agent-career" class="market-textarea" placeholder="Cuenta en qué clubes has jugado, tu experiencia…" style="margin-top:6px;">${escapeHTML(me.career_summary || "")}</textarea>
+        </div>
+        <div>
+          <span class="market-label">Posición</span>
+          <select id="free-agent-position" class="market-select" style="margin-top:6px;max-width:240px;">
+            <option value="">Sin especificar</option>
+            <option value="Portero">Portero</option>
+            <option value="Defensa">Defensa</option>
+            <option value="Centrocampista">Centrocampista</option>
+            <option value="Delantero">Delantero</option>
+          </select>
+        </div>
+        <div>
+          <button type="button" class="btn-market" id="free-agent-save">Guardar mi perfil</button>
+          <span id="free-agent-status" style="margin-left:10px;font-size:12px;color:var(--gray-3, #56585f);" hidden></span>
+        </div>
+      </div>
+    `;
+    const positionSelect = document.getElementById("free-agent-position");
+    if (positionSelect) positionSelect.value = me.position || "";
+
+    document.getElementById("free-agent-save")?.addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      const careerInput = document.getElementById("free-agent-career");
+      const statusEl = document.getElementById("free-agent-status");
+      btn.disabled = true;
+      try {
+        await db.updateMyFreeAgentProfile(currentDiscordId, {
+          position: positionSelect?.value || "",
+          careerSummary: careerInput?.value.trim() || "",
+        });
+        if (statusEl) { statusEl.hidden = false; statusEl.textContent = "Guardado ✅"; setTimeout(() => (statusEl.hidden = true), 2200); }
+        await renderFreeAgents();
+      } catch (err) {
+        console.error("[IFL] Error guardando el perfil de Free Agent:", err);
+        if (statusEl) { statusEl.hidden = false; statusEl.textContent = "❌ No se pudo guardar."; }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+
+  // Modal de estadísticas al hacer clic en un jugador del mercado
+  // (sin asistencias, tal como en el resto de la web).
+  async function openPlayerStatsModal(playerId) {
+    let modal = document.getElementById("player-stats-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "player-stats-modal";
+      modal.className = "ifl-modal";
+      modal.innerHTML = '<div class="ifl-modal__overlay"></div><div class="ifl-modal__box" id="player-stats-modal-box"></div>';
+      document.body.appendChild(modal);
+      modal.querySelector(".ifl-modal__overlay").addEventListener("click", () => (modal.hidden = true));
+    }
+
+    const box = document.getElementById("player-stats-modal-box");
+    box.innerHTML = `<button type="button" class="ifl-modal__close" id="player-stats-modal-close">&times;</button><div class="market-empty">Cargando…</div>`;
+    modal.hidden = false;
+    document.getElementById("player-stats-modal-close").addEventListener("click", () => (modal.hidden = true));
+
+    let profile = null;
+    try { profile = await db.getPlayerPublicProfile(playerId); } catch (e) { console.error(e); }
+    if (!profile) { box.innerHTML = `<button type="button" class="ifl-modal__close" id="player-stats-modal-close2">&times;</button><p class="market-empty">No se encontró ese jugador.</p>`; document.getElementById("player-stats-modal-close2")?.addEventListener("click", () => (modal.hidden = true)); return; }
+
+    const { player, isPublic, stats } = profile;
+    const avatarHTML = player.avatar_url
+      ? `<img src="${escapeHTML(player.avatar_url)}" class="career-avatar" alt="" style="margin:0 auto 14px;">`
+      : `<div class="career-avatar" style="margin:0 auto 14px;display:flex;align-items:center;justify-content:center;background:var(--accent);font-family:var(--font-display);font-weight:700;font-size:32px;">${escapeHTML(playerDisplayName(player).charAt(0).toUpperCase())}</div>`;
+
+    box.innerHTML = `
+      <button type="button" class="ifl-modal__close" id="player-stats-modal-close3">&times;</button>
+      <div style="text-align:center;">
+        ${avatarHTML}
+        <h2 class="ifl-modal__title" style="justify-content:center;">${escapeHTML(playerDisplayName(player))}</h2>
+        ${player.position ? `<span class="market-player-row__tag">${escapeHTML(player.position)}</span>` : ""}
+      </div>
+      ${player.career_summary ? `<p class="view-lead" style="margin-top:14px;">${escapeHTML(player.career_summary)}</p>` : ""}
+      ${isPublic ? `
+        <div class="stat-grid" style="margin-top:20px;">
+          <div class="stat-tile"><span class="stat-tile__value">${stats.goles}</span><span class="stat-tile__label">Goles</span></div>
+          <div class="stat-tile"><span class="stat-tile__value">${stats.partidos_jugados}</span><span class="stat-tile__label">Partidos jugados</span></div>
+          <div class="stat-tile"><span class="stat-tile__value">${stats.tarjetas_amarillas}</span><span class="stat-tile__label">Tarjetas amarillas</span></div>
+          <div class="stat-tile"><span class="stat-tile__value">${stats.tarjetas_rojas}</span><span class="stat-tile__label">Tarjetas rojas</span></div>
+          <div class="stat-tile"><span class="stat-tile__value">${stats.mvps}</span><span class="stat-tile__label">MVPs</span></div>
+        </div>
+      ` : `<p class="ifl-modal__meta" style="margin-top:14px;">Este jugador tiene el perfil privado.</p>`}
+    `;
+    document.getElementById("player-stats-modal-close3")?.addEventListener("click", () => (modal.hidden = true));
   }
 
   async function renderFreeAgents() {
@@ -339,7 +440,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     list.innerHTML = agents.map((p) => `
-      <div class="market-player-row">
+      <div class="market-player-row" data-player-profile="${p.id}" style="cursor:pointer;">
         ${robloxAvatarHTML(p)}
         <div class="market-player-row__body">
           <div class="market-player-row__name">${escapeHTML(playerDisplayName(p))}</div>
@@ -359,15 +460,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       ` : ""}
     `).join("");
 
+    list.querySelectorAll("[data-player-profile]").forEach((row) => {
+      row.addEventListener("click", (e) => {
+        if (e.target.closest("[data-offer-player]") || e.target.closest(".market-offer-box")) return;
+        openPlayerStatsModal(row.getAttribute("data-player-profile"));
+      });
+    });
+
     list.querySelectorAll("[data-offer-player]").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
         const box = document.getElementById("market-offer-form-" + btn.getAttribute("data-offer-player"));
         if (box) box.hidden = !box.hidden;
       });
     });
 
     list.querySelectorAll("[data-confirm-offer]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
         const playerId = btn.getAttribute("data-confirm-offer");
         const priceInput = document.getElementById("market-offer-price-" + playerId);
         const price = parseFloat(priceInput?.value);
@@ -1042,7 +1152,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       ${career.player.avatar_url ? `<img src="${escapeHTML(career.player.avatar_url)}" alt="" class="career-avatar">` : ""}
       <div class="stat-grid" style="margin-bottom:28px;">
         <div class="stat-tile"><span class="stat-tile__value">${stats.goles}</span><span class="stat-tile__label">Goles</span></div>
-        <div class="stat-tile"><span class="stat-tile__value">${stats.asistencias}</span><span class="stat-tile__label">Asistencias</span></div>
         <div class="stat-tile"><span class="stat-tile__value">${stats.partidos_jugados}</span><span class="stat-tile__label">Partidos jugados</span></div>
         <div class="stat-tile"><span class="stat-tile__value">${stats.tarjetas_amarillas}</span><span class="stat-tile__label">Tarjetas amarillas</span></div>
         <div class="stat-tile"><span class="stat-tile__value">${stats.tarjetas_rojas}</span><span class="stat-tile__label">Tarjetas rojas</span></div>
@@ -1398,20 +1507,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   // =================================
 
   async function setupProfileControls() {
-    const avatarInput = document.getElementById("settings-avatar-upload");
     const visibilityToggle = document.getElementById("setting-public-profile");
     const visibilityNote = document.getElementById("profile-visibility-note");
 
     // showApp() puede llamarse más de una vez (onAuthStateChange también
     // dispara en refresh de token) — evitamos añadir listeners duplicados.
-    if (avatarInput && avatarInput.dataset.wired === "1") return;
+    if (visibilityToggle && visibilityToggle.dataset.wired === "1") return;
 
     let myPlayer = null;
     try {
       myPlayer = await db.getPlayerByDiscordId(currentDiscordId);
       if (!myPlayer) {
-        // Cualquiera que inicie sesión puede tener foto de perfil, aunque
-        // todavía no tenga contrato: le creamos una ficha mínima.
+        // Cualquiera que inicie sesión tiene una ficha mínima, aunque
+        // todavía no tenga contrato ni nombre de Roblox vinculado.
         const discordName = document.getElementById("settings-name")?.textContent || "Usuario";
         myPlayer = await db.findOrCreatePlayer({
           discordId: currentDiscordId,
@@ -1429,12 +1537,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         visibilityNote.textContent = "No se pudo cargar tu ficha de jugador. Prueba a recargar la página.";
       }
       if (visibilityToggle) visibilityToggle.disabled = true;
-      if (avatarInput) avatarInput.disabled = true;
       return;
     }
 
-    // Si el jugador tiene nombre de Roblox pero todavía no tiene foto, se la
-    // ponemos automáticamente con su avatar real de Roblox.
+    // La foto de perfil es siempre el avatar de Roblox del usuario vinculado
+    // en su contrato — no hay subida manual. Si todavía no la tiene guardada,
+    // se la ponemos ahora.
     if (!myPlayer.avatar_url && myPlayer.roblox_username) {
       const robloxAvatar = await fetchRobloxAvatarUrl(myPlayer.roblox_username);
       if (robloxAvatar) {
@@ -1453,6 +1561,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (visibilityToggle) {
       visibilityToggle.disabled = false;
+      visibilityToggle.dataset.wired = "1";
       visibilityToggle.checked = myPlayer.is_public !== false;
       visibilityToggle.addEventListener("change", async () => {
         try {
@@ -1463,105 +1572,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       });
     }
-
-    if (avatarInput) {
-      avatarInput.disabled = false;
-      avatarInput.dataset.wired = "1";
-      avatarInput.addEventListener("change", async () => {
-        const file = avatarInput.files && avatarInput.files[0];
-        if (!file) return;
-
-        const statusEl = document.getElementById("avatar-upload-status");
-        if (statusEl) { statusEl.hidden = false; statusEl.textContent = "Comprobando la imagen…"; }
-
-        try {
-          const dataUrl = await readImageAsSafeDataURL(file, (msg) => {
-            if (statusEl) statusEl.textContent = msg;
-          });
-          await db.updateMyAvatar(currentDiscordId, dataUrl);
-
-          const headerAvatar = document.getElementById("user-avatar");
-          const headerFallback = document.getElementById("user-avatar-fallback");
-          if (headerAvatar) { headerAvatar.src = dataUrl; headerAvatar.hidden = false; }
-          if (headerFallback) headerFallback.hidden = true;
-
-          if (statusEl) { statusEl.textContent = "Foto actualizada ✅"; setTimeout(() => (statusEl.hidden = true), 2500); }
-        } catch (e) {
-          console.error("[IFL] Error subiendo avatar:", e);
-          if (statusEl) statusEl.textContent = "❌ " + (e.message || "No se pudo subir la imagen.");
-          avatarInput.value = "";
-        }
-      });
-    }
-  }
-
-  const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
-  const NSFW_THRESHOLD = 0.7;
-  let nsfwModelPromise = null;
-
-  function loadScriptOnce(src) {
-    return new Promise((resolve, reject) => {
-      if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-      const s = document.createElement("script");
-      s.src = src;
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error("No se pudo cargar " + src));
-      document.head.appendChild(s);
-    });
-  }
-
-  async function getNsfwModel() {
-    if (nsfwModelPromise) return nsfwModelPromise;
-    nsfwModelPromise = (async () => {
-      await loadScriptOnce("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.15.0/dist/tf.min.js");
-      await loadScriptOnce("https://cdn.jsdelivr.net/npm/nsfwjs@2.4.2/dist/nsfwjs.min.js");
-      return window.nsfwjs.load();
-    })();
-    return nsfwModelPromise;
-  }
-
-  // Valida que sea una imagen real, de tamaño razonable, y pasa un
-  // control automático de contenido (mejor esfuerzo: si el modelo no
-  // carga por lo que sea, se deja subir igualmente para no bloquear
-  // al usuario, pero se avisa por consola).
-  function readImageAsSafeDataURL(file, onProgress) {
-    return new Promise((resolve, reject) => {
-      if (!file.type.startsWith("image/")) {
-        reject(new Error("El archivo tiene que ser una imagen."));
-        return;
-      }
-      if (file.size > MAX_AVATAR_BYTES) {
-        reject(new Error("La imagen pesa demasiado (máximo 2 MB)."));
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error("No se pudo leer el archivo."));
-      reader.onload = async () => {
-        const dataUrl = reader.result;
-        const img = new Image();
-        img.onerror = () => reject(new Error("El archivo no es una imagen válida."));
-        img.onload = async () => {
-          try {
-            onProgress && onProgress("Pasando el control de seguridad…");
-            const model = await getNsfwModel();
-            const predictions = await model.classify(img);
-            const risky = predictions.find(
-              (p) => ["Porn", "Hentai", "Sexy"].includes(p.className) && p.probability > NSFW_THRESHOLD
-            );
-            if (risky) {
-              reject(new Error("Esta imagen no ha pasado el control de seguridad. Prueba con otra foto."));
-              return;
-            }
-          } catch (e) {
-            console.warn("[IFL] No se pudo ejecutar el control automático de imagen, se deja pasar igualmente:", e);
-          }
-          resolve(dataUrl);
-        };
-        img.src = dataUrl;
-      };
-      reader.readAsDataURL(file);
-    });
   }
 
   // =================================
@@ -1643,7 +1653,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       </div>
       <div class="stat-grid" style="margin-top:20px;">
         <div class="stat-tile"><span class="stat-tile__value">${stats.goles}</span><span class="stat-tile__label">Goles</span></div>
-        <div class="stat-tile"><span class="stat-tile__value">${stats.asistencias}</span><span class="stat-tile__label">Asistencias</span></div>
         <div class="stat-tile"><span class="stat-tile__value">${stats.partidos_jugados}</span><span class="stat-tile__label">Partidos jugados</span></div>
         <div class="stat-tile"><span class="stat-tile__value">${stats.tarjetas_amarillas}</span><span class="stat-tile__label">Tarjetas amarillas</span></div>
         <div class="stat-tile"><span class="stat-tile__value">${stats.tarjetas_rojas}</span><span class="stat-tile__label">Tarjetas rojas</span></div>
