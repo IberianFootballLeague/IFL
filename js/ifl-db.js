@@ -11,7 +11,14 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_C_iRhldD-coePRVqcNDCGA_oGIA1u3d
 window.IFLDB = (function () {
   "use strict";
 
-  const client = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: "ifl-auth",
+    },
+  });
 
   // =====================================
   // AUTORIZACIÓN
@@ -809,6 +816,205 @@ window.IFLDB = (function () {
     if (error) throw error;
   }
 
+  // =====================================
+  // TRASPASOS: poner en venta y negociar (jugadores con club, no agentes libres)
+  // =====================================
+
+  async function createListing({ playerId, teamId, askingPrice }) {
+    // Si ya tenía un anuncio activo, lo reutilizamos (actualizamos el precio)
+    // en vez de duplicarlo.
+    const { data: existing, error: findError } = await client
+      .from("player_listings")
+      .select("id")
+      .eq("player_id", playerId)
+      .eq("team_id", teamId)
+      .eq("status", "en_venta")
+      .maybeSingle();
+    if (findError) throw findError;
+
+    if (existing) {
+      const { error } = await client.from("player_listings").update({ asking_price: askingPrice }).eq("id", existing.id);
+      if (error) throw error;
+      return;
+    }
+
+    const { error } = await client.from("player_listings").insert({ player_id: playerId, team_id: teamId, asking_price: askingPrice, status: "en_venta" });
+    if (error) throw error;
+  }
+
+  async function retireListing(listingId) {
+    const { error } = await client.from("player_listings").update({ status: "retirado" }).eq("id", listingId);
+    if (error) throw error;
+  }
+
+  async function getMarketListings() {
+    const { data, error } = await client
+      .from("player_listings")
+      .select("*, player:players!player_listings_player_id_fkey(*), team:teams!player_listings_team_id_fkey(*)")
+      .eq("status", "en_venta")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function startNegotiation({ listingId, playerId, sellerTeamId, buyerTeamId, askingPrice, offerPrice }) {
+    const { data, error } = await client
+      .from("negotiations")
+      .insert({
+        listing_id: listingId || null,
+        player_id: playerId,
+        seller_team_id: sellerTeamId,
+        buyer_team_id: buyerTeamId,
+        asking_price: askingPrice,
+        current_price: offerPrice,
+        turn: "seller",
+        last_offer_by: "buyer",
+        status: "pendiente",
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async function getMyNegotiations(teamId) {
+    if (!teamId) return [];
+    const { data, error } = await client
+      .from("negotiations")
+      .select(
+        "*, player:players!negotiations_player_id_fkey(*), seller_team:teams!negotiations_seller_team_id_fkey(*), buyer_team:teams!negotiations_buyer_team_id_fkey(*)"
+      )
+      .or(`seller_team_id.eq.${teamId},buyer_team_id.eq.${teamId}`)
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function respondNegotiation(negotiationId, action, newPrice) {
+    const { data: neg, error: negError } = await client.from("negotiations").select("*").eq("id", negotiationId).single();
+    if (negError) throw negError;
+
+    if (action === "reject") {
+      const { error } = await client
+        .from("negotiations")
+        .update({ status: "rechazada", updated_at: new Date().toISOString() })
+        .eq("id", negotiationId);
+      if (error) throw error;
+      return;
+    }
+
+    if (action === "accept") {
+      const { error } = await client
+        .from("negotiations")
+        .update({ status: "aceptada_pendiente_admin", updated_at: new Date().toISOString() })
+        .eq("id", negotiationId);
+      if (error) throw error;
+      return;
+    }
+
+    if (action === "counter") {
+      const respondingSide = neg.turn; // quién está respondiendo ahora mismo
+      const nextTurn = respondingSide === "seller" ? "buyer" : "seller";
+      const { error } = await client
+        .from("negotiations")
+        .update({
+          current_price: newPrice,
+          turn: nextTurn,
+          last_offer_by: respondingSide,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", negotiationId);
+      if (error) throw error;
+      return;
+    }
+  }
+
+  async function getPendingTransfers() {
+    const { data, error } = await client
+      .from("negotiations")
+      .select(
+        "*, player:players!negotiations_player_id_fkey(*), seller_team:teams!negotiations_seller_team_id_fkey(*), buyer_team:teams!negotiations_buyer_team_id_fkey(*)"
+      )
+      .eq("status", "aceptada_pendiente_admin")
+      .order("updated_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function resolveNegotiation(negotiationId, decision) {
+    const { data: neg, error: negError } = await client.from("negotiations").select("*").eq("id", negotiationId).single();
+    if (negError) throw negError;
+
+    if (decision === "rechazado") {
+      const { error } = await client
+        .from("negotiations")
+        .update({ status: "rechazada", updated_at: new Date().toISOString() })
+        .eq("id", negotiationId);
+      if (error) throw error;
+      return { status: "rechazada" };
+    }
+
+    // Aceptado por administración: se ejecuta el traspaso de verdad.
+    const { data: oldContracts, error: oldErr } = await client
+      .from("contracts")
+      .select("id")
+      .eq("player_id", neg.player_id)
+      .eq("status", "ACTIVO");
+    if (oldErr) throw oldErr;
+
+    for (const c of oldContracts || []) {
+      const { error } = await client
+        .from("contracts")
+        .update({ status: "INACTIVO", ended_at: new Date().toISOString() })
+        .eq("id", c.id);
+      if (error) throw error;
+    }
+
+    const currentSeason = await getSetting("current_season", 1);
+
+    const { error: contractError } = await client.from("contracts").insert({
+      player_id: neg.player_id,
+      team_id: neg.buyer_team_id,
+      price: neg.current_price,
+      seasons_total: 1,
+      seasons_left: 1,
+      signed_season: currentSeason,
+      status: "ACTIVO",
+    });
+    if (contractError) throw contractError;
+
+    // El dinero se mueve de verdad: el comprador paga, el vendedor cobra.
+    const { data: buyerTeam, error: buyerErr } = await client.from("teams").select("budget").eq("id", neg.buyer_team_id).single();
+    if (buyerErr) throw buyerErr;
+    const { error: buyerBudgetErr } = await client
+      .from("teams")
+      .update({ budget: Number(buyerTeam.budget || 0) - Number(neg.current_price) })
+      .eq("id", neg.buyer_team_id);
+    if (buyerBudgetErr) throw buyerBudgetErr;
+
+    const { data: sellerTeam, error: sellerErr } = await client.from("teams").select("budget").eq("id", neg.seller_team_id).single();
+    if (sellerErr) throw sellerErr;
+    const { error: sellerBudgetErr } = await client
+      .from("teams")
+      .update({ budget: Number(sellerTeam.budget || 0) + Number(neg.current_price) })
+      .eq("id", neg.seller_team_id);
+    if (sellerBudgetErr) throw sellerBudgetErr;
+
+    if (neg.listing_id) {
+      const { error: listingErr } = await client.from("player_listings").update({ status: "vendido" }).eq("id", neg.listing_id);
+      if (listingErr) console.warn("[IFLDB] No se pudo marcar el anuncio como vendido:", listingErr);
+    }
+
+    const code = generateMarketCode();
+    const { error: resolveError } = await client
+      .from("negotiations")
+      .update({ status: "aceptada", code, updated_at: new Date().toISOString() })
+      .eq("id", negotiationId);
+    if (resolveError) throw resolveError;
+
+    return { status: "aceptada", code };
+  }
+
   async function getPlayerRankNames(discordId) {
     if (!discordId) return [];
     const { data: player, error: pErr } = await client
@@ -1082,6 +1288,14 @@ window.IFLDB = (function () {
     deleteTrophy,
     getPlayerRankNames,
     updateMyFreeAgentProfile,
+    createListing,
+    retireListing,
+    getMarketListings,
+    startNegotiation,
+    getMyNegotiations,
+    respondNegotiation,
+    getPendingTransfers,
+    resolveNegotiation,
     getFreeAgents,
     hasActiveContract,
     declareFreeAgent,
