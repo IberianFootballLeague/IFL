@@ -842,6 +842,7 @@
       const city = document.getElementById("stadium-city")?.value.trim() || null;
       const capacity = parseInt(document.getElementById("stadium-capacity")?.value, 10) || null;
       const description = document.getElementById("stadium-description")?.value.trim() || null;
+      const robloxGameUrl = document.getElementById("stadium-roblox-url")?.value.trim() || null;
       const submitBtn = stadiumForm.querySelector('button[type="submit"]');
 
       if (!name) return;
@@ -851,7 +852,7 @@
         const file = fileInput && fileInput.files && fileInput.files[0];
         const imageUrl = await readFileAsDataURL(file);
 
-        await db.addStadium({ name, team_id: teamId, city, capacity, description, image_url: imageUrl });
+        await db.addStadium({ name, team_id: teamId, city, capacity, description, image_url: imageUrl, roblox_game_url: robloxGameUrl });
         stadiumForm.reset();
         await reloadAll();
         renderAll();
@@ -948,18 +949,14 @@
 
     if (!contractsTableBody) return;
     if (!state.contracts.length) {
-      contractsTableBody.innerHTML = '<tr><td colspan="9" class="admin-table-empty">Todavía no hay contratos.</td></tr>';
+      contractsTableBody.innerHTML = '<tr><td colspan="8" class="admin-table-empty">Todavía no hay contratos.</td></tr>';
       return;
     }
 
     contractsTableBody.innerHTML = state.contracts.map((c) => {
       const isActive = c.status === "ACTIVO";
-      const avatar = c.player?.avatar_url
-        ? `<img src="${escapeHTML(c.player.avatar_url)}" alt="" class="team-crest" style="border-radius:50%;">`
-        : `<span class="team-crest team-crest--empty" style="border-radius:50%;"></span>`;
       return `
         <tr>
-          <td>${avatar}</td>
           <td>${escapeHTML(c.player ? c.player.discord_username : "—")}</td>
           <td>${escapeHTML(c.player ? c.player.roblox_username : "—")}</td>
           <td>${escapeHTML(c.team ? c.team.name : "—")}</td>
@@ -996,6 +993,16 @@
         const player = selectedPlayer
           ? selectedPlayer
           : await db.findOrCreatePlayer({ discordId, discordUsername: discordUser, robloxUsername: robloxUser });
+
+        // Si ya tiene un contrato activo en algún club (mismo Discord o mismo
+        // Roblox), avisamos en vez de crear un contrato duplicado.
+        const existingContract = await db.getActiveContractForPlayer(player.id);
+        if (existingContract) {
+          const pName = player.roblox_username || player.discord_username || "Este jugador";
+          const cName = existingContract.team ? existingContract.team.name : "otro equipo";
+          alert(`El jugador ${pName} ya está registrado en el equipo ${cName}.`);
+          return;
+        }
 
         // Si el jugador no tiene foto todavía, le ponemos su avatar real de Roblox.
         if (!player.avatar_url && player.roblox_username) {
@@ -1552,6 +1559,62 @@
     });
   }
 
+  const marketPendingTransfersList = document.getElementById("market-pending-transfers-list");
+
+  async function renderPendingTransfersView() {
+    if (!marketPendingTransfersList) return;
+    marketPendingTransfersList.innerHTML = `<div class="admin-panel__empty">Cargando…</div>`;
+
+    let transfers = [];
+    try { transfers = await db.getPendingTransfers(); } catch (e) { console.error(e); }
+
+    if (!transfers.length) {
+      marketPendingTransfersList.innerHTML = '<div class="admin-panel__empty">No hay traspasos pendientes de aprobar.</div>';
+      return;
+    }
+
+    marketPendingTransfersList.innerHTML = transfers.map((n) => `
+      <div class="admin-row">
+        <div class="admin-row__body">
+          <div class="admin-row__name">${escapeHTML(n.player ? (n.player.roblox_username || n.player.discord_username) : "?")}</div>
+          <div class="admin-row__meta">
+            ${n.seller_team ? escapeHTML(n.seller_team.name) : "?"} → ${n.buyer_team ? escapeHTML(n.buyer_team.name) : "?"}
+            · €${Number(n.current_price).toLocaleString("es-ES")} (pedido: €${Number(n.asking_price).toLocaleString("es-ES")})
+            · ${formatDateTime(n.updated_at)}
+          </div>
+        </div>
+        <button type="button" class="btn-admin btn-admin--small btn-admin--solid" data-transfer-accept="${n.id}">Aceptar</button>
+        <button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-transfer-reject="${n.id}">Rechazar</button>
+      </div>
+    `).join("");
+  }
+
+  if (marketPendingTransfersList) {
+    marketPendingTransfersList.addEventListener("click", (e) => {
+      const acceptBtn = e.target.closest("[data-transfer-accept]");
+      if (acceptBtn) {
+        withBusy(acceptBtn, async () => {
+          const result = await db.resolveNegotiation(acceptBtn.getAttribute("data-transfer-accept"), "aceptado");
+          await reloadAll();
+          renderAll();
+          await renderPendingTransfersView();
+          toast("Traspaso aceptado. Código: " + result.code);
+        });
+        return;
+      }
+
+      const rejectBtn = e.target.closest("[data-transfer-reject]");
+      if (rejectBtn) {
+        if (!confirm("¿Rechazar este traspaso?")) return;
+        withBusy(rejectBtn, async () => {
+          await db.resolveNegotiation(rejectBtn.getAttribute("data-transfer-reject"), "rechazado");
+          await renderPendingTransfersView();
+          toast("Traspaso rechazado.");
+        });
+      }
+    });
+  }
+
   // =====================================
   // ADMINS (solo super-admin)
   // =====================================
@@ -1683,7 +1746,7 @@
     if (name === "results") renderResultsView();
     if (name === "history") renderHistoryView();
     if (name === "trophies") renderTrophiesView();
-    if (name === "market") renderMarketView();
+    if (name === "market") { renderMarketView(); renderPendingTransfersView(); }
   }
   window.IFLAdminShowView = showAdminView;
 
