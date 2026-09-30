@@ -274,6 +274,10 @@
             <input class="admin-input" id="stadium-description" placeholder="Opcional">
           </div>
           <div class="admin-field admin-field--full">
+            <label for="stadium-roblox-url">Enlace del juego de Roblox (opcional)</label>
+            <input class="admin-input" id="stadium-roblox-url" placeholder="https://www.roblox.com/games/…" type="url">
+          </div>
+          <div class="admin-field admin-field--full">
             <label for="stadium-image">Imagen del estadio (opcional)</label>
             <label class="file-upload">
               <input class="file-upload__input" id="stadium-image" type="file" accept="image/*">
@@ -314,11 +318,11 @@
           <div class="admin-form__title">Añadir contrato</div>
           <div class="admin-field">
             <label for="contract-roblox">Usuario de Roblox</label>
-            <input class="admin-input" id="contract-roblox" placeholder="Escribe para buscar…" required autocomplete="off">
+            <input class="admin-input" id="contract-roblox" placeholder="Escribe para buscar…" required autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="ifl-roblox-search-1">
           </div>
           <div class="admin-field">
             <label for="contract-discord">Usuario de Discord</label>
-            <input class="admin-input" id="contract-discord" placeholder="p. ej. aitor_lorente" required>
+            <input class="admin-input" id="contract-discord" placeholder="p. ej. aitor_lorente" required autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="ifl-discord-search-1">
           </div>
           <div class="admin-field">
             <label for="contract-discord-id">Discord ID (para vincular "Mi carrera")</label>
@@ -382,7 +386,7 @@
           <div class="admin-form__title">Asignar rango a un jugador</div>
           <div class="admin-field">
             <label for="rank-assign-roblox">Jugador (busca por Roblox o Discord)</label>
-            <input class="admin-input" id="rank-assign-roblox" placeholder="Escribe para buscar…" autocomplete="off" required>
+            <input class="admin-input" id="rank-assign-roblox" placeholder="Escribe para buscar…" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" name="ifl-roblox-search-2" required>
           </div>
           <div class="admin-field">
             <label for="rank-assign-select">Rango</label>
@@ -552,8 +556,13 @@
         </div>
 
         <div class="admin-panel">
-          <div class="admin-panel__head"><div class="admin-panel__head-title">Ofertas pendientes</div></div>
+          <div class="admin-panel__head"><div class="admin-panel__head-title">Fichajes de agentes libres pendientes</div></div>
           <div class="admin-panel__body" id="market-pending-list"></div>
+        </div>
+
+        <div class="admin-panel" style="margin-top:18px;">
+          <div class="admin-panel__head"><div class="admin-panel__head-title">Traspasos pendientes de aprobar</div></div>
+          <div class="admin-panel__body" id="market-pending-transfers-list"></div>
         </div>
       </section>
 
