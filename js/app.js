@@ -218,6 +218,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupProfileControls();
     setupOnlinePresence();
     renderHero();
+    renderUpcomingMatches();
     checkClubOwnership();
     loadMyRanks();
     startAccessPolling();
@@ -273,12 +274,260 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function renderMercado() {
     const staffTool = document.getElementById("market-staff-tool");
     const myOffersBox = document.getElementById("market-my-offers");
+    const negotiationsBox = document.getElementById("market-negotiations-box");
     if (staffTool) staffTool.hidden = !myRanksCache.includes("Staff");
     if (myOffersBox) myOffersBox.hidden = !myOwnedTeamCache;
+    if (negotiationsBox) negotiationsBox.hidden = !myOwnedTeamCache;
 
-    const tasks = [renderFreeAgents(), renderMarketFeed(), renderFreeAgentCard()];
-    if (myOwnedTeamCache) tasks.push(renderMyOffers());
+    const tasks = [renderFreeAgents(), renderMarketFeed(), renderFreeAgentCard(), renderMarketListings()];
+    if (myOwnedTeamCache) {
+      tasks.push(renderMyOffers());
+      tasks.push(renderNegotiations());
+    }
     await Promise.all(tasks);
+  }
+
+  // Da una pista de lo razonable que es un precio comparado con el precio
+  // pedido originalmente por el club vendedor.
+  function priceHint(askingPrice, proposedPrice) {
+    if (!askingPrice || !proposedPrice) return "";
+    const ratio = proposedPrice / askingPrice;
+    if (ratio < 0.6) return "No creo que el club acepte eso.";
+    if (ratio > 1.5) return "Creo que te estás pasando con la oferta.";
+    return "Un precio aceptable.";
+  }
+
+  async function renderMarketListings() {
+    const list = document.getElementById("market-listings-list");
+    if (!list) return;
+    list.innerHTML = `<div class="market-empty">Cargando…</div>`;
+
+    let listings = [];
+    try { listings = await db.getMarketListings(); } catch (e) { console.error("[IFL] Error cargando el mercado de traspasos:", e); }
+
+    if (!listings.length) {
+      list.innerHTML = '<div class="market-empty">Ningún club ha puesto jugadores a la venta ahora mismo.</div>';
+      return;
+    }
+
+    const myTeamId = myOwnedTeamCache ? myOwnedTeamCache.team.id : null;
+
+    list.innerHTML = listings.map((l) => `
+      <div class="market-player-row" data-player-profile="${l.player.id}" style="cursor:pointer;">
+        ${robloxAvatarHTML(l.player)}
+        <div class="market-player-row__body">
+          <div class="market-player-row__name">${escapeHTML(playerDisplayName(l.player))}</div>
+          <div class="market-player-row__meta">
+            <span class="market-player-row__tag">${escapeHTML(l.team.name)}</span>
+            ${l.player.position ? `<span class="market-player-row__tag">${escapeHTML(l.player.position)}</span>` : ""}
+          </div>
+        </div>
+        <span class="transfer-row__price" style="margin-left:0;">€${Number(l.asking_price).toLocaleString("es-ES")}</span>
+        ${myTeamId && myTeamId !== l.team_id ? `<button type="button" class="btn-market btn-market--small" data-negotiate="${l.id}">Negociar precio</button>` : ""}
+        ${myTeamId && myTeamId === l.team_id ? `<button type="button" class="btn-market btn-market--small btn-market--ghost" data-retire-listing="${l.id}">Quitar de la venta</button>` : ""}
+      </div>
+      ${myTeamId && myTeamId !== l.team_id ? `
+        <div class="market-offer-box" id="negotiate-form-${l.id}" hidden>
+          <input type="number" min="0" step="0.01" class="market-input" id="negotiate-price-${l.id}" placeholder="Tu oferta (€)" style="max-width:200px;">
+          <button type="button" class="btn-market btn-market--small" data-send-offer="${l.id}">Enviar oferta</button>
+          <span class="market-code-box__hint" id="negotiate-hint-${l.id}"></span>
+        </div>
+      ` : ""}
+    `).join("");
+
+    list.querySelectorAll("[data-player-profile]").forEach((row) => {
+      row.addEventListener("click", (e) => {
+        if (e.target.closest("button") || e.target.closest(".market-offer-box")) return;
+        openPlayerStatsModal(row.getAttribute("data-player-profile"));
+      });
+    });
+
+    list.querySelectorAll("[data-negotiate]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const box = document.getElementById("negotiate-form-" + btn.getAttribute("data-negotiate"));
+        if (box) box.hidden = !box.hidden;
+      });
+    });
+
+    list.querySelectorAll("[id^='negotiate-price-']").forEach((input) => {
+      const listingId = input.id.replace("negotiate-price-", "");
+      const listing = listings.find((l) => l.id === listingId);
+      input.addEventListener("input", () => {
+        const hintEl = document.getElementById("negotiate-hint-" + listingId);
+        const val = parseFloat(input.value);
+        if (hintEl) hintEl.textContent = val > 0 ? priceHint(listing.asking_price, val) : "";
+      });
+    });
+
+    list.querySelectorAll("[data-send-offer]").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const listingId = btn.getAttribute("data-send-offer");
+        const listing = listings.find((l) => l.id === listingId);
+        const priceInput = document.getElementById("negotiate-price-" + listingId);
+        const price = parseFloat(priceInput?.value);
+        if (!price || price <= 0) { alert("Introduce un precio válido."); return; }
+        if (!myOwnedTeamCache || !listing) return;
+
+        btn.disabled = true;
+        try {
+          await db.startNegotiation({
+            listingId: listing.id,
+            playerId: listing.player.id,
+            sellerTeamId: listing.team_id,
+            buyerTeamId: myOwnedTeamCache.team.id,
+            askingPrice: listing.asking_price,
+            offerPrice: price,
+          });
+          alert("Oferta enviada al club. Te avisará este panel en cuanto responda.");
+          await renderNegotiations();
+        } catch (err) {
+          console.error("[IFL] Error enviando la oferta de traspaso:", err);
+          alert("No se pudo enviar la oferta.");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    list.querySelectorAll("[data-retire-listing]").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        btn.disabled = true;
+        try {
+          await db.retireListing(btn.getAttribute("data-retire-listing"));
+          await renderMarketListings();
+        } catch (err) {
+          console.error(err);
+          alert("No se pudo quitar de la venta.");
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  const NEGOTIATION_STATUS_LABEL = {
+    pendiente: "Pendiente",
+    aceptada_pendiente_admin: "Aceptada · esperando a la administración",
+    aceptada: "✅ Traspaso completado",
+    rechazada: "❌ Rechazada",
+  };
+
+  async function renderNegotiations() {
+    const list = document.getElementById("market-negotiations-list");
+    if (!list || !myOwnedTeamCache) return;
+    const myTeamId = myOwnedTeamCache.team.id;
+
+    let negs = [];
+    try { negs = await db.getMyNegotiations(myTeamId); } catch (e) { console.error("[IFL] Error cargando negociaciones:", e); }
+
+    if (!negs.length) {
+      list.innerHTML = '<div class="market-empty">No tienes negociaciones abiertas.</div>';
+      return;
+    }
+
+    list.innerHTML = negs.map((n) => {
+      const isSeller = n.seller_team_id === myTeamId;
+      const myRole = isSeller ? "seller" : "buyer";
+      const otherTeam = isSeller ? n.buyer_team : n.seller_team;
+      const myTurn = n.status === "pendiente" && n.turn === myRole;
+      const roleLabel = isSeller ? "Venden a" : "Quieren comprar a";
+
+      let actionsHTML = "";
+      if (myTurn) {
+        actionsHTML = `
+          <div class="market-offer-box" style="padding-left:0;">
+            <button type="button" class="btn-market btn-market--small" data-neg-accept="${n.id}">Aceptar</button>
+            <button type="button" class="btn-market btn-market--small btn-market--danger" data-neg-reject="${n.id}">Rechazar</button>
+            <button type="button" class="btn-market btn-market--small btn-market--ghost" data-neg-counter-toggle="${n.id}">Contraoferta</button>
+          </div>
+          <div class="market-offer-box" id="neg-counter-form-${n.id}" hidden style="padding-left:0;">
+            <input type="number" min="0" step="0.01" class="market-input" id="neg-counter-price-${n.id}" placeholder="Tu contraoferta (€)" style="max-width:200px;">
+            <button type="button" class="btn-market btn-market--small" data-neg-counter-send="${n.id}">Enviar contraoferta</button>
+            <span class="market-code-box__hint" id="neg-counter-hint-${n.id}"></span>
+          </div>
+        `;
+      } else if (n.status === "pendiente") {
+        actionsHTML = `<p class="market-code-box__hint" style="margin:6px 0 0;">Esperando respuesta de ${escapeHTML(otherTeam ? otherTeam.name : "el otro club")}.</p>`;
+      }
+
+      return `
+        <div class="market-player-row" style="align-items:flex-start;">
+          ${robloxAvatarHTML(n.player)}
+          <div class="market-player-row__body">
+            <div class="market-player-row__name">${roleLabel} ${escapeHTML(playerDisplayName(n.player))}</div>
+            <div class="market-player-row__meta">
+              ${otherTeam ? escapeHTML(otherTeam.name) : ""} · Precio actual: €${Number(n.current_price).toLocaleString("es-ES")}
+              (pedido: €${Number(n.asking_price).toLocaleString("es-ES")})
+            </div>
+            <span class="badge-pill ${n.status === "aceptada" ? "badge-pill--accepted" : n.status === "rechazada" ? "badge-pill--rejected" : "badge-pill--pending"}" style="margin-top:6px;display:inline-block;">
+              ${NEGOTIATION_STATUS_LABEL[n.status] || n.status}
+            </span>
+            ${actionsHTML}
+            ${n.status === "aceptada" && n.code ? `
+              <div class="market-code-box">
+                <p class="market-code-box__hint" style="margin:0;">Código de registro</p>
+                <p class="market-code-box__value">${escapeHTML(n.code)}</p>
+                <p class="market-code-box__hint">Pasa este código y su contrato para poder registrarlo.</p>
+              </div>
+            ` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    list.querySelectorAll("[data-neg-accept]").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        btn.disabled = true;
+        try {
+          await db.respondNegotiation(btn.getAttribute("data-neg-accept"), "accept");
+          await renderNegotiations();
+        } catch (err) { console.error(err); alert("No se pudo aceptar."); btn.disabled = false; }
+      });
+    });
+
+    list.querySelectorAll("[data-neg-reject]").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        if (!confirm("¿Rechazar esta negociación?")) return;
+        btn.disabled = true;
+        try {
+          await db.respondNegotiation(btn.getAttribute("data-neg-reject"), "reject");
+          await renderNegotiations();
+        } catch (err) { console.error(err); alert("No se pudo rechazar."); btn.disabled = false; }
+      });
+    });
+
+    list.querySelectorAll("[data-neg-counter-toggle]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const box = document.getElementById("neg-counter-form-" + btn.getAttribute("data-neg-counter-toggle"));
+        if (box) box.hidden = !box.hidden;
+      });
+    });
+
+    list.querySelectorAll("[id^='neg-counter-price-']").forEach((input) => {
+      const negId = input.id.replace("neg-counter-price-", "");
+      const neg = negs.find((n) => n.id === negId);
+      input.addEventListener("input", () => {
+        const hintEl = document.getElementById("neg-counter-hint-" + negId);
+        const val = parseFloat(input.value);
+        if (hintEl && neg) hintEl.textContent = val > 0 ? priceHint(neg.asking_price, val) : "";
+      });
+    });
+
+    list.querySelectorAll("[data-neg-counter-send]").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const negId = btn.getAttribute("data-neg-counter-send");
+        const priceInput = document.getElementById("neg-counter-price-" + negId);
+        const price = parseFloat(priceInput?.value);
+        if (!price || price <= 0) { alert("Introduce un precio válido."); return; }
+
+        btn.disabled = true;
+        try {
+          await db.respondNegotiation(negId, "counter", price);
+          await renderNegotiations();
+        } catch (err) { console.error(err); alert("No se pudo enviar la contraoferta."); btn.disabled = false; }
+      });
+    });
   }
 
   // Panel "Free Agent": solo para quien no tiene equipo (ni es Team Owner
@@ -445,60 +694,43 @@ document.addEventListener("DOMContentLoaded", async () => {
         <div class="market-player-row__body">
           <div class="market-player-row__name">${escapeHTML(playerDisplayName(p))}</div>
           <div class="market-player-row__meta">
-            <span class="market-player-row__tag">Agente libre</span>
+            <span class="market-player-row__tag">Agente libre · Gratis</span>
             ${p.position ? `<span class="market-player-row__tag">${escapeHTML(p.position)}</span>` : ""}
             ${p.career_summary ? `<div style="margin-top:5px;">${escapeHTML(p.career_summary)}</div>` : ""}
           </div>
         </div>
-        ${myOwnedTeamCache ? `<button type="button" class="btn-market btn-market--small" data-offer-player="${p.id}">Ofertar fichaje</button>` : ""}
+        ${myOwnedTeamCache ? `<button type="button" class="btn-market btn-market--small" data-sign-free="${p.id}">Fichar gratis</button>` : ""}
       </div>
-      ${myOwnedTeamCache ? `
-        <div class="market-offer-box" id="market-offer-form-${p.id}" hidden>
-          <input type="number" min="0" step="0.01" class="market-input" id="market-offer-price-${p.id}" placeholder="Precio de la oferta (€)" style="max-width:220px;">
-          <button type="button" class="btn-market btn-market--small" data-confirm-offer="${p.id}">Confirmar oferta</button>
-        </div>
-      ` : ""}
     `).join("");
 
     list.querySelectorAll("[data-player-profile]").forEach((row) => {
       row.addEventListener("click", (e) => {
-        if (e.target.closest("[data-offer-player]") || e.target.closest(".market-offer-box")) return;
+        if (e.target.closest("[data-sign-free]")) return;
         openPlayerStatsModal(row.getAttribute("data-player-profile"));
       });
     });
 
-    list.querySelectorAll("[data-offer-player]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const box = document.getElementById("market-offer-form-" + btn.getAttribute("data-offer-player"));
-        if (box) box.hidden = !box.hidden;
-      });
-    });
-
-    list.querySelectorAll("[data-confirm-offer]").forEach((btn) => {
+    list.querySelectorAll("[data-sign-free]").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        const playerId = btn.getAttribute("data-confirm-offer");
-        const priceInput = document.getElementById("market-offer-price-" + playerId);
-        const price = parseFloat(priceInput?.value);
-        if (!price || price <= 0) { alert("Introduce un precio válido."); return; }
         if (!myOwnedTeamCache) return;
+        if (!confirm("¿Fichar a este jugador gratis para tu club? Quedará pendiente de aprobación por la administración.")) return;
 
         btn.disabled = true;
         try {
           await db.createMarketOffer({
-            playerId,
+            playerId: btn.getAttribute("data-sign-free"),
             teamId: myOwnedTeamCache.team.id,
-            price,
+            price: 0,
             buyerDiscordId: currentDiscordId,
             buyerDiscordUsername: (userInfo?.textContent || "").replace("Sesión iniciada como ", ""),
           });
-          alert("Oferta enviada. La administración tiene que aceptarla para que se haga efectiva.");
+          alert("Fichaje enviado. La administración tiene que aceptarlo para que se haga efectivo.");
           await renderFreeAgents();
           await renderMyOffers();
         } catch (e) {
-          console.error("[IFL] Error enviando la oferta:", e);
-          alert("No se pudo enviar la oferta.");
+          console.error("[IFL] Error enviando el fichaje:", e);
+          alert("No se pudo enviar el fichaje.");
           btn.disabled = false;
         }
       });
@@ -614,6 +846,56 @@ document.addEventListener("DOMContentLoaded", async () => {
     link.hidden = !myOwnedTeamCache;
   }
 
+  // Rellena la columna "Venta" de la tabla de Mi Club: si el jugador ya
+  // está en venta, muestra el precio + botón de quitarlo; si no, un botón
+  // para ponerlo a la venta con un precio.
+  async function renderClubSaleCells(teamId, contracts) {
+    let listings = [];
+    try { listings = await db.getMarketListings(); } catch (e) { console.error(e); }
+    const byPlayer = {};
+    listings.filter((l) => l.team_id === teamId).forEach((l) => { byPlayer[l.player.id] = l; });
+
+    contracts.forEach((c) => {
+      const cell = document.querySelector(`[data-sale-cell="${c.player.id}"]`);
+      if (!cell) return;
+      const listing = byPlayer[c.player.id];
+
+      if (listing) {
+        cell.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="market-player-row__tag">En venta · €${Number(listing.asking_price).toLocaleString("es-ES")}</span>
+            <button type="button" class="btn-market btn-market--small btn-market--ghost" data-retire-my-listing="${listing.id}">Quitar</button>
+          </div>
+        `;
+        cell.querySelector("[data-retire-my-listing]")?.addEventListener("click", async (e) => {
+          e.target.disabled = true;
+          try { await db.retireListing(listing.id); await renderMyClub(); } catch (err) { console.error(err); alert("No se pudo quitar de la venta."); }
+        });
+      } else {
+        cell.innerHTML = `
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <input type="number" min="0" step="0.01" class="market-input" id="sale-price-${c.player.id}" placeholder="Precio €" style="max-width:110px;">
+            <button type="button" class="btn-market btn-market--small" data-list-player="${c.player.id}">Poner en venta</button>
+          </div>
+        `;
+        cell.querySelector("[data-list-player]")?.addEventListener("click", async (e) => {
+          const priceInput = document.getElementById("sale-price-" + c.player.id);
+          const price = parseFloat(priceInput?.value);
+          if (!price || price <= 0) { alert("Introduce un precio válido."); return; }
+          e.target.disabled = true;
+          try {
+            await db.createListing({ playerId: c.player.id, teamId, askingPrice: price });
+            await renderMyClub();
+          } catch (err) {
+            console.error(err);
+            alert("No se pudo poner en venta.");
+            e.target.disabled = false;
+          }
+        });
+      }
+    });
+  }
+
   async function renderMyClub() {
     const box = document.getElementById("club-card-box");
     if (!box) return;
@@ -665,21 +947,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       <h3 class="table-heading">Contratos del club</h3>
       <div class="table-wrap">
         <table class="standings">
-          <thead><tr><th>Jugador</th><th>Precio</th><th>Firmado</th><th>Estado</th></tr></thead>
+          <thead><tr><th>Jugador</th><th>Precio</th><th>Firmado</th><th>Estado</th><th>Venta</th></tr></thead>
           <tbody>
             ${contracts.map((c) => `
-              <tr class="club-contract-row" data-player-id="${c.player.id}" style="cursor:pointer;">
-                <td class="standings__club">${escapeHTML(playerDisplayName(c.player))}</td>
+              <tr class="club-contract-row" data-player-id="${c.player.id}">
+                <td class="standings__club" style="cursor:pointer;">${escapeHTML(playerDisplayName(c.player))}</td>
                 <td class="is-num">€${Number(c.price).toLocaleString("es-ES")}</td>
                 <td class="is-muted">T${c.signed_season}</td>
                 <td><span class="badge-state badge-state--active">${escapeHTML(c.status)}</span></td>
+                <td data-sale-cell="${c.player.id}">—</td>
               </tr>
-            `).join("") || '<tr><td colspan="4" class="admin-table-empty">Todavía no hay contratos en tu club.</td></tr>'}
+            `).join("") || '<tr><td colspan="5" class="admin-table-empty">Todavía no hay contratos en tu club.</td></tr>'}
           </tbody>
         </table>
       </div>
       <p class="admin-form__note" style="margin-top:14px;">
         Como Team Owner puedes ver tu plantilla y su coste, pero solo la administración puede añadir o quitar contratos.
+        Puedes poner a tus jugadores a la venta para que otros clubs negocien por ellos en el Mercado.
       </p>
     `;
 
@@ -696,13 +980,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    box.querySelectorAll(".club-contract-row").forEach((row) => {
-      row.addEventListener("click", () => {
+    box.querySelectorAll(".club-contract-row .standings__club").forEach((cell) => {
+      cell.addEventListener("click", () => {
+        const row = cell.closest("[data-player-id]");
         showView("buscar");
         navLinks.forEach((l) => l.classList.toggle("is-active", l.dataset.view === "buscar"));
         setTimeout(() => showPlayerProfile(row.getAttribute("data-player-id")), 150);
       });
     });
+
+    renderClubSaleCells(team.id, contracts);
   }
 
   // =================================
@@ -779,6 +1066,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (name === "calendario") renderCalendar();
     if (name === "clasificacion") renderStandings("season");
+    if (name === "inicio") renderUpcomingMatches();
     if (name === "estadios") renderStadiums();
     if (name === "carrera") renderCareer();
     if (name === "premios") renderPremios();
@@ -1093,6 +1381,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <p class="ifl-modal__meta">${stadium.team ? "Estadio de " + escapeHTML(stadium.team.name) : "Sin equipo asignado"}</p>
         <p class="ifl-modal__meta">${escapeHTML(stadium.city || "")}${stadium.capacity ? " · " + stadium.capacity.toLocaleString("es-ES") + " asientos" : ""}</p>
         ${stadium.description ? `<p class="view-lead" style="margin-top:10px;">${escapeHTML(stadium.description)}</p>` : ""}
+        ${stadium.roblox_game_url ? `<a href="${escapeHTML(stadium.roblox_game_url)}" target="_blank" rel="noopener" class="btn-market" style="margin-top:14px;text-decoration:none;">Abrir en Roblox</a>` : ""}
       </div>
     `;
     modal.hidden = false;
@@ -1208,6 +1497,55 @@ document.addEventListener("DOMContentLoaded", async () => {
     set("hero-stat-players", activePlayers);
     set("hero-stat-matches", playedMatches.length);
     set("hero-stat-goals", totalGoals);
+  }
+
+  const DIVISION_LABEL = { primera: "Primera División", segunda: "Segunda División" };
+
+  function timeUntil(iso) {
+    const diffMs = new Date(iso).getTime() - Date.now();
+    if (diffMs <= 0) return "Muy pronto";
+    const mins = Math.round(diffMs / 60000);
+    if (mins < 60) return `Dentro de ${mins} min`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `Dentro de ${hours} h`;
+    const days = Math.round(hours / 24);
+    return `Dentro de ${days} día${days === 1 ? "" : "s"}`;
+  }
+
+  async function renderUpcomingMatches() {
+    const list = document.getElementById("upcoming-matches-list");
+    if (!list) return;
+    list.innerHTML = `<div class="market-empty">Cargando…</div>`;
+
+    let matches = [];
+    try { matches = await db.getMatches(CURRENT_SEASON); } catch (e) { console.error("[IFL] Error cargando próximos partidos:", e); }
+
+    const now = Date.now();
+    const upcoming = matches
+      .filter((m) => m.status === "programado" && m.scheduled_at && new Date(m.scheduled_at).getTime() > now)
+      .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
+      .slice(0, 6);
+
+    if (!upcoming.length) {
+      list.innerHTML = '<div class="market-empty">No hay partidos programados por ahora.</div>';
+      return;
+    }
+
+    list.innerHTML = upcoming.map((m) => `
+      <div class="upcoming-match-card">
+        <div class="upcoming-match-card__crests">
+          ${m.home_team && m.home_team.logo_url ? `<img src="${escapeHTML(m.home_team.logo_url)}" alt="">` : `<span class="upcoming-match-card__crest-empty"></span>`}
+          <span class="upcoming-match-card__vs">VS</span>
+          ${m.away_team && m.away_team.logo_url ? `<img src="${escapeHTML(m.away_team.logo_url)}" alt="">` : `<span class="upcoming-match-card__crest-empty"></span>`}
+        </div>
+        <div class="upcoming-match-card__meta">
+          <span class="upcoming-match-card__countdown">${timeUntil(m.scheduled_at)}</span>
+          <span>${new Date(m.scheduled_at).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" })}</span>
+          ${m.stadium ? `<span>🏟️ ${escapeHTML(m.stadium.name)}</span>` : ""}
+          ${m.home_team && m.home_team.division ? `<span>${escapeHTML(DIVISION_LABEL[m.home_team.division] || m.home_team.division)}</span>` : ""}
+        </div>
+      </div>
+    `).join("");
   }
 
   // =================================
