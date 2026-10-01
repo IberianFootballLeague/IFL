@@ -1919,3 +1919,130 @@ h1.hub-hero__title::after { animation-delay: 0.3s; }
   font-weight: 700;
   color: var(--gray-2, #8b8d96);
 }
+
+/* =====================================
+   MÓVIL — ajustes generales
+   (algunos usan !important porque pisan reglas de admin.css/style.css
+   que no controlamos desde aquí y hay que ganar el pulso de todas formas)
+===================================== */
+
+@media (max-width: 760px) {
+  /* ---- Cabecera pública ---- */
+  .app-header {
+    flex-wrap: wrap !important;
+    height: auto !important;
+    padding: 10px 14px !important;
+    gap: 10px !important;
+  }
+
+  .app-header__logo { width: 90px !important; }
+
+  .app-header__nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 16px !important;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .app-header__nav::-webkit-scrollbar { display: none; }
+
+  .app-header__link {
+    flex: none;
+    font-size: 13px !important;
+    white-space: nowrap;
+  }
+
+  .app-header__user { display: none; }
+
+  .dashboard { padding: 18px 14px !important; }
+
+  /* ---- Hero de Inicio ---- */
+  .hub-hero__content { padding: 28px 18px 120px !important; }
+  .hub-hero__title { font-size: clamp(34px, 11vw, 52px) !important; }
+  .hub-hero__lead { font-size: 14px !important; }
+  .hub-hero__actions { flex-direction: column; }
+  .btn-hero { width: 100%; text-align: center; }
+
+  /* ---- Rejillas → una sola columna ---- */
+  .stat-grid,
+  .division-board-grid,
+  .stadiums-grid,
+  .upcoming-matches,
+  .admin-stats,
+  .admin-panels,
+  .admin-grid,
+  .division-board {
+    grid-template-columns: 1fr !important;
+  }
+
+  .stadium-card2 { height: 170px; }
+
+  /* ---- Tarjetas y filas del mercado ---- */
+  .market-player-row { flex-wrap: wrap; }
+  .market-player-row__body { min-width: 100%; order: 2; }
+  .market-offer-box { padding-left: 4px !important; }
+  .transfer-row { font-size: 11.5px; }
+  .transfer-row__price { margin-left: 0 !important; width: 100%; order: 5; }
+
+  /* ---- Formularios ---- */
+  .admin-form { grid-template-columns: 1fr !important; }
+  .attendance-grid { grid-template-columns: 1fr !important; }
+  .result-event-row { grid-template-columns: 1fr !important; }
+
+  /* ---- Modales ---- */
+  .ifl-modal__box {
+    width: 92vw !important;
+    padding: 22px 18px !important;
+    max-height: 82vh;
+  }
+
+  .ifl-tutorial__box { width: 92vw !important; padding: 26px 20px 22px !important; }
+
+  /* ---- Login ---- */
+  .login-card { padding: 38px 24px 30px !important; width: 92vw; }
+  .login-page__watermark { display: none; }
+
+  /* ---- Tablas: scroll horizontal garantizado ---- */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .standings { min-width: 520px; }
+
+  /* ---- Mi Club ---- */
+  .club-hero__budget { position: static; text-align: left; margin-top: 14px; }
+  .club-hero { min-height: 220px; }
+
+  /* ---- Calendario ---- */
+  .calendar-grid { font-size: 11px; }
+}
+
+@media (max-width: 980px) {
+  /* ---- Panel de administración: la barra lateral pasa a ir arriba,
+     apilada, en vez de al lado (no conocemos el CSS exacto de admin.css,
+     así que forzamos con !important para asegurar el cambio). ---- */
+  .admin {
+    display: block !important;
+    height: auto !important;
+  }
+
+  .admin-side {
+    width: 100% !important;
+    height: auto !important;
+    position: relative !important;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  .admin-main { margin-left: 0 !important; width: 100% !important; }
+
+  .admin-top {
+    flex-wrap: wrap !important;
+    height: auto !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+
+  .admin-top__search { order: 3; width: 100%; }
+  .admin-nav { flex-wrap: wrap !important; }
+}
