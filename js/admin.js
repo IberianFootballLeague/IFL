@@ -468,6 +468,10 @@
 
   const rankAssignForm = document.getElementById("rank-assign-form");
   const rankAssignRobloxInput = document.getElementById("rank-assign-roblox");
+  // Chrome ignora autocomplete="off" en muchos casos y sigue ofreciendo
+  // valores guardados. Cambiar el "name" en cada carga de página (a algo
+  // que nunca ha visto) es lo único que lo frena de forma fiable.
+  if (rankAssignRobloxInput) rankAssignRobloxInput.name = "ifl_" + Math.random().toString(36).slice(2);
   const rankAssignSelect = document.getElementById("rank-assign-select");
   const rankOwnerClubField = document.getElementById("rank-owner-club-field");
   const rankOwnerClubSelect = document.getElementById("rank-owner-club-select");
@@ -885,6 +889,8 @@
   const advanceSeasonBtn = document.getElementById("advance-season-btn");
   const contractRobloxInput = document.getElementById("contract-roblox");
   const contractDiscordUserInput = document.getElementById("contract-discord");
+  if (contractRobloxInput) contractRobloxInput.name = "ifl_" + Math.random().toString(36).slice(2);
+  if (contractDiscordUserInput) contractDiscordUserInput.name = "ifl_" + Math.random().toString(36).slice(2);
   const contractDiscordIdInput = document.getElementById("contract-discord-id");
 
   let selectedPlayer = null; // jugador existente elegido desde el buscador
