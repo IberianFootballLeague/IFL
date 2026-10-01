@@ -23,6 +23,60 @@ function escapeHTML(str) {
 // si en algún momento Roblox bloquea estas llamadas por CORS desde este
 // dominio, esto simplemente falla en silencio y se sigue usando la foto
 // subida a mano o la inicial de color como respaldo.
+// Sustituyen a await iflAlert()/confirm() nativos (el aviso gris feo del navegador)
+// por un modal propio, a juego con el resto de la web.
+function iflAlert(message) {
+  return new Promise((resolve) => {
+    let modal = document.getElementById("ifl-alert-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "ifl-alert-modal";
+      modal.className = "ifl-modal";
+      modal.innerHTML = `
+        <div class="ifl-modal__overlay"></div>
+        <div class="ifl-modal__box" style="text-align:center;max-width:380px;">
+          <p id="ifl-alert-modal-text" class="view-lead" style="margin:6px 0 20px;"></p>
+          <button type="button" class="btn-market" id="ifl-alert-modal-ok" style="width:100%;">Vale</button>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+    document.getElementById("ifl-alert-modal-text").textContent = message;
+    modal.hidden = false;
+    const close = () => { modal.hidden = true; resolve(); };
+    document.getElementById("ifl-alert-modal-ok").onclick = close;
+    modal.querySelector(".ifl-modal__overlay").onclick = close;
+  });
+}
+
+function iflConfirm(message) {
+  return new Promise((resolve) => {
+    let modal = document.getElementById("ifl-confirm-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "ifl-confirm-modal";
+      modal.className = "ifl-modal";
+      modal.innerHTML = `
+        <div class="ifl-modal__overlay"></div>
+        <div class="ifl-modal__box" style="text-align:center;max-width:380px;">
+          <p id="ifl-confirm-modal-text" class="view-lead" style="margin:6px 0 20px;"></p>
+          <div style="display:flex;gap:10px;">
+            <button type="button" class="btn-market btn-market--ghost" id="ifl-confirm-modal-cancel" style="flex:1;">Cancelar</button>
+            <button type="button" class="btn-market" id="ifl-confirm-modal-ok" style="flex:1;">Confirmar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+    document.getElementById("ifl-confirm-modal-text").textContent = message;
+    modal.hidden = false;
+    const finish = (val) => { modal.hidden = true; resolve(val); };
+    document.getElementById("ifl-confirm-modal-ok").onclick = () => finish(true);
+    document.getElementById("ifl-confirm-modal-cancel").onclick = () => finish(false);
+    modal.querySelector(".ifl-modal__overlay").onclick = () => finish(false);
+  });
+}
+
 async function fetchRobloxAvatarUrl(username) {
   if (!username) return null;
   try {
@@ -367,7 +421,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const listing = listings.find((l) => l.id === listingId);
         const priceInput = document.getElementById("negotiate-price-" + listingId);
         const price = parseFloat(priceInput?.value);
-        if (!price || price <= 0) { alert("Introduce un precio válido."); return; }
+        if (!price || price <= 0) { await iflAlert("Introduce un precio válido."); return; }
         if (!myOwnedTeamCache || !listing) return;
 
         btn.disabled = true;
@@ -380,11 +434,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             askingPrice: listing.asking_price,
             offerPrice: price,
           });
-          alert("Oferta enviada al club. Te avisará este panel en cuanto responda.");
+          await iflAlert("Oferta enviada al club. Te avisará este panel en cuanto responda.");
           await renderNegotiations();
         } catch (err) {
           console.error("[IFL] Error enviando la oferta de traspaso:", err);
-          alert("No se pudo enviar la oferta.");
+          await iflAlert("No se pudo enviar la oferta.");
           btn.disabled = false;
         }
       });
@@ -399,7 +453,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           await renderMarketListings();
         } catch (err) {
           console.error(err);
-          alert("No se pudo quitar de la venta.");
+          await iflAlert("No se pudo quitar de la venta.");
           btn.disabled = false;
         }
       });
@@ -482,18 +536,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
           await db.respondNegotiation(btn.getAttribute("data-neg-accept"), "accept");
           await renderNegotiations();
-        } catch (err) { console.error(err); alert("No se pudo aceptar."); btn.disabled = false; }
+        } catch (err) { console.error(err); await iflAlert("No se pudo aceptar."); btn.disabled = false; }
       });
     });
 
     list.querySelectorAll("[data-neg-reject]").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
-        if (!confirm("¿Rechazar esta negociación?")) return;
+        if (!(await iflConfirm("¿Rechazar esta negociación?"))) return;
         btn.disabled = true;
         try {
           await db.respondNegotiation(btn.getAttribute("data-neg-reject"), "reject");
           await renderNegotiations();
-        } catch (err) { console.error(err); alert("No se pudo rechazar."); btn.disabled = false; }
+        } catch (err) { console.error(err); await iflAlert("No se pudo rechazar."); btn.disabled = false; }
       });
     });
 
@@ -519,13 +573,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         const negId = btn.getAttribute("data-neg-counter-send");
         const priceInput = document.getElementById("neg-counter-price-" + negId);
         const price = parseFloat(priceInput?.value);
-        if (!price || price <= 0) { alert("Introduce un precio válido."); return; }
+        if (!price || price <= 0) { await iflAlert("Introduce un precio válido."); return; }
 
         btn.disabled = true;
         try {
           await db.respondNegotiation(negId, "counter", price);
           await renderNegotiations();
-        } catch (err) { console.error(err); alert("No se pudo enviar la contraoferta."); btn.disabled = false; }
+        } catch (err) { console.error(err); await iflAlert("No se pudo enviar la contraoferta."); btn.disabled = false; }
       });
     });
   }
@@ -569,7 +623,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           await renderFreeAgents();
         } catch (err) {
           console.error("[IFL] Error al declararse agente libre:", err);
-          alert("No se pudo completar la declaración.");
+          await iflAlert(
+            "No se pudo completar la declaración.\n\n" +
+            (err.message || "Error desconocido") +
+            "\n\nComprueba que se ha ejecutado la migración 6 en Supabase (columna is_free_agent)."
+          );
           btn.disabled = false;
         }
       });
@@ -714,7 +772,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       btn.addEventListener("click", async (e) => {
         e.stopPropagation();
         if (!myOwnedTeamCache) return;
-        if (!confirm("¿Fichar a este jugador gratis para tu club? Quedará pendiente de aprobación por la administración.")) return;
+        if (!(await iflConfirm("¿Fichar a este jugador gratis para tu club? Quedará pendiente de aprobación por la administración."))) return;
 
         btn.disabled = true;
         try {
@@ -725,12 +783,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             buyerDiscordId: currentDiscordId,
             buyerDiscordUsername: (userInfo?.textContent || "").replace("Sesión iniciada como ", ""),
           });
-          alert("Fichaje enviado. La administración tiene que aceptarlo para que se haga efectivo.");
+          await iflAlert("Fichaje enviado. La administración tiene que aceptarlo para que se haga efectivo.");
           await renderFreeAgents();
           await renderMyOffers();
         } catch (e) {
           console.error("[IFL] Error enviando el fichaje:", e);
-          alert("No se pudo enviar el fichaje.");
+          await iflAlert("No se pudo enviar el fichaje.");
           btn.disabled = false;
         }
       });
@@ -869,7 +927,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         `;
         cell.querySelector("[data-retire-my-listing]")?.addEventListener("click", async (e) => {
           e.target.disabled = true;
-          try { await db.retireListing(listing.id); await renderMyClub(); } catch (err) { console.error(err); alert("No se pudo quitar de la venta."); }
+          try { await db.retireListing(listing.id); await renderMyClub(); } catch (err) { console.error(err); await iflAlert("No se pudo quitar de la venta."); }
         });
       } else {
         cell.innerHTML = `
@@ -881,14 +939,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         cell.querySelector("[data-list-player]")?.addEventListener("click", async (e) => {
           const priceInput = document.getElementById("sale-price-" + c.player.id);
           const price = parseFloat(priceInput?.value);
-          if (!price || price <= 0) { alert("Introduce un precio válido."); return; }
+          if (!price || price <= 0) { await iflAlert("Introduce un precio válido."); return; }
           e.target.disabled = true;
           try {
             await db.createListing({ playerId: c.player.id, teamId, askingPrice: price });
             await renderMyClub();
           } catch (err) {
             console.error(err);
-            alert("No se pudo poner en venta.");
+            await iflAlert("No se pudo poner en venta.");
             e.target.disabled = false;
           }
         });
@@ -1027,7 +1085,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (error) {
       console.error("[IFL] Error iniciando sesión con Discord:", error);
-      alert("No se pudo iniciar sesión con Discord.\n\n" + error.message);
+      await iflAlert("No se pudo iniciar sesión con Discord.\n\n" + error.message);
       discordButton.disabled = false;
       setDiscordLabel("Iniciar sesión con Discord");
     }
@@ -1914,7 +1972,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           await db.updatePlayerVisibility(myPlayer.id, visibilityToggle.checked);
         } catch (e) {
           console.error(e);
-          alert("No se pudo guardar el cambio de visibilidad.");
+          await iflAlert("No se pudo guardar el cambio de visibilidad.");
         }
       });
     }
