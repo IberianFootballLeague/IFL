@@ -11,6 +11,7 @@
   const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos de inactividad → cierre de sesión automático
 
   const CURRENT_SEASON_FALLBACK = 1;
+  const MAX_CONTRACTS_PER_TEAM = 15;
 
   // =====================================
   // ESTADO EN MEMORIA (se recarga de Supabase)
@@ -948,18 +949,55 @@
     });
   }
 
+  const contractsFilterClub = document.getElementById("contracts-filter-club");
+  const contractsFilterSeason = document.getElementById("contracts-filter-season");
+  const contractsFilterStatus = document.getElementById("contracts-filter-status");
+
+  function populateContractsFilters() {
+    if (contractsFilterClub) {
+      const current = contractsFilterClub.value;
+      contractsFilterClub.innerHTML = '<option value="">Todos los clubs</option>' +
+        state.teams.map((t) => `<option value="${t.id}">${escapeHTML(t.name)}</option>`).join("");
+      contractsFilterClub.value = current;
+    }
+    if (contractsFilterSeason) {
+      const current = contractsFilterSeason.value;
+      const seasons = Array.from(new Set(state.contracts.map((c) => c.signed_season))).sort((a, b) => a - b);
+      contractsFilterSeason.innerHTML = '<option value="">Todas</option>' +
+        seasons.map((s) => `<option value="${s}">Temporada ${s}</option>`).join("");
+      contractsFilterSeason.value = current;
+    }
+  }
+
+  [contractsFilterClub, contractsFilterSeason, contractsFilterStatus].forEach((el) => {
+    if (el) el.addEventListener("change", renderContractsView);
+  });
+
   function renderContractsView() {
     if (seasonLabelEl) seasonLabelEl.textContent = "Temporada " + state.season;
     if (seasonBadgeEl) seasonBadgeEl.textContent = "Temporada " + state.season;
     populateContractClubSelect();
+    populateContractsFilters();
 
     if (!contractsTableBody) return;
-    if (!state.contracts.length) {
-      contractsTableBody.innerHTML = '<tr><td colspan="8" class="admin-table-empty">Todavía no hay contratos.</td></tr>';
+
+    const filteredClub = contractsFilterClub?.value || "";
+    const filteredSeason = contractsFilterSeason?.value || "";
+    const filteredStatus = contractsFilterStatus?.value || "";
+
+    const filtered = state.contracts.filter((c) => {
+      if (filteredClub && c.team_id !== filteredClub) return false;
+      if (filteredSeason && String(c.signed_season) !== filteredSeason) return false;
+      if (filteredStatus && c.status !== filteredStatus) return false;
+      return true;
+    });
+
+    if (!filtered.length) {
+      contractsTableBody.innerHTML = '<tr><td colspan="8" class="admin-table-empty">No hay contratos que coincidan con el filtro.</td></tr>';
       return;
     }
 
-    contractsTableBody.innerHTML = state.contracts.map((c) => {
+    contractsTableBody.innerHTML = filtered.map((c) => {
       const isActive = c.status === "ACTIVO";
       return `
         <tr>
@@ -992,6 +1030,11 @@
 
       if (!discordUser || !robloxUser || !clubId || !seasonsTotal || seasonsTotal < 1 || isNaN(price)) {
         alert("Rellena todos los campos del contrato correctamente.");
+        return;
+      }
+
+      if (teamPlayerCount(clubId) >= MAX_CONTRACTS_PER_TEAM) {
+        alert(`Este club ya tiene el máximo de ${MAX_CONTRACTS_PER_TEAM} jugadores. Elimina o traspasa a alguno antes de añadir otro.`);
         return;
       }
 
