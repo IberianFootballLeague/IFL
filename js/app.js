@@ -980,7 +980,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const founded = new Date(team.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
 
     box.innerHTML = `
-      <div class="club-hero" ${stadium?.image_url ? `style="background-image:url('${escapeHTML(stadium.image_url)}')"` : ""}>
+      <div class="club-hero" id="club-hero-banner">
         ${stadium?.image_url ? `<div class="club-hero__overlay"></div>` : ""}
         <div class="club-hero__content">
           ${team.logo_url ? `<img src="${escapeHTML(team.logo_url)}" class="club-hero__logo" alt="">` : ""}
@@ -1023,7 +1023,33 @@ document.addEventListener("DOMContentLoaded", async () => {
         Como Team Owner puedes ver tu plantilla y su coste, pero solo la administración puede añadir o quitar contratos.
         Puedes poner a tus jugadores a la venta para que otros clubs negocien por ellos en el Mercado.
       </p>
+
+      <div class="market-card market-card--glow" style="--div-color:#eab308;margin-top:28px;">
+        <div class="market-card__title">🎵 Mis cánticos</div>
+        <p class="market-code-box__hint" style="position:relative;z-index:1;margin:0 0 16px;">
+          Guarda aquí el ID del audio de Roblox de cada cántico (una vez subido por ti en Roblox) para tenerlo
+          siempre a mano y poder copiarlo rápido. Hasta 20 cánticos por club.
+        </p>
+        <div class="chants-form-grid" style="position:relative;z-index:1;display:grid;gap:10px;grid-template-columns:1.2fr 1fr 1.2fr auto;align-items:end;">
+          <div>
+            <span class="market-label">Nombre del cántico</span>
+            <input id="chant-name-input" class="market-input" placeholder="p. ej. Himno de la grada" style="margin-top:4px;">
+          </div>
+          <div>
+            <span class="market-label">ID de audio de Roblox</span>
+            <input id="chant-audio-id-input" class="market-input" placeholder="123456789" style="margin-top:4px;">
+          </div>
+          <div>
+            <span class="market-label">Enlace de referencia (opcional)</span>
+            <input id="chant-ref-input" class="market-input" placeholder="https://…" style="margin-top:4px;">
+          </div>
+          <button type="button" class="btn-market" id="chant-add-btn">Añadir cántico</button>
+        </div>
+        <div id="team-chants-list" style="position:relative;z-index:1;margin-top:18px;"></div>
+      </div>
     `;
+
+    if (stadium?.image_url) setBackgroundIfLoads(document.getElementById("club-hero-banner"), stadium.image_url);
 
     document.getElementById("club-description-save")?.addEventListener("click", async () => {
       const val = document.getElementById("club-description-input").value.trim();
@@ -1048,6 +1074,88 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     renderClubSaleCells(team.id, contracts);
+    renderTeamChants(team.id);
+  }
+
+  async function renderTeamChants(teamId) {
+    const list = document.getElementById("team-chants-list");
+    if (!list) return;
+    list.innerHTML = `<div class="market-empty">Cargando…</div>`;
+
+    let chants = [];
+    try { chants = await db.getTeamChants(teamId); } catch (e) { console.error("[IFL] Error cargando cánticos:", e); }
+
+    list.innerHTML = `
+      <p class="market-code-box__hint" style="margin:0 0 8px;">${chants.length}/20 cánticos</p>
+      ${chants.length ? chants.map((c) => `
+        <div class="market-player-row">
+          <div class="market-player-row__body">
+            <div class="market-player-row__name">🎵 ${escapeHTML(c.name)}</div>
+            <div class="market-player-row__meta">
+              ${c.roblox_audio_id ? `ID: <code>${escapeHTML(c.roblox_audio_id)}</code>` : "Sin ID de Roblox todavía"}
+              ${c.reference_url ? ` · <a href="${escapeHTML(c.reference_url)}" target="_blank" rel="noopener" style="color:var(--cyan,#3bd6ff);">referencia</a>` : ""}
+            </div>
+          </div>
+          ${c.roblox_audio_id ? `<button type="button" class="btn-market btn-market--small btn-market--ghost" data-copy-chant="${escapeHTML(c.roblox_audio_id)}">Copiar ID</button>` : ""}
+          <button type="button" class="btn-market btn-market--small btn-market--danger" data-delete-chant="${c.id}">Eliminar</button>
+        </div>
+      `).join("") : '<div class="market-empty">Todavía no has añadido ningún cántico.</div>'}
+    `;
+
+    list.querySelectorAll("[data-copy-chant]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(btn.getAttribute("data-copy-chant"));
+          btn.textContent = "¡Copiado!";
+          setTimeout(() => (btn.textContent = "Copiar ID"), 1500);
+        } catch (e) { console.warn(e); }
+      });
+    });
+
+    list.querySelectorAll("[data-delete-chant]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!(await iflConfirm("¿Eliminar este cántico?"))) return;
+        btn.disabled = true;
+        try {
+          await db.deleteTeamChant(btn.getAttribute("data-delete-chant"));
+          await renderTeamChants(teamId);
+        } catch (e) {
+          console.error(e);
+          await iflAlert("No se pudo eliminar.");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    const addBtn = document.getElementById("chant-add-btn");
+    if (addBtn) {
+      addBtn.onclick = async () => {
+        const nameInput = document.getElementById("chant-name-input");
+        const audioIdInput = document.getElementById("chant-audio-id-input");
+        const refInput = document.getElementById("chant-ref-input");
+        const name = nameInput?.value.trim();
+        if (!name) { await iflAlert("Ponle un nombre al cántico."); return; }
+
+        addBtn.disabled = true;
+        try {
+          await db.addTeamChant({
+            teamId,
+            name,
+            robloxAudioId: audioIdInput?.value.trim() || null,
+            referenceUrl: refInput?.value.trim() || null,
+          });
+          if (nameInput) nameInput.value = "";
+          if (audioIdInput) audioIdInput.value = "";
+          if (refInput) refInput.value = "";
+          await renderTeamChants(teamId);
+        } catch (e) {
+          console.error("[IFL] Error añadiendo cántico:", e);
+          await iflAlert(e.message || "No se pudo añadir el cántico.");
+        } finally {
+          addBtn.disabled = false;
+        }
+      };
+    }
   }
 
   // =================================
@@ -1400,7 +1508,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const card = document.createElement("button");
       card.type = "button";
       card.className = "stadium-card2" + (s.image_url ? "" : " stadium-card2--noimg");
-      if (s.image_url) card.style.backgroundImage = `url('${s.image_url}')`;
+      if (s.image_url) setBackgroundIfLoads(card, s.image_url);
       card.innerHTML = `
         ${s.image_url ? `<div class="stadium-card2__overlay"></div>` : ""}
         <div class="stadium-card2__body">
@@ -1430,10 +1538,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const box = document.getElementById("stadium-modal-box");
-    const bannerStyle = stadium.image_url ? ` style="background-image:url('${escapeHTML(stadium.image_url)}')"` : "";
     box.innerHTML = `
       <button type="button" class="ifl-modal__close" id="stadium-modal-close">&times;</button>
-      <div class="ifl-modal__stadium-banner"${bannerStyle}></div>
+      <div class="ifl-modal__stadium-banner" id="stadium-modal-banner"></div>
       <div class="ifl-modal__stadium-body">
         <h2 class="ifl-modal__title" style="justify-content:flex-start;">${escapeHTML(stadium.name)}</h2>
         <p class="ifl-modal__meta">${stadium.team ? "Estadio de " + escapeHTML(stadium.team.name) : "Sin equipo asignado"}</p>
@@ -1443,6 +1550,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       </div>
     `;
     modal.hidden = false;
+    if (stadium.image_url) setBackgroundIfLoads(document.getElementById("stadium-modal-banner"), stadium.image_url);
     document.getElementById("stadium-modal-close").addEventListener("click", () => (modal.hidden = true));
   }
 
@@ -1521,6 +1629,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   // PORTADA (hero de Inicio)
   // =================================
 
+  // Pone una imagen de fondo solo si de verdad carga (igual que arriba,
+  // pero para un único elemento en vez de una lista de candidatos).
+  function setBackgroundIfLoads(el, url) {
+    if (!el || !url) return;
+    const probe = new Image();
+    probe.onload = () => { el.style.backgroundImage = `url("${url}")`; };
+    probe.onerror = () => { console.warn("[IFL] No se pudo cargar la imagen de fondo:", url); };
+    probe.src = url;
+  }
+
+  // Prueba las imágenes de estadio una a una (en orden aleatorio) hasta que
+  // una cargue de verdad, en vez de confiar a ciegas en la primera.
+  function tryNextHeroImage(hero, candidates, index) {
+    if (index >= candidates.length) return; // ninguna cargó: se queda el fondo plano, no vacío/roto
+    const url = candidates[index].image_url;
+    const probe = new Image();
+    probe.onload = () => { hero.style.backgroundImage = `url("${url}")`; };
+    probe.onerror = () => tryNextHeroImage(hero, candidates, index + 1);
+    probe.src = url;
+  }
+
   async function renderHero() {
     const hero = document.getElementById("hub-hero");
     if (!hero) return;
@@ -1540,11 +1669,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.error("[IFL] Error cargando datos para la portada:", e);
     }
 
-    const withImages = stadiums.filter((s) => s.image_url);
-    if (withImages.length) {
-      const pick = withImages[Math.floor(Math.random() * withImages.length)];
-      hero.style.backgroundImage = `url("${pick.image_url}")`;
-    }
+    // Comprobamos que la imagen cargue de verdad antes de ponerla de fondo
+    // (background-image no tiene "onerror": si la URL falla, antes se
+    // quedaba en blanco sin más). Si la primera falla, probamos otra.
+    const withImages = stadiums.filter((s) => s.image_url).sort(() => Math.random() - 0.5);
+    tryNextHeroImage(hero, withImages, 0);
 
     const playedMatches = matches.filter((m) => m.status === "jugado");
     const totalGoals = playedMatches.reduce((sum, m) => sum + (m.home_goals || 0) + (m.away_goals || 0), 0);
