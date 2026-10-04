@@ -348,6 +348,25 @@
           <p class="admin-form__note">Si el nombre de Roblox ya existe, haz clic en el resultado del buscador para reutilizar esa ficha de jugador en vez de crear una nueva. El precio se descuenta automáticamente del presupuesto del club, y el contrato se reduce cada vez que pulsas «Avanzar temporada».</p>
         </form>
 
+        <div class="admin-form" style="grid-template-columns: repeat(3, minmax(160px,1fr));margin-bottom:16px;">
+          <div class="admin-field">
+            <label for="contracts-filter-club">Filtrar por club</label>
+            <select class="admin-select" id="contracts-filter-club"><option value="">Todos los clubs</option></select>
+          </div>
+          <div class="admin-field">
+            <label for="contracts-filter-season">Filtrar por temporada firmada</label>
+            <select class="admin-select" id="contracts-filter-season"><option value="">Todas</option></select>
+          </div>
+          <div class="admin-field">
+            <label for="contracts-filter-status">Filtrar por estado</label>
+            <select class="admin-select" id="contracts-filter-status">
+              <option value="">Todos</option>
+              <option value="ACTIVO">Activos</option>
+              <option value="INACTIVO">Inactivos</option>
+            </select>
+          </div>
+        </div>
+
         <div class="table-wrap">
           <table class="standings" id="contracts-table">
             <thead>
