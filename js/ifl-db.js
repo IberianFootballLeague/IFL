@@ -954,6 +954,11 @@ window.IFLDB = (function () {
       return { status: "rechazada" };
     }
 
+    const buyerCount = await countActiveContracts(neg.buyer_team_id);
+    if (buyerCount >= MAX_CONTRACTS_PER_TEAM) {
+      throw new Error(`El club comprador ya tiene el máximo de ${MAX_CONTRACTS_PER_TEAM} jugadores.`);
+    }
+
     // Aceptado por administración: se ejecuta el traspaso de verdad.
     const { data: oldContracts, error: oldErr } = await client
       .from("contracts")
@@ -1015,6 +1020,41 @@ window.IFLDB = (function () {
     return { status: "aceptada", code };
   }
 
+  // =====================================
+  // CÁNTICOS DEL CLUB
+  // =====================================
+
+  const MAX_CHANTS_PER_TEAM = 20;
+
+  async function getTeamChants(teamId) {
+    const { data, error } = await client
+      .from("team_chants")
+      .select("*")
+      .eq("team_id", teamId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function addTeamChant({ teamId, name, robloxAudioId, referenceUrl }) {
+    const existing = await getTeamChants(teamId);
+    if (existing.length >= MAX_CHANTS_PER_TEAM) {
+      throw new Error(`Este club ya tiene el máximo de ${MAX_CHANTS_PER_TEAM} cánticos.`);
+    }
+    const { data, error } = await client
+      .from("team_chants")
+      .insert({ team_id: teamId, name, roblox_audio_id: robloxAudioId || null, reference_url: referenceUrl || null })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async function deleteTeamChant(id) {
+    const { error } = await client.from("team_chants").delete().eq("id", id);
+    if (error) throw error;
+  }
+
   async function getPlayerRankNames(discordId) {
     if (!discordId) return [];
     const { data: player, error: pErr } = await client
@@ -1036,6 +1076,18 @@ window.IFLDB = (function () {
   // =====================================
   // MERCADO DE FICHAJES
   // =====================================
+
+  const MAX_CONTRACTS_PER_TEAM = 15;
+
+  async function countActiveContracts(teamId) {
+    const { count, error } = await client
+      .from("contracts")
+      .select("id", { count: "exact", head: true })
+      .eq("team_id", teamId)
+      .eq("status", "ACTIVO");
+    if (error) throw error;
+    return count || 0;
+  }
 
   function generateMarketCode() {
     // Sin caracteres ambiguos (0/O, 1/I) para que sea fácil de pasar de palabra.
@@ -1175,6 +1227,11 @@ window.IFLDB = (function () {
       return { status: "rechazado" };
     }
 
+    const buyerCount = await countActiveContracts(offer.team_id);
+    if (buyerCount >= MAX_CONTRACTS_PER_TEAM) {
+      throw new Error(`Ese club ya tiene el máximo de ${MAX_CONTRACTS_PER_TEAM} jugadores.`);
+    }
+
     // Aceptado: cerramos cualquier contrato activo previo del jugador (en
     // cualquier club), creamos el contrato nuevo con el club comprador,
     // descontamos el precio del presupuesto de ese club y generamos el código.
@@ -1288,6 +1345,9 @@ window.IFLDB = (function () {
     deleteTrophy,
     getPlayerRankNames,
     updateMyFreeAgentProfile,
+    getTeamChants,
+    addTeamChant,
+    deleteTeamChant,
     createListing,
     retireListing,
     getMarketListings,
