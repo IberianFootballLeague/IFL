@@ -2046,3 +2046,34 @@ h1.hub-hero__title::after { animation-delay: 0.3s; }
   .admin-top__search { order: 3; width: 100%; }
   .admin-nav { flex-wrap: wrap !important; }
 }
+
+@media (max-width: 760px) {
+  /* ---- Formularios hechos con grid inline (cánticos, etc.) ---- */
+  .chants-form-grid { grid-template-columns: 1fr !important; }
+
+  /* ---- Tarjetas y tipografía general, un poco más compactas ---- */
+  .market-card { padding: 14px !important; }
+  .market-card__title { font-size: 14px !important; }
+  .division-card { padding: 14px !important; }
+  .division-card__title { font-size: 16px !important; }
+  .league-page-head__title { font-size: 24px !important; }
+  .table-heading { font-size: 15px !important; }
+
+  /* ---- Filas densas: texto más pequeño para que quepa ---- */
+  .lb-row__name, .market-player-row__name { font-size: 13px !important; }
+  .lb-row__meta, .market-player-row__meta { font-size: 11px !important; }
+
+  /* ---- Pestañas (Premios/Clasificación) con scroll si no caben ---- */
+  .premio-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  .premio-tab { flex: none; }
+
+  /* ---- Botones del modal: más fáciles de tocar ---- */
+  .ifl-modal__close { width: 36px !important; height: 36px !important; font-size: 20px !important; }
+
+  /* ---- Mercado: que los botones de acción nunca se corten ---- */
+  .market-player-row { gap: 10px !important; }
+  .market-player-row > button { width: 100%; order: 3; }
+
+  /* ---- Filtros de Contratos (admin) en una columna ---- */
+  #contracts-filter-club, #contracts-filter-season, #contracts-filter-status { width: 100%; }
+}
