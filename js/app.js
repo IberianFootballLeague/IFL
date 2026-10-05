@@ -655,9 +655,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             <option value="Delantero">Delantero</option>
           </select>
         </div>
-        <div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <button type="button" class="btn-market" id="free-agent-save">Guardar mi perfil</button>
-          <span id="free-agent-status" style="margin-left:10px;font-size:12px;color:var(--gray-3, #56585f);" hidden></span>
+          <button type="button" class="btn-market btn-market--ghost" id="free-agent-retire">Quitarme de Agente Libre</button>
+          <span id="free-agent-status" style="font-size:12px;color:var(--gray-3, #56585f);" hidden></span>
         </div>
       </div>
     `;
@@ -680,6 +681,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("[IFL] Error guardando el perfil de Free Agent:", err);
         if (statusEl) { statusEl.hidden = false; statusEl.textContent = "❌ No se pudo guardar."; }
       } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("free-agent-retire")?.addEventListener("click", async (e) => {
+      if (!(await iflConfirm("¿Quitarte de la lista de agentes libres? Dejarás de aparecer en el Mercado."))) return;
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try {
+        await db.retireFreeAgent(currentDiscordId);
+        await renderFreeAgentCard();
+        await renderFreeAgents();
+      } catch (err) {
+        console.error("[IFL] Error al quitarse de agente libre:", err);
+        await iflAlert("No se pudo completar la acción.");
         btn.disabled = false;
       }
     });
@@ -2124,6 +2140,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       debounceTimer = setTimeout(async () => {
         let results = [];
         try { results = await db.searchPlayers(q); } catch (e) { console.error(e); }
+        if (playerSearchInput.value.trim() !== q) return; // respuesta desfasada, se ignora
         playerSearchResults.innerHTML = results.map((p) => `
           <div class="player-result-row" data-player-id="${p.id}">
             ${p.avatar_url
