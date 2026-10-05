@@ -910,38 +910,46 @@
     let box = null;
     function closeBox() { if (box) box.remove(); box = null; }
 
-    contractRobloxInput.addEventListener("input", async () => {
+    let contractSearchDebounce = null;
+    contractRobloxInput.addEventListener("input", () => {
       selectedPlayer = null;
-      const q = contractRobloxInput.value.trim();
       closeBox();
+      clearTimeout(contractSearchDebounce);
+      const q = contractRobloxInput.value.trim();
       if (!q) return;
 
-      let results = [];
-      try { results = await db.searchPlayers(q); } catch (e) { console.error(e); }
-      if (!results.length) return;
+      contractSearchDebounce = setTimeout(async () => {
+        let results = [];
+        try { results = await db.searchPlayers(q); } catch (e) { console.error(e); }
+        // Si mientras llegaba la respuesta el usuario ha seguido escribiendo,
+        // esta respuesta ya está desfasada (es justo lo que causaba que el
+        // nombre cambiara solo): la ignoramos.
+        if (contractRobloxInput.value.trim() !== q) return;
+        if (!results.length) return;
 
-      box = document.createElement("div");
-      box.className = "admin-search-results";
-      results.forEach((p) => {
-        const row = document.createElement("div");
-        row.className = "admin-row";
-        row.style.cursor = "pointer";
-        row.innerHTML = `
-          <div class="admin-row__body">
-            <div class="admin-row__name">${escapeHTML(p.roblox_username)}</div>
-            <div class="admin-row__meta">${escapeHTML(p.discord_username)}</div>
-          </div>
-        `;
-        row.addEventListener("click", () => {
-          selectedPlayer = p;
-          contractRobloxInput.value = p.roblox_username;
-          if (contractDiscordUserInput) contractDiscordUserInput.value = p.discord_username;
-          if (contractDiscordIdInput) contractDiscordIdInput.value = p.discord_id || "";
-          closeBox();
+        box = document.createElement("div");
+        box.className = "admin-search-results";
+        results.forEach((p) => {
+          const row = document.createElement("div");
+          row.className = "admin-row";
+          row.style.cursor = "pointer";
+          row.innerHTML = `
+            <div class="admin-row__body">
+              <div class="admin-row__name">${escapeHTML(p.roblox_username)}</div>
+              <div class="admin-row__meta">${escapeHTML(p.discord_username)}</div>
+            </div>
+          `;
+          row.addEventListener("click", () => {
+            selectedPlayer = p;
+            contractRobloxInput.value = p.roblox_username;
+            if (contractDiscordUserInput) contractDiscordUserInput.value = p.discord_username;
+            if (contractDiscordIdInput) contractDiscordIdInput.value = p.discord_id || "";
+            closeBox();
+          });
+          box.appendChild(row);
         });
-        box.appendChild(row);
-      });
-      contractRobloxInput.parentElement.appendChild(box);
+        contractRobloxInput.parentElement.appendChild(box);
+      }, 220);
     });
 
     document.addEventListener("click", (e) => {
