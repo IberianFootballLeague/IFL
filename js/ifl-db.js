@@ -1133,6 +1133,11 @@ window.IFLDB = (function () {
     if (error) throw error;
   }
 
+  async function retireFreeAgent(discordId) {
+    const { error } = await client.from("players").update({ is_free_agent: false }).eq("discord_id", discordId);
+    if (error) throw error;
+  }
+
   async function createMarketOffer({ playerId, teamId, price, buyerDiscordId, buyerDiscordUsername }) {
     // Guardamos el club actual del jugador (si tiene uno) solo para poder
     // mostrar la flecha "club anterior → club nuevo" en el anuncio público.
@@ -1359,6 +1364,7 @@ window.IFLDB = (function () {
     getFreeAgents,
     hasActiveContract,
     declareFreeAgent,
+    retireFreeAgent,
     createMarketOffer,
     getMarketFeed,
     getPendingMarketOffers,
