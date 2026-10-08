@@ -245,6 +245,12 @@
 .admin-search-results {
   position: absolute;
   z-index: 20;
+  /* top explícito en vez de dejar que el navegador calcule la "posición
+     estática": dentro de un contenedor flex en columna (.admin-field),
+     un elemento absoluto sin top/left puede terminar arriba del todo,
+     tapando el campo, en vez de ir debajo. Esto lo fuerza siempre abajo. */
+  top: 100%;
+  left: 0;
   margin-top: 4px;
   width: 100%;
   max-height: 260px;
@@ -295,6 +301,15 @@
 }
 
 .standings__club { display: flex; align-items: center; }
+
+/* Las celdas de tabla tienen "vertical-align: baseline" por defecto en el
+   navegador: si una celda lleva un escudo (más alto que el texto) y las
+   demás solo números, el texto de cada celda queda a una altura distinta
+   y la fila se ve "torcida". Esto alinea todo al centro siempre. */
+.standings td,
+.standings th {
+  vertical-align: middle;
+}
 
 .match-chip {
   display: flex !important;
