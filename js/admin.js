@@ -1672,6 +1672,60 @@
     });
   }
 
+  const marketPendingFreeAgentsList = document.getElementById("market-pending-freeagents-list");
+
+  async function renderPendingFreeAgentsView() {
+    if (!marketPendingFreeAgentsList) return;
+    marketPendingFreeAgentsList.innerHTML = `<div class="admin-panel__empty">Cargando…</div>`;
+
+    let requests = [];
+    try { requests = await db.getPendingFreeAgentRequests(); } catch (e) { console.error(e); }
+
+    if (!requests.length) {
+      marketPendingFreeAgentsList.innerHTML = '<div class="admin-panel__empty">No hay solicitudes pendientes.</div>';
+      return;
+    }
+
+    marketPendingFreeAgentsList.innerHTML = requests.map((p) => `
+      <div class="admin-row">
+        <div class="admin-row__body">
+          <div class="admin-row__name">${escapeHTML(p.roblox_username || p.discord_username || "?")}</div>
+          <div class="admin-row__meta">
+            ${escapeHTML(p.discord_username || "")}
+            ${p.position ? " · " + escapeHTML(p.position) : ""}
+            ${p.career_summary ? " · " + escapeHTML(p.career_summary) : ""}
+          </div>
+        </div>
+        <button type="button" class="btn-admin btn-admin--small btn-admin--solid" data-fa-approve="${p.id}">Aceptar</button>
+        <button type="button" class="btn-admin btn-admin--small btn-admin--danger" data-fa-reject="${p.id}">Rechazar</button>
+      </div>
+    `).join("");
+  }
+
+  if (marketPendingFreeAgentsList) {
+    marketPendingFreeAgentsList.addEventListener("click", (e) => {
+      const approveBtn = e.target.closest("[data-fa-approve]");
+      if (approveBtn) {
+        withBusy(approveBtn, async () => {
+          await db.approveFreeAgentRequest(approveBtn.getAttribute("data-fa-approve"));
+          await renderPendingFreeAgentsView();
+          toast("Agente libre aprobado.");
+        });
+        return;
+      }
+
+      const rejectBtn = e.target.closest("[data-fa-reject]");
+      if (rejectBtn) {
+        if (!confirm("¿Rechazar esta solicitud de Agente Libre?")) return;
+        withBusy(rejectBtn, async () => {
+          await db.rejectFreeAgentRequest(rejectBtn.getAttribute("data-fa-reject"));
+          await renderPendingFreeAgentsView();
+          toast("Solicitud rechazada.");
+        });
+      }
+    });
+  }
+
   // =====================================
   // ADMINS (solo super-admin)
   // =====================================
@@ -1803,7 +1857,7 @@
     if (name === "results") renderResultsView();
     if (name === "history") renderHistoryView();
     if (name === "trophies") renderTrophiesView();
-    if (name === "market") { renderMarketView(); renderPendingTransfersView(); }
+    if (name === "market") { renderMarketView(); renderPendingTransfersView(); renderPendingFreeAgentsView(); }
   }
   window.IFLAdminShowView = showAdminView;
 
