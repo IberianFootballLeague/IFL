@@ -1128,13 +1128,42 @@ window.IFLDB = (function () {
     return !!(data && data.length);
   }
 
+  // Declararse ya no te hace aparecer directo en el mercado: solo manda la
+  // solicitud. Un admin tiene que aprobarla (approveFreeAgentRequest).
   async function declareFreeAgent(discordId) {
-    const { error } = await client.from("players").update({ is_free_agent: true }).eq("discord_id", discordId);
+    const { error } = await client.from("players").update({ free_agent_requested: true }).eq("discord_id", discordId);
     if (error) throw error;
   }
 
   async function retireFreeAgent(discordId) {
-    const { error } = await client.from("players").update({ is_free_agent: false }).eq("discord_id", discordId);
+    const { error } = await client
+      .from("players")
+      .update({ is_free_agent: false, free_agent_requested: false })
+      .eq("discord_id", discordId);
+    if (error) throw error;
+  }
+
+  async function getPendingFreeAgentRequests() {
+    const { data, error } = await client
+      .from("players")
+      .select("*")
+      .eq("free_agent_requested", true)
+      .eq("is_free_agent", false)
+      .order("roblox_username", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function approveFreeAgentRequest(playerId) {
+    const { error } = await client
+      .from("players")
+      .update({ is_free_agent: true, free_agent_requested: false })
+      .eq("id", playerId);
+    if (error) throw error;
+  }
+
+  async function rejectFreeAgentRequest(playerId) {
+    const { error } = await client.from("players").update({ free_agent_requested: false }).eq("id", playerId);
     if (error) throw error;
   }
 
@@ -1365,6 +1394,9 @@ window.IFLDB = (function () {
     hasActiveContract,
     declareFreeAgent,
     retireFreeAgent,
+    getPendingFreeAgentRequests,
+    approveFreeAgentRequest,
+    rejectFreeAgentRequest,
     createMarketOffer,
     getMarketFeed,
     getPendingMarketOffers,
