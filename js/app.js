@@ -605,12 +605,38 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const displayName = me ? playerDisplayName(me) : (userInfo?.textContent || "").replace("Sesión iniciada como ", "");
 
+    // Solicitud enviada pero todavía sin revisar por un administrador
+    if (me && !me.is_free_agent && me.free_agent_requested) {
+      card.innerHTML = `
+        <div class="market-card__title">🆓 Free Agent</div>
+        <p class="market-code-box__hint" style="position:relative;z-index:1;margin:0 0 14px;">
+          ⏳ Tu solicitud está pendiente de revisión por la administración. En cuanto la aprueben,
+          aparecerás en "Jugadores disponibles".
+        </p>
+        <button type="button" class="btn-market btn-market--ghost" id="free-agent-cancel-request" style="position:relative;z-index:1;">Cancelar solicitud</button>
+      `;
+      document.getElementById("free-agent-cancel-request")?.addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        try {
+          await db.retireFreeAgent(currentDiscordId);
+          await renderFreeAgentCard();
+        } catch (err) {
+          console.error(err);
+          await iflAlert("No se pudo cancelar la solicitud.");
+          btn.disabled = false;
+        }
+      });
+      return;
+    }
+
+    // Todavía no se ha declarado
     if (!me || !me.is_free_agent) {
       card.innerHTML = `
         <div class="market-card__title">🆓 Free Agent</div>
         <p class="market-code-box__hint" style="position:relative;z-index:1;margin:0 0 14px;">
-          No tienes equipo ahora mismo. Declárate como agente libre para aparecer en "Jugadores disponibles"
-          y que cualquier Team Owner pueda ofertar por ti.
+          No tienes equipo ahora mismo. Declárate como agente libre y, cuando la administración lo apruebe,
+          aparecerás en "Jugadores disponibles" para que cualquier Team Owner pueda ficharte.
         </p>
         <button type="button" class="btn-market" id="free-agent-declare" style="position:relative;z-index:1;">Declararse como Agente Libre</button>
       `;
@@ -620,13 +646,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
           await db.declareFreeAgent(currentDiscordId);
           await renderFreeAgentCard();
-          await renderFreeAgents();
         } catch (err) {
           console.error("[IFL] Error al declararse agente libre:", err);
           await iflAlert(
             "No se pudo completar la declaración.\n\n" +
             (err.message || "Error desconocido") +
-            "\n\nComprueba que se ha ejecutado la migración 6 en Supabase (columna is_free_agent)."
+            "\n\nComprueba que se ha ejecutado la migración 9 en Supabase (columna free_agent_requested)."
           );
           btn.disabled = false;
         }
