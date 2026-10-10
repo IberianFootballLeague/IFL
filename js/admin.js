@@ -511,44 +511,86 @@
 
   if (rankAssignSelect) rankAssignSelect.addEventListener("change", toggleOwnerClubField);
 
-  if (rankAssignRobloxInput) {
-    let box = null;
-    function closeBox() { if (box) box.remove(); box = null; }
+  // Desplegable de resultados de búsqueda de jugadores. Se pinta en el <body>
+  // con position:fixed y coordenadas calculadas desde el propio campo
+  // (getBoundingClientRect), en vez de colgarlo del contenedor del campo:
+  // así no depende de admin.css ni de cómo coloque el navegador un elemento
+  // absoluto dentro de un flex, que era lo que lo dejaba tapando el campo.
+  let activeSearchBox = null;
 
-    rankAssignRobloxInput.addEventListener("input", async () => {
-      selectedRankPlayer = null;
-      const q = rankAssignRobloxInput.value.trim();
-      closeBox();
-      if (!q) return;
+  function closeSearchBox() {
+    if (activeSearchBox) { activeSearchBox.remove(); activeSearchBox = null; }
+  }
 
-      let results = [];
-      try { results = await db.searchPlayers(q); } catch (e) { console.error(e); }
-      if (!results.length) return;
+  function openSearchBox(inputEl, results, labelFn, onPick) {
+    closeSearchBox();
+    const rect = inputEl.getBoundingClientRect();
+    const box = document.createElement("div");
+    box.className = "admin-search-results";
+    box.style.cssText =
+      "position:fixed;margin:0;z-index:99999;" +
+      "left:" + rect.left + "px;top:" + (rect.bottom + 4) + "px;width:" + rect.width + "px;";
 
-      box = document.createElement("div");
-      box.className = "admin-search-results";
-      results.forEach((p) => {
-        const row = document.createElement("div");
-        row.className = "admin-row";
-        row.style.cursor = "pointer";
-        row.innerHTML = `
-          <div class="admin-row__body">
-            <div class="admin-row__name">${escapeHTML(p.roblox_username || p.discord_username)}</div>
-            <div class="admin-row__meta">${escapeHTML(p.discord_username)}</div>
-          </div>
-        `;
-        row.addEventListener("click", () => {
-          selectedRankPlayer = p;
-          rankAssignRobloxInput.value = p.roblox_username || p.discord_username;
-          closeBox();
-        });
-        box.appendChild(row);
+    results.forEach((p) => {
+      const row = document.createElement("div");
+      row.className = "admin-row";
+      row.style.cursor = "pointer";
+      row.innerHTML = `
+        <div class="admin-row__body">
+          <div class="admin-row__name">${escapeHTML(labelFn(p))}</div>
+          <div class="admin-row__meta">${escapeHTML(p.discord_username)}</div>
+        </div>
+      `;
+      // mousedown (no click) para que se elija antes de que el campo pierda el foco
+      row.addEventListener("mousedown", (ev) => {
+        ev.preventDefault();
+        onPick(p);
+        closeSearchBox();
       });
-      rankAssignRobloxInput.parentElement.appendChild(box);
+      box.appendChild(row);
     });
 
-    document.addEventListener("click", (e) => {
-      if (box && !rankAssignRobloxInput.parentElement.contains(e.target)) closeBox();
+    document.body.appendChild(box);
+    activeSearchBox = box;
+  }
+
+  document.addEventListener("mousedown", (e) => {
+    if (!activeSearchBox) return;
+    if (activeSearchBox.contains(e.target)) return;
+    if (e.target.id === "contract-roblox" || e.target.id === "rank-assign-roblox") return;
+    closeSearchBox();
+  });
+  window.addEventListener("scroll", (e) => {
+    if (activeSearchBox && activeSearchBox.contains(e.target)) return;
+    closeSearchBox();
+  }, true);
+  window.addEventListener("resize", closeSearchBox);
+
+  if (rankAssignRobloxInput) {
+    let rankSearchDebounce = null;
+    rankAssignRobloxInput.addEventListener("input", () => {
+      selectedRankPlayer = null;
+      closeSearchBox();
+      clearTimeout(rankSearchDebounce);
+      const q = rankAssignRobloxInput.value.trim();
+      if (!q) return;
+
+      rankSearchDebounce = setTimeout(async () => {
+        let results = [];
+        try { results = await db.searchPlayers(q); } catch (e) { console.error(e); }
+        // respuesta desfasada (el usuario ya ha seguido escribiendo): se ignora
+        if (rankAssignRobloxInput.value.trim() !== q) return;
+        if (!results.length) return;
+        openSearchBox(
+          rankAssignRobloxInput,
+          results,
+          (p) => p.roblox_username || p.discord_username,
+          (p) => {
+            selectedRankPlayer = p;
+            rankAssignRobloxInput.value = p.roblox_username || p.discord_username;
+          }
+        );
+      }, 220);
     });
   }
 
@@ -907,13 +949,10 @@
 
   // Buscador de jugador por Roblox: si ya existe, lo reutilizamos (autocompleta Discord)
   if (contractRobloxInput) {
-    let box = null;
-    function closeBox() { if (box) box.remove(); box = null; }
-
     let contractSearchDebounce = null;
     contractRobloxInput.addEventListener("input", () => {
       selectedPlayer = null;
-      closeBox();
+      closeSearchBox();
       clearTimeout(contractSearchDebounce);
       const q = contractRobloxInput.value.trim();
       if (!q) return;
@@ -921,39 +960,21 @@
       contractSearchDebounce = setTimeout(async () => {
         let results = [];
         try { results = await db.searchPlayers(q); } catch (e) { console.error(e); }
-        // Si mientras llegaba la respuesta el usuario ha seguido escribiendo,
-        // esta respuesta ya está desfasada (es justo lo que causaba que el
-        // nombre cambiara solo): la ignoramos.
+        // respuesta desfasada (el usuario ya ha seguido escribiendo): se ignora
         if (contractRobloxInput.value.trim() !== q) return;
         if (!results.length) return;
-
-        box = document.createElement("div");
-        box.className = "admin-search-results";
-        results.forEach((p) => {
-          const row = document.createElement("div");
-          row.className = "admin-row";
-          row.style.cursor = "pointer";
-          row.innerHTML = `
-            <div class="admin-row__body">
-              <div class="admin-row__name">${escapeHTML(p.roblox_username)}</div>
-              <div class="admin-row__meta">${escapeHTML(p.discord_username)}</div>
-            </div>
-          `;
-          row.addEventListener("click", () => {
+        openSearchBox(
+          contractRobloxInput,
+          results,
+          (p) => p.roblox_username || p.discord_username,
+          (p) => {
             selectedPlayer = p;
-            contractRobloxInput.value = p.roblox_username;
+            contractRobloxInput.value = p.roblox_username || "";
             if (contractDiscordUserInput) contractDiscordUserInput.value = p.discord_username;
             if (contractDiscordIdInput) contractDiscordIdInput.value = p.discord_id || "";
-            closeBox();
-          });
-          box.appendChild(row);
-        });
-        contractRobloxInput.parentElement.appendChild(box);
+          }
+        );
       }, 220);
-    });
-
-    document.addEventListener("click", (e) => {
-      if (box && !contractRobloxInput.parentElement.contains(e.target)) closeBox();
     });
   }
 
