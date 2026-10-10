@@ -130,6 +130,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function showLogin() {
     loginPage.style.display = "flex";
     appPage.style.display = "none";
+    if (window.IFLMusic) window.IFLMusic.hide();
   }
 
   // =================================
@@ -273,6 +274,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupOnlinePresence();
     renderHero();
     renderUpcomingMatches();
+    if (window.IFLMusic) window.IFLMusic.init();
     checkClubOwnership();
     loadMyRanks();
     startAccessPolling();
