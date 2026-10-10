@@ -2092,3 +2092,98 @@ h1.hub-hero__title::after { animation-delay: 0.3s; }
   /* ---- Filtros de Contratos (admin) en una columna ---- */
   #contracts-filter-club, #contracts-filter-season, #contracts-filter-status { width: 100%; }
 }
+
+/* =====================================
+   REPRODUCTOR DE MÚSICA (playlist de Spotify)
+===================================== */
+
+.ifl-music[hidden] { display: none; }
+
+.ifl-music {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 9990;
+  width: 320px;
+  max-width: calc(100vw - 24px);
+  border-radius: 14px;
+  background: rgba(14, 14, 18, 0.92);
+  backdrop-filter: blur(14px);
+  --div-color: #1db954;
+  animation: division-glow 3.6s ease-in-out infinite;
+}
+
+.ifl-music__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.ifl-music__label {
+  flex: 1;
+  font-family: var(--font-hub);
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--white, #fff);
+}
+
+.ifl-music__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1db954, #3bd6ff);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.ifl-music__btn:hover { transform: scale(1.06); box-shadow: 0 6px 16px -6px rgba(29, 185, 84, 0.8); }
+
+.ifl-music__btn--ghost {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+/* El embed tiene que seguir "montado" aunque el panel esté cerrado para que
+   la música no se corte: se aparta de la pantalla en vez de usar display:none. */
+.ifl-music__panel {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 304px;
+}
+
+.ifl-music.is-open .ifl-music__panel {
+  position: static;
+  width: auto;
+  padding: 0 10px 10px;
+}
+
+.ifl-music__panel iframe { border-radius: 10px; display: block; }
+
+.ifl-music__bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; width: 16px; }
+.ifl-music__bars i {
+  display: block;
+  width: 3px;
+  height: 4px;
+  border-radius: 2px;
+  background: #1db954;
+}
+.ifl-music__bars.is-playing i { animation: ifl-music-eq 0.9s ease-in-out infinite; }
+.ifl-music__bars.is-playing i:nth-child(2) { animation-delay: 0.2s; }
+.ifl-music__bars.is-playing i:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes ifl-music-eq {
+  0%, 100% { height: 4px; }
+  50% { height: 16px; }
+}
+
+@media (max-width: 760px) {
+  .ifl-music { right: 10px; bottom: 10px; width: 260px; }
+}
